@@ -5,10 +5,28 @@ from qiskit_nature.second_q.drivers import PySCFDriver
 from qiskit_nature.second_q.mappers import JordanWignerMapper
 from qiskit_nature.second_q.transformers import ActiveSpaceTransformer
 
+from typing import List, Tuple, Dict, Union
 # number of qubits = num_orbitals * 2
 
+from qiskit.quantum_info import SparsePauliOp
+
+def sparsepauliop_dictionary(H: SparsePauliOp) -> Dict[str, float]:
+    """
+    Convert a 2-qubit Hamiltonian from array form to a dictionary.
+
+    Args:
+    h (np.ndarray): 2-qubit Hamiltonian in array form
+
+    Returns:
+    Dict[str, float]: Dictionary with Pauli string keys and coefficient values
+    """
+    pauli_strings = list(map(str, H.paulis))
+    coeffs = H.coeffs
+    
+    return dict(zip(pauli_strings, coeffs))
+
 def get_qubit_hamiltonian(dist='1.5', charge=0, spin=0, num_electrons=2, num_orbitals=2):
-    backend = QasmSimulator(method='statevector')   
+    # backend = QasmSimulator(method='statevector')   
     driver = PySCFDriver(
         atom=f"Li 0 0 0; H 0 0 {dist}",
         basis="sto3g",
@@ -24,4 +42,7 @@ def get_qubit_hamiltonian(dist='1.5', charge=0, spin=0, num_electrons=2, num_orb
     fermionic_op = as_problem.second_q_ops()
     H_qubit = mapper.map(fermionic_op[0]) # this is the qubit hamiltonian
 
-    return H_qubit
+    # convert the SparsePauliOp in dictionary form
+    H = sparsepauliop_dictionary(H_qubit)
+
+    return H

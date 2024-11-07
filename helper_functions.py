@@ -35,31 +35,16 @@ def is_qubit_state(state: exqalibur.FockState) -> Union[Tuple[int, ...], bool]:
             return False
     return tuple(q_state)
 
-# def qubit_state_marginal(res: List[exqalibur.FockState]) -> Dict[Tuple[int, ...], float]:
-#     """
-#     Calculate the frequencies of measured qubit states from sampled Fock states.
-
-#     Args:
-#     res (List[exqalibur.FockState]): Sampled Fock states
-
-#     Returns:
-#     Dict[Tuple[int, ...], float]: Frequencies of measured qubit states
-#     """
-#     q_state_frequency = {}
-#     total_measurements = 0
-    
-#     for state in res:
-#         q_state = is_qubit_state(state)
-#         if q_state:
-#             total_measurements += 1
-#             q_state_frequency[q_state] = q_state_frequency.get(q_state, 0) + 1
-    
-#     return {k: v / total_measurements for k, v in q_state_frequency.items()}
-
-def qubit_state_marginal(prob_dist):
+def qubit_state_marginal(prob_dist: pcvl.BSDistribution) -> Dict[Tuple[int, ...], float]:
     """
-    given sampled Fock states, return the frequencies
-    of measured qubit states.
+    Calculate the frequencies of measured qubit states from frequencies of 
+    sampled Fock states.
+
+    Args:
+    res (List[exqalibur.FockState]): Sampled Fock states
+
+    Returns:
+    Dict[Tuple[int, ...], float]: Frequencies of measured qubit states
     """
     q_state_frequency = {}
     total_prob_mass = 0

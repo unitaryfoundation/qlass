@@ -3,3 +3,5 @@ perceval-quandela
 qiskit_aer
 qiskit_nature
 pyscf
+tqdm
+numba
