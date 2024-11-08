@@ -12,10 +12,10 @@ from qiskit.quantum_info import SparsePauliOp
 
 def sparsepauliop_dictionary(H: SparsePauliOp) -> Dict[str, float]:
     """
-    Convert a 2-qubit Hamiltonian from array form to a dictionary.
+    Convert a Hamiltonian SparsePauliOp form to a dictionary.
 
     Args:
-    h (np.ndarray): 2-qubit Hamiltonian in array form
+    H (SparsePauliOp): Hamiltonian
 
     Returns:
     Dict[str, float]: Dictionary with Pauli string keys and coefficient values
