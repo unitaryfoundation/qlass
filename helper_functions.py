@@ -138,6 +138,8 @@ def loss_function(lp: np.ndarray, List_Parameters: List[pcvl.Parameter],
     Returns:
     float: The computed loss value
     """
+    num_qubits = len(list(H.keys())[0])
+
     for p, value in zip(List_Parameters, lp):
         p.set_value(value)
 
@@ -148,7 +150,7 @@ def loss_function(lp: np.ndarray, List_Parameters: List[pcvl.Parameter],
         # start = time.time()
         end = time.time()
         processor = pcvl.Processor(pcvl.NaiveBackend(), ansatz_rot)
-        processor.with_input(pcvl.BasicState([0,1,0,1,0,0]))  # Hardcoded for now
+        processor.with_input(pcvl.BasicState([0] + [1,0]*num_qubits + [0]))
         
         # print(f'rotation time: {end-start}')
         
