@@ -170,49 +170,6 @@ def loss_function(lp: np.ndarray, List_Parameters: List[pcvl.Parameter],
     
     return loss
 
-# def ansatz() -> Tuple[pcvl.Circuit, List[pcvl.Parameter]]:
-#     """
-#     Create the ansatz circuit for the VQE algorithm.
-
-#     Returns:
-#     Tuple[pcvl.Circuit, List[pcvl.Parameter]]: The ansatz circuit and list of parameters
-#     """
-#     List_Parameters = [pcvl.Parameter(f"φ{i}") for i in range(1, 9)]
-#     VQE = pcvl.Circuit(6)
-
-#     # First layer
-#     VQE.add((1,2), pcvl.BS())
-#     VQE.add((3,4), pcvl.BS())
-#     VQE.add((2,), pcvl.PS(phi=List_Parameters[0]))
-#     VQE.add((4,), pcvl.PS(phi=List_Parameters[2]))
-#     VQE.add((1,2), pcvl.BS())
-#     VQE.add((3,4), pcvl.BS())
-#     VQE.add((2,), pcvl.PS(phi=List_Parameters[1]))
-#     VQE.add((4,), pcvl.PS(phi=List_Parameters[3]))
-
-#     # CNOT (Post-selected with a success probability of 1/9)
-#     VQE.add([0,1,2,3,4,5], pcvl.PERM([0,1,2,3,4,5]))
-#     VQE.add((3,4), pcvl.BS())
-#     VQE.add([0,1,2,3,4,5], pcvl.PERM([0,1,2,3,4,5]))
-#     VQE.add((0,1), pcvl.BS(pcvl.BS.r_to_theta(1/3)))
-#     VQE.add((2,3), pcvl.BS(pcvl.BS.r_to_theta(1/3)))
-#     VQE.add((4,5), pcvl.BS(pcvl.BS.r_to_theta(1/3)))
-#     VQE.add([0,1,2,3,4,5], pcvl.PERM([0,1,2,3,4,5]))
-#     VQE.add((3,4), pcvl.BS())
-#     VQE.add([0,1,2,3,4,5], pcvl.PERM([0,1,2,3,4,5]))
-
-#     # Second layer
-#     VQE.add((2,), pcvl.PS(phi=List_Parameters[4]))
-#     VQE.add((4,), pcvl.PS(phi=List_Parameters[6]))
-#     VQE.add((1,2), pcvl.BS())
-#     VQE.add((3,4), pcvl.BS())
-#     VQE.add((2,), pcvl.PS(phi=List_Parameters[5]))
-#     VQE.add((4,), pcvl.PS(phi=List_Parameters[7]))
-#     VQE.add((1,2), pcvl.BS())
-#     VQE.add((3,4), pcvl.BS())
-
-#     return VQE, List_Parameters
-
 def ansatz(num_modes=6) -> Tuple[pcvl.Circuit, List[pcvl.Parameter]]:
     """
     Create the ansatz circuit for the VQE algorithm.
@@ -248,7 +205,7 @@ def ansatz(num_modes=6) -> Tuple[pcvl.Circuit, List[pcvl.Parameter]]:
 
     VQE.add(list(range(num_modes)), pcvl.PERM(list(range(num_modes))))
 
-    for i in range(0, num_modes-2, 2):
+    for i in range(0, num_modes-1, 2):
         VQE.add((i, i+1), pcvl.BS(pcvl.BS.r_to_theta(1/3)))
 
     VQE.add(list(range(num_modes)), pcvl.PERM(list(range(num_modes))))
