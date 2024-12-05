@@ -233,3 +233,7 @@ def ansatz(num_modes=6) -> Tuple[pcvl.Circuit, List[pcvl.Parameter]]:
         VQE.add((i,i+1), pcvl.BS())
 
     return VQE, List_Parameters
+
+def linear_circuit_to_unitary(circuit: pcvl.Circuit) -> np.ndarray:
+    unitary_matrix = np.array(circuit.compute_unitary())
+    return unitary_matrix
