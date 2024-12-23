@@ -1,10 +1,18 @@
-import time
 
 import numpy as np
 import perceval as pcvl
+import qiskit
 import exqalibur
 from typing import List, Tuple, Dict, Union
 
+from perceval.components import catalog
+from perceval.algorithm import Sampler
+from perceval.converters import QiskitConverter
+
+from qiskit import transpile
+from qiskit.circuit.library import TwoLocal
+
+qiskit_converter = QiskitConverter(catalog, backend_name="Naive")
 
 H_matrix = (1/np.sqrt(2)) * pcvl.Matrix([[1.0, 1.0], [1.0, -1.0]])
 M_matrix = (1/np.sqrt(2)) * pcvl.Matrix([[1.0, 1.0], [1.0j, -1.0j]])
@@ -14,7 +22,7 @@ H_circ = pcvl.Circuit.decomposition(H_matrix, mzi, shape=pcvl.InterferometerShap
 M_circ = pcvl.Circuit.decomposition(M_matrix, mzi, shape=pcvl.InterferometerShape.TRIANGLE)
 
 
-def is_qubit_state(state: exqalibur.FockState) -> Union[Tuple[int, ...], bool]:
+def is_qubit_state(state: exqalibur.FockState, use_qiskit=False) -> Union[Tuple[int, ...], bool]:
     """
     Check if a given state is a valid qubit state.
 
@@ -24,18 +32,30 @@ def is_qubit_state(state: exqalibur.FockState) -> Union[Tuple[int, ...], bool]:
     Returns:
     Union[Tuple[int, ...], bool]: The corresponding qubit state if valid, False otherwise
     """
-    q_state = []
-    for i in range((state.m - 1) // 2):
-        q = state[2*i+1 : 2*i+3]
-        if (q[0] == 0 and q[1] == 1):
-            q_state.append(1)
-        elif (q[0] == 1 and q[1] == 0):
-            q_state.append(0)
-        else:
-            return False
+    if use_qiskit:
+        q_state = []
+        for i in range(state.m // 2):
+            q = state[2*i : 2*i+2]
+            if (q[0] == 0 and q[1] == 1):
+                q_state.append(1)
+            elif (q[0] == 1 and q[1] == 0):
+                q_state.append(0)
+            else:
+                return False
+    
+    else:
+        q_state = []
+        for i in range((state.m - 1) // 2):
+            q = state[2*i+1 : 2*i+3]
+            if (q[0] == 0 and q[1] == 1):
+                q_state.append(1)
+            elif (q[0] == 1 and q[1] == 0):
+                q_state.append(0)
+            else:
+                return False
     return tuple(q_state)
 
-def qubit_state_marginal(prob_dist: pcvl.BSDistribution) -> Dict[Tuple[int, ...], float]:
+def qubit_state_marginal(prob_dist: pcvl.BSDistribution, use_qiskit=False) -> Dict[Tuple[int, ...], float]:
     """
     Calculate the frequencies of measured qubit states from frequencies of 
     sampled Fock states.
@@ -49,8 +69,7 @@ def qubit_state_marginal(prob_dist: pcvl.BSDistribution) -> Dict[Tuple[int, ...]
     q_state_frequency = {}
     total_prob_mass = 0
     for state in prob_dist:
-        # print(state)
-        q_state = is_qubit_state(state)
+        q_state = is_qubit_state(state, use_qiskit)
         if q_state is not False:
             total_prob_mass += prob_dist[state]
             q_state_frequency[q_state] = prob_dist[state]
@@ -59,6 +78,29 @@ def qubit_state_marginal(prob_dist: pcvl.BSDistribution) -> Dict[Tuple[int, ...]
         q_state_frequency[key] /= total_prob_mass
     
     return q_state_frequency
+
+def get_probabilities(samples: List[exqalibur.FockState]) -> Dict[exqalibur.FockState, float]:
+    """
+    Get the probabilities of sampled Fock states.
+
+    Args:
+    samples (List[exqalibur.FockState]): Sampled Fock states
+
+    Returns:
+    Dict[exqalibur.FockState, float]: Probabilities of sampled Fock states
+    """
+    prob_dist = {}
+    for state in samples:
+        if state in prob_dist:
+            prob_dist[state] += 1
+        else:
+            prob_dist[state] = 1
+    
+    total_samples = len(samples)
+    for key in prob_dist.keys():
+        prob_dist[key] /= total_samples
+    
+    return prob_dist
 
 def compute_energy(pauli_bin: Tuple[int, ...], res: Dict[Tuple[int, ...], float]) -> float:
     """
@@ -90,7 +132,7 @@ def pauli_string_bin(pauli_string: str) -> Tuple[int, ...]:
     """
     return tuple(0 if c == "I" else 1 for c in pauli_string)
 
-def rotate_qubits(pauli_string: str, vqe_circuit: pcvl.Circuit) -> pcvl.Circuit:
+def rotate_qubits(pauli_string: str, vqe_circuit: pcvl.Circuit | qiskit.QuantumCircuit) -> pcvl.Circuit:
     """
     Apply the correct rotations on corresponding qubits for expectation value computation.
 
@@ -101,13 +143,20 @@ def rotate_qubits(pauli_string: str, vqe_circuit: pcvl.Circuit) -> pcvl.Circuit:
     Returns:
     pcvl.Circuit: The modified VQE circuit with applied rotations
     """
-    
-    for i, pauli in enumerate(pauli_string):
-        qubit = (2*i+1, 2*i+2)
-        if pauli == "X":
-            vqe_circuit.add(qubit, H_circ)
-        elif pauli == "Y":
-            vqe_circuit.add(qubit, M_circ)
+    if isinstance(vqe_circuit, qiskit.QuantumCircuit):
+        for i, pauli in enumerate(pauli_string):
+            if pauli == "X":
+                vqe_circuit.h(i)
+            elif pauli == "Y":
+                vqe_circuit.ry(np.pi/2, i)
+
+    else: 
+        for i, pauli in enumerate(pauli_string):
+            qubit = (2*i+1, 2*i+2)
+            if pauli == "X":
+                vqe_circuit.add(qubit, H_circ)
+            elif pauli == "Y":
+                vqe_circuit.add(qubit, M_circ)
     
     return vqe_circuit
 
@@ -124,8 +173,8 @@ def hamiltonian_dictionary(h: np.ndarray) -> Dict[str, float]:
     pauli_strings = ["II", "IX", "IZ", "XI", "XX", "XZ", "ZI", "ZX", "ZZ"]
     return dict(zip(pauli_strings, h))
 
-def loss_function(lp: np.ndarray, List_Parameters: List[pcvl.Parameter], 
-                  ansatz: pcvl.Circuit, H: Dict[str, float]) -> float:
+def loss_function(lp: np.ndarray, List_Parameters: List[pcvl.Parameter] | None, 
+                  ansatz: pcvl.Circuit | qiskit.QuantumCircuit, H: Dict[str, float]) -> float:
     """
     Compute the loss function for the VQE algorithm.
 
@@ -140,33 +189,35 @@ def loss_function(lp: np.ndarray, List_Parameters: List[pcvl.Parameter],
     """
     num_qubits = len(list(H.keys())[0])
 
-    for p, value in zip(List_Parameters, lp):
-        p.set_value(value)
+    if List_Parameters is not None:
+        for p, value in zip(List_Parameters, lp):
+            p.set_value(value)
+    if isinstance(ansatz, qiskit.QuantumCircuit):
+        use_qiskit = True
+        ansatz.assign_parameters(lp, inplace=True)
+        ansatz = transpile(ansatz, basis_gates=['u1', 'u2', 'u3', 'cx'], optimization_level=3)
 
     loss = 0.0
     for pauli_string, coefficient in H.items():
-        start = time.time()
-        ansatz_rot = rotate_qubits(pauli_string, ansatz.copy())
-        # start = time.time()
-        end = time.time()
-        processor = pcvl.Processor(pcvl.NaiveBackend(), ansatz_rot)
-        processor.with_input(pcvl.BasicState([0] + [1,0]*num_qubits + [0]))
-        
-        # print(f'rotation time: {end-start}')
-        
-        start = time.time()
-        sampler = pcvl.algorithm.Sampler(processor)
+        if isinstance(ansatz, qiskit.QuantumCircuit):
+            ansatz_rot = rotate_qubits(pauli_string, ansatz.copy())
+            processor = qiskit_converter.convert(ansatz_rot, use_postselection=False)  
+            processor.with_input(pcvl.LogicalState([0]*num_qubits))
+
+        else:
+            ansatz_rot = rotate_qubits(pauli_string, ansatz.copy())
+            processor = pcvl.Processor(pcvl.NaiveBackend(), ansatz_rot)
+            processor.with_input(pcvl.BasicState([0] + [1,0]*num_qubits + [0]))
+
+        sampler = Sampler(processor)
         samples = sampler.samples(100_000)
-        end = time.time()
-        # print(f'sample time: {end-start}')
         
-        prob_dist = sampler.probs()['results']
+        prob_dist = get_probabilities(samples['results'])
         pauli_bin = pauli_string_bin(pauli_string)
-        start = time.time()
-        expectation = compute_energy(pauli_bin, qubit_state_marginal(prob_dist))
+
+        qubit_state_marg = qubit_state_marginal(prob_dist, use_qiskit)
+        expectation = compute_energy(pauli_bin, qubit_state_marg)
         loss += coefficient * expectation
-        end = time.time()
-        # print(f'loss compute time: {end-start}')
     
     return loss
 
@@ -233,6 +284,9 @@ def ansatz(num_modes=6) -> Tuple[pcvl.Circuit, List[pcvl.Parameter]]:
         VQE.add((i,i+1), pcvl.BS())
 
     return VQE, List_Parameters
+
+def LE_ansatz(num_qubits):
+    return TwoLocal(num_qubits, 'ry', 'cz', reps=1)
 
 def linear_circuit_to_unitary(circuit: pcvl.Circuit) -> np.ndarray:
     unitary_matrix = np.array(circuit.compute_unitary())
