@@ -12,7 +12,10 @@ from perceval.converters import QiskitConverter
 from qiskit import transpile
 from qiskit.circuit.library import TwoLocal
 
-qiskit_converter = QiskitConverter(catalog, backend_name="Naive")
+import warnings
+
+
+qiskit_converter = QiskitConverter(catalog, backend_name="Naive") #or SLOS
 
 H_matrix = (1/np.sqrt(2)) * pcvl.Matrix([[1.0, 1.0], [1.0, -1.0]])
 M_matrix = (1/np.sqrt(2)) * pcvl.Matrix([[1.0, 1.0], [1.0j, -1.0j]])
@@ -173,8 +176,8 @@ def hamiltonian_dictionary(h: np.ndarray) -> Dict[str, float]:
     pauli_strings = ["II", "IX", "IZ", "XI", "XX", "XZ", "ZI", "ZX", "ZZ"]
     return dict(zip(pauli_strings, h))
 
-def loss_function(lp: np.ndarray, List_Parameters: List[pcvl.Parameter] | None, 
-                  ansatz: pcvl.Circuit | qiskit.QuantumCircuit, H: Dict[str, float]) -> float:
+def loss_function(lp: np.ndarray, ansatz: Union[pcvl.Circuit, qiskit.QuantumCircuit], 
+                  H: Dict[str, float], use_qiskit: bool, List_Parameters: List[pcvl.Parameter] = None) -> float:
     """
     Compute the loss function for the VQE algorithm.
 
@@ -193,15 +196,14 @@ def loss_function(lp: np.ndarray, List_Parameters: List[pcvl.Parameter] | None,
         for p, value in zip(List_Parameters, lp):
             p.set_value(value)
     if isinstance(ansatz, qiskit.QuantumCircuit):
-        use_qiskit = True
-        ansatz.assign_parameters(lp, inplace=True)
-        ansatz = transpile(ansatz, basis_gates=['u1', 'u2', 'u3', 'cx'], optimization_level=3)
+        ansatz_assigned = ansatz.assign_parameters(lp)
+        ansatz_assigned = transpile(ansatz_assigned, basis_gates=['u1', 'u2', 'u3', 'cx'], optimization_level=3)
 
     loss = 0.0
     for pauli_string, coefficient in H.items():
         if isinstance(ansatz, qiskit.QuantumCircuit):
-            ansatz_rot = rotate_qubits(pauli_string, ansatz.copy())
-            processor = qiskit_converter.convert(ansatz_rot, use_postselection=False)  
+            ansatz_rot = rotate_qubits(pauli_string, ansatz_assigned.copy())
+            processor = qiskit_converter.convert(ansatz_rot, use_postselection=True)  
             processor.with_input(pcvl.LogicalState([0]*num_qubits))
 
         else:
