@@ -1,3 +1,5 @@
+import itertools
+import numpy as np
 
 from qiskit_aer import QasmSimulator
 from qiskit_nature.units import DistanceUnit
@@ -46,3 +48,11 @@ def get_qubit_hamiltonian(dist='1.5', charge=0, spin=0, num_electrons=2, num_orb
     H = sparsepauliop_dictionary(H_qubit)
 
     return H
+
+def generate_hamiltonian(num_qubits: int) -> Dict[str, float]:
+    # Generate all possible 3-letter bitstrings consisting of 'X', 'Y', 'Z', 'I'
+    bitstrings = [''.join(bits) for bits in itertools.product('XYZI', repeat=num_qubits)]
+
+    # Create a dictionary with these bitstrings as keys and random numbers as values
+    random_values = np.random.random(len(bitstrings)) - 0.5
+    H = dict(zip(bitstrings, random_values))
