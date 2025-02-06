@@ -8,7 +8,7 @@ Package to compile quantum algorithms on photonic devices. Part of the Quantum G
 project funded by the European Union. 
 
 ## Installing QLASS
-The development install of QLASS requirements can be done by setting the working directory to the top level of the repository and running `pip install -r requirements.txt`. 
+The development install of QLASS requirements can be done by setting the working directory to the top level of the repository and running `pip install -e .`. 
 QLASS builds upon open-source scientific software packages in Python: `scipy` for numerical optimization, `pyscf` and `qiskit-nature` for quantum chemistry, `qiskit` for quantum computing, and `perceval` for quantum photonics compilation.
 
 ## Getting started
