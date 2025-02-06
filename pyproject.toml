@@ -1,0 +1,22 @@
+[project]
+name = "QLASS"
+version = "0.1.0"
+description = "Photonic"
+authors = [{name = "Farrokh Labib", email = "farrokh@unitary.foundation"}]
+
+dependencies = [
+"numpy",
+"perceval-quandela",
+"qiskit_aer",
+"qiskit_nature",
+"pyscf",
+"tqdm",
+"numba"
+]
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
