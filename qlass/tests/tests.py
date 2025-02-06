@@ -1,6 +1,6 @@
 #TODO: add some tests for the helper functions and hamiltonian functions
 
-from helper_functions import *
+from qlass.helper_functions import *
 
 def test_compute_energy():
     # test case 1
