@@ -5,17 +5,7 @@ import qiskit
 import exqalibur
 from typing import List, Tuple, Dict, Union
 
-from perceval.components import catalog
-from perceval.algorithm import Sampler
-from perceval.converters import QiskitConverter
-
-from qiskit import transpile
 from qiskit.circuit.library import TwoLocal
-
-import warnings
-
-
-qiskit_converter = QiskitConverter(catalog, backend_name="Naive") #or SLOS
 
 H_matrix = (1/np.sqrt(2)) * pcvl.Matrix([[1.0, 1.0], [1.0, -1.0]])
 M_matrix = (1/np.sqrt(2)) * pcvl.Matrix([[1.0, 1.0], [1.0j, -1.0j]])

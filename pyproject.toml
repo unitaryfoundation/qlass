@@ -6,7 +6,7 @@ authors = [{name = "Farrokh Labib", email = "farrokh@unitary.foundation"}]
 
 dependencies = [
 "numpy",
-"perceval-quandela",
+"perceval-quandela==0.12.1",
 "qiskit_aer",
 "qiskit_nature",
 "pyscf",
