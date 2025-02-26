@@ -1,6 +1,7 @@
 #TODO: add some tests for the helper functions and hamiltonian functions
 
-from qlass.helper_functions import *
+from qlass.helper_functions import compute_energy, get_probabilities, qubit_state_marginal, is_qubit_state
+import perceval as pcvl
 
 def test_compute_energy():
     # test case 1
@@ -51,33 +52,33 @@ def test_qubit_state_marginal():
 
 def test_is_qubit_state():
     # test case 1
-    state = (0, 0, 0)
-    assert is_qubit_state(state) == (0, 0)
+    state = pcvl.BasicState([0,1,0,1])
+    assert is_qubit_state(state) == (1, 1)
 
     # test case 2
-    state = (0, 0, 1)
+    state = pcvl.BasicState([1,0,0,1])
     assert is_qubit_state(state) == (0, 1)
 
     # test case 3
-    state = (0, 1, 0)
+    state = pcvl.BasicState([1,0,1,0])
     assert is_qubit_state(state) == (0, 0)
 
     # test case 4
-    state = (1, 0, 0)
-    assert is_qubit_state(state) == (0, 1)
+    state = pcvl.BasicState([0,1,1,0])
+    assert is_qubit_state(state) == (1, 0)
 
     # test case 5
-    state = (0, 1, 1)
+    state = pcvl.BasicState([1,1,0,1])
     assert is_qubit_state(state) == False
 
     # test case 6
-    state = (1, 0, 1)
+    state = pcvl.BasicState([0,1,1,1])
     assert is_qubit_state(state) == False
 
     # test case 7
-    state = (1, 1, 0)
+    state = pcvl.BasicState([1,1,1,1])
     assert is_qubit_state(state) == False
 
     # test case 8
-    state = (1, 1, 1)
+    state = pcvl.BasicState([0,0,0,1])
     assert is_qubit_state(state) == False
