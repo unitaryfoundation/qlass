@@ -7,22 +7,22 @@ def test_compute_energy():
     # test case 1
     pauli_bin = (0, 0, 0)
     res = {(0, 0, 0): 0.5, (0, 0, 1): 0.3, (0, 1, 0): 0.1, (1, 0, 0): 0.1}
-    assert compute_energy(pauli_bin, res) == 0.5
+    assert compute_energy(pauli_bin, res) == float(1.0)
 
     # test case 2
     pauli_bin = (0, 0, 1)
     res = {(0, 0, 0): 0.5, (0, 0, 1): 0.3, (0, 1, 0): 0.1, (1, 0, 0): 0.1}
-    assert compute_energy(pauli_bin, res) == 0.3
+    assert compute_energy(pauli_bin, res) == float(0.4)
 
     # test case 3
     pauli_bin = (0, 1, 0)
     res = {(0, 0, 0): 0.5, (0, 0, 1): 0.3, (0, 1, 0): 0.1, (1, 0, 0): 0.1}
-    assert compute_energy(pauli_bin, res) == 0.1
+    assert compute_energy(pauli_bin, res) == float(0.8)
 
     # test case 4
     pauli_bin = (1, 0, 0)
-    res = {(0, 0, 0): 0.5, (0, 0, 1): 0.3, (0, 1, 0): 0.1, (1, 0, 0): 0.1}
-    assert compute_energy(pauli_bin, res) == 0.1
+    res = {(0, 0, 0): 0.45, (0, 0, 1): 0.23, (0, 1, 0): 0.1, (1, 0, 0): 0.32}
+    assert compute_energy(pauli_bin, res) == float(0.46)
 
 def test_get_probabilities():
     # test case 1
