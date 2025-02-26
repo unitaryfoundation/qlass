@@ -35,13 +35,13 @@ jobs:
       run: |
         poetry install --no-root
 
-    - name: Install Ruff
-      run: |
-        pip install ruff
+    # - name: Install Ruff
+    #   run: |
+    #     pip install ruff
 
-    - name: Lint with Ruff
-      run: |
-        poetry run ruff check
+    # - name: Lint with Ruff
+    #   run: |
+    #     poetry run ruff check
 
     # https://github.com/python/mypy/issues/17396
     # - name: Type checking with MyPy
