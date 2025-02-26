@@ -39,16 +39,16 @@ def test_get_probabilities():
 
 def test_qubit_state_marginal():
     # test case 1
-    prob_dist = {(0, 0, 0): 0.4, (0, 0, 1): 0.4, (0, 1, 0): 0.2}
-    assert qubit_state_marginal(prob_dist) == {(0, 0): 0.6, (0, 1): 0.4}
+    prob_dist = {pcvl.BasicState([0,0,0,0]): 0.4, pcvl.BasicState([0,1,0,1]): 0.3, pcvl.BasicState([1,0,0,1]): 0.3}
+    assert qubit_state_marginal(prob_dist) == {(1, 1): 0.5, (0, 1): 0.5}
 
     # test case 2
-    prob_dist = {(0, 0, 0): 0.5, (0, 0, 1): 0.3333333333333333, (0, 1, 0): 0.16666666666666666}
-    assert qubit_state_marginal(prob_dist) == {(0, 0): 0.6666666666666666, (0, 1): 0.3333333333333333}
+    prob_dist = {pcvl.BasicState([0,1,0,1]): 0.4, pcvl.BasicState([0,1,1,0]): 0.3, pcvl.BasicState([1,0,0,1]): 0.3}
+    assert qubit_state_marginal(prob_dist) == {(1, 1): 0.4, (1, 0): 0.3, (0, 1): 0.3}
 
     # test case 3
-    prob_dist = {(0, 0, 0): 0.5714285714285714, (0, 0, 1): 0.2857142857142857, (0, 1, 0): 0.14285714285714285}
-    assert qubit_state_marginal(prob_dist) == {(0, 0): 0.8571428571428571, (0, 1): 0.14285714285714285}
+    prob_dist = {pcvl.BasicState([0,1,0,1,0,0]): 0.5, pcvl.BasicState([0,1,1,0,1,0]): 0.4, pcvl.BasicState([1,0,0,1,0,1]): 0.1}
+    assert qubit_state_marginal(prob_dist) == {(1, 0, 0): 0.8, (0, 1, 1): 0.2}
 
 def test_is_qubit_state():
     # test case 1
