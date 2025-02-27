@@ -100,7 +100,8 @@ def compute_energy(pauli_bin: Tuple[int, ...], res: Dict[Tuple[int, ...], float]
         sign = (-1)**inner
         res[key] *= sign
     
-    return np.sum(np.fromiter(res.values(), dtype=float), where=np.isfinite)
+    energy = float(np.sum(np.fromiter(res.values(), dtype=float), where=np.isfinite))
+    return energy
 
 def pauli_string_bin(pauli_string: str) -> Tuple[int, ...]:
     """

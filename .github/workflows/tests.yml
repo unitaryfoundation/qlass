@@ -1,0 +1,61 @@
+# This workflow will install Python dependencies, run tests, type checking with mypy and lint with Ruff and Poetry.
+# It can be tested locally using https://github.com/nektos/act with the command `act push --container-architecture linux/amd64 -j build`
+
+name: Python Tests
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    # - name: Install Poetry
+    #   run: |
+    #     python -m pip install --upgrade pip
+    #     pip install poetry
+
+    # - name: Install dependencies
+    #   run: |
+    #     poetry install --no-root
+
+    - name: Install development version
+      run: |
+        pip install -e .
+
+    # - name: Install Ruff
+    #   run: |
+    #     pip install ruff
+
+    # - name: Lint with Ruff
+    #   run: |
+    #     poetry run ruff check
+
+    # https://github.com/python/mypy/issues/17396
+    # - name: Type checking with MyPy
+    #  run: |
+    #    poetry run mypy
+
+    - name: Install pytest
+      run: |
+        pip install pytest
+
+    - name: Run tests with pytest
+      run: |
+        pytest qlass/tests/tests.py
