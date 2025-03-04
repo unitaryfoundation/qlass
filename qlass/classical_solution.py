@@ -1,9 +1,20 @@
 import numpy as np
 from numba import njit
 
-from typing import List, Tuple, Dict, Union
+from typing import Dict
 
 def pauli_string_to_matrix(pauli_string: str) -> np.ndarray:
+    '''
+    Convert a Pauli string to a matrix representation.
+    
+    Args:
+    pauli_string (str): A string of Pauli operators (I, X, Y, Z)
+
+    Returns:
+    np.ndarray: Matrix representation of the Pauli string
+
+    '''
+
     res = 1.0
 
     # Define the Pauli matrices.
@@ -25,6 +36,16 @@ def pauli_string_to_matrix(pauli_string: str) -> np.ndarray:
     return res
 
 def hamiltonian_matrix(H: Dict[str, float]) -> np.ndarray:
+    '''
+    Convert a Hamiltonian dictionary to a matrix representation.
+
+    Args:
+    H (Dict[str, float]): Hamiltonian dictionary
+
+    Returns:
+    np.ndarray: Matrix representation of the Hamiltonian
+
+    '''
 
     coeffs = list(H.values())
     matrices = [coeff*pauli_string_to_matrix(pauli_string) for pauli_string, coeff in zip(H.keys(), coeffs)]
@@ -32,7 +53,17 @@ def hamiltonian_matrix(H: Dict[str, float]) -> np.ndarray:
     return sum(matrices)
 
 
-def brute_force_minimize(H: Dict[str, float]) -> np.ndarray:
+def brute_force_minimize(H: Dict[str, float]) -> float:
+    '''
+    Compute the minimum eigenvalue of a Hamiltonian using brute force.
+
+    Args:
+    H (Dict[str, float]): Hamiltonian dictionary
+
+    Returns:
+    float: Minimum eigenvalue of the Hamiltonian
+
+    '''
 
     H_matrix = hamiltonian_matrix(H)
     l0 = np.linalg.eigvals(H_matrix)
@@ -43,6 +74,18 @@ def brute_force_minimize(H: Dict[str, float]) -> np.ndarray:
 
 @njit
 def Lanczos( A, v, m=100):
+    '''
+    Lanczos algorithm for computing the eigenvalues of a matrix.
+
+    Args:
+    A (np.ndarray): Matrix to compute the eigenvalues of
+    v (np.ndarray): Initial vector
+
+    Returns:
+    Tuple[np.ndarray, np.ndarray]: Tuple containing the tridiagonal matrix and the eigenvectors
+
+    '''
+
     n = len(v)
     if m>n: m = n;
     # from here https://en.wikipedia.org/wiki/Lanczos_algorithm
@@ -79,7 +122,20 @@ def Lanczos( A, v, m=100):
 
     return T, V
 
-def eig_decomp_lanczos(R, n=1, m=100):        
+def eig_decomp_lanczos(R, n=1, m=100):
+    '''
+    Compute the eigenvalues of a matrix using the Lanczos algorithm.
+
+    Args:
+    R (np.ndarray): Matrix to compute the eigenvalues of
+    n (int): Number of eigenvalues to compute
+    m (int): Number of iterations
+
+    Returns:
+    np.ndarray: Eigenvalues of the matrix
+
+    '''
+
     v0   = np.array(np.random.rand( np.shape(R)[0]) , dtype=np.complex128); v0 /= np.sqrt( np.abs(np.dot( v0, np.conjugate(v0) ) ) )
 
     T, V = Lanczos(R, v0, m=m )
