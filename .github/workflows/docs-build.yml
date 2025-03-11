@@ -1,0 +1,33 @@
+name: Build Documentation
+
+on:
+  pull_request:
+    branches: [ main ]  # Adjust if your default branch is different
+
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'  # Specify your Python version
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install sphinx  # Add any Sphinx extensions you need
+          pip install -e .  # Install your package in development mode
+          
+      - name: Build documentation
+        run: |
+          cd docs  # Adjust this path to your docs directory
+          make html
+          
+      - name: Upload documentation
+        uses: actions/upload-artifact@v3
+        with:
+          name: documentation
+          path: docs/_build/html/  # Adjust if your output directory is different
