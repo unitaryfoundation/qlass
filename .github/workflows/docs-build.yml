@@ -23,11 +23,12 @@ jobs:
           
       - name: Build documentation
         run: |
-          cd docs  # Adjust this path to your docs directory
+          sphinx-apidoc -o docs qlass
+          cd docs  
           make html
           
       - name: Upload documentation
         uses: actions/upload-artifact@v4
         with:
           name: documentation
-          path: docs/_build/html/  # Adjust if your output directory is different
+          path: docs/_build/html/  
