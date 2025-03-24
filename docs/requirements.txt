@@ -1,1 +1,8 @@
 sphinx_rtd_theme
+numpy
+perceval-quandela==0.12.1
+qiskit_aer
+qiskit_nature
+pyscf
+tqdm
+numba
