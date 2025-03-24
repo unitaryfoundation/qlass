@@ -25,6 +25,14 @@ qlass.helper\_functions module
    :show-inheritance:
    :undoc-members:
 
+qlass.ansatz module
+------------------------------
+
+.. automodule:: qlass.ansatz
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 Module contents
 ---------------
 
