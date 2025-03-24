@@ -32,11 +32,3 @@ qlass.ansatz module
    :members:
    :show-inheritance:
    :undoc-members:
-
-Module contents
----------------
-
-.. automodule:: qlass
-   :members:
-   :show-inheritance:
-   :undoc-members:
