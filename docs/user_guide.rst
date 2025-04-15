@@ -34,7 +34,8 @@ Dependencies
 QLASS builds upon several open-source scientific software packages in Python:
 
 * ``scipy`` - For numerical optimization
-* ``pyscf`` and ``qiskit-nature`` - For quantum chemistry
+* ``pyscf`` and ``qiskit-nature`` - For quantum chemistry with Qiskit
+* ``openfermion`` - Alternative quantum chemistry interface
 * ``qiskit`` - For quantum computing
 * ``perceval`` - For quantum photonics compilation
 
@@ -71,7 +72,7 @@ Key Features
 * Optimizing photonic quantum computations
 * Interfacing with quantum chemistry calculations
 
-Example usage for quantum chemistry calculations::
+Example usage for quantum chemistry calculations using Qiskit Nature::
 
     from qlass.chemistry import MoleculeHandler
     from qlass.compiler import PhotonicCompiler
@@ -82,6 +83,27 @@ Example usage for quantum chemistry calculations::
     # Generate quantum circuit for electronic structure
     circuit = molecule.get_vqe_circuit()
     
+    # Compile for photonic hardware
+    photonic_circuit = PhotonicCompiler().compile(circuit)
+
+Alternative quantum chemistry interface using OpenFermion::
+
+    from qlass.openfermion_interface import OpenFermionHandler
+    from qlass.compiler import PhotonicCompiler
+
+    # Set up a molecule using OpenFermion
+    molecule = OpenFermionHandler(
+        geometry="H 0 0 0; H 0 0 0.74",
+        basis="sto-3g",
+        mapping="jordan_wigner"  # or "bravyi_kitaev"
+    )
+
+    # Get the qubit Hamiltonian
+    hamiltonian = molecule.get_qubit_hamiltonian()
+
+    # Generate VQE circuit with UCCSD or hardware-efficient ansatz
+    circuit = molecule.get_vqe_circuit(ansatz_type="uccsd")
+
     # Compile for photonic hardware
     photonic_circuit = PhotonicCompiler().compile(circuit)
 
@@ -113,10 +135,23 @@ Common Workflows
 
 Step-by-step guide for running quantum chemistry simulations:
 
-1. Define your molecular system
+1. Define your molecular system (using either Qiskit Nature or OpenFermion)
 2. Generate the appropriate quantum circuits
 3. Compile to photonic operations
 4. Execute or simulate the results
+
+Choosing between Qiskit Nature and OpenFermion:
+
+* Use Qiskit Nature if you:
+    - Need tight integration with Qiskit's ecosystem
+    - Want to use PySCF's advanced features through Qiskit
+    - Prefer Qiskit's built-in VQE implementations
+
+* Use OpenFermion if you:
+    - Need OpenFermion's specialized quantum chemistry features
+    - Want to experiment with different fermion-to-qubit mappings
+    - Prefer OpenFermion's UCCSD implementation
+    - Plan to integrate with other OpenFermion-based tools
 
 2. Circuit Optimization
 ~~~~~~~~~~~~~~~~~~~~

@@ -12,7 +12,9 @@ dependencies = [
 "qiskit_nature",
 "pyscf",
 "tqdm",
-"numba"
+"numba",
+"openfermion>=1.5.1",
+"openfermion-pyscf>=0.5"
 ]
 
 readme = "README.md"
