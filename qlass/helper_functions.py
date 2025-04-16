@@ -1,4 +1,3 @@
-
 import numpy as np
 import perceval as pcvl
 import qiskit
@@ -38,13 +37,13 @@ def is_qubit_state(state: exqalibur.FockState) -> Union[Tuple[int, ...], bool]:
         
     return tuple(q_state)
 
-def qubit_state_marginal(prob_dist: pcvl.BSDistribution) -> Dict[Tuple[int, ...], float]:
+def qubit_state_marginal(prob_dist: Dict[exqalibur.FockState, float]) -> Dict[Tuple[int, ...], float]:
     """
-    Calculate the frequencies of measured qubit states from frequencies of 
-    sampled Fock states.
+    Calculate the frequencies of measured qubit states from a probability distribution
+    of Fock states.
 
     Args:
-    res (List[exqalibur.FockState]): Sampled Fock states
+    prob_dist (Dict[exqalibur.FockState, float]): Probability distribution of Fock states
 
     Returns:
     Dict[Tuple[int, ...], float]: Frequencies of measured qubit states
