@@ -14,12 +14,9 @@ from scipy.optimize import minimize
 
 from qlass import compile
 from qlass.helper_functions import (
-    get_probabilities, 
-    qubit_state_marginal, 
-    compute_energy, 
-    pauli_string_bin,
+    loss_function,
 )
-from qlass.hamiltonians import generate_random_hamiltonian
+from qlass.hamiltonians import LiH_hamiltonian
 
 def executor(params, pauli_string, num_qubits=2):
     """
@@ -59,45 +56,12 @@ def executor(params, pauli_string, num_qubits=2):
     
     return samples
 
-def energy_expectation(params, hamiltonian, executor, num_qubits=2):
-    """
-    Calculate the energy expectation value for a given Hamiltonian and circuit parameters.
-    
-    Args:
-        params (np.ndarray): Parameters for the variational circuit
-        hamiltonian (dict): Dictionary mapping Pauli strings to coefficients
-        num_qubits (int): Number of qubits in the circuit
-    
-    Returns:
-        float: Energy expectation value
-    """
-    energy = 0.0
-    
-    for pauli_string, coefficient in hamiltonian.items():
-        # Execute the circuit and get samples
-        samples = executor(params, pauli_string, num_qubits)
-        
-        # Process the results
-        prob_dist = get_probabilities(samples['results'])
-        pauli_bin = pauli_string_bin(pauli_string)
-        
-        # Calculate the qubit state marginal probabilities
-        qubit_state_marg = qubit_state_marginal(prob_dist)
-        
-        # Compute the expectation value for this Pauli term
-        expectation = compute_energy(pauli_bin, qubit_state_marg)
-        
-        # Add contribution to total energy
-        energy += coefficient * expectation
-    
-    return energy
-
 def main():
     # Number of qubits
     num_qubits = 2
     
     # Generate a random 2-qubit Hamiltonian
-    hamiltonian = generate_random_hamiltonian(num_qubits)
+    hamiltonian = LiH_hamiltonian(num_electrons=2, num_orbitals=1)
     
     # Print the Hamiltonian
     print("Random Hamiltonian:")
@@ -110,9 +74,9 @@ def main():
     # Run the VQE optimization
     print("\nRunning VQE optimization...")
     result = minimize(
-        energy_expectation,
+        loss_function,
         initial_params,
-        args=(hamiltonian, executor, num_qubits),
+        args=(hamiltonian, executor),
         method='COBYLA',
         options={'maxiter': 10}
     )

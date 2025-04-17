@@ -12,7 +12,6 @@ from .helper_functions import (
     pauli_string_bin,
     rotate_qubits,
     loss_function,
-    LE_ansatz,
     linear_circuit_to_unitary
 )
 from .hamiltonians import (

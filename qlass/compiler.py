@@ -1,7 +1,3 @@
-"""
-Functions for compiling quantum circuits between different representations.
-"""
-
 from typing import Optional, Union
 from perceval.converters import QiskitConverter
 import perceval as pcvl
