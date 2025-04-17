@@ -6,6 +6,7 @@ authors = [{name = "Farrokh Labib", email = "farrokh@unitary.foundation"}]
 requires-python = ">=3.9,<3.14"
 
 dependencies = [
+"qiskit==1.4.2",
 "numpy",
 "perceval-quandela==0.12.1",
 "qiskit_aer",
