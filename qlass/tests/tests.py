@@ -155,7 +155,7 @@ def test_vqe_pipeline():
         initial_params,
         args=(hamiltonian, executor),
         method='COBYLA',
-        options={'maxiter': 1}
+        options={'maxiter': 3}
     )
 
     if not isinstance(result.fun, float):
