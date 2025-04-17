@@ -5,7 +5,6 @@ import exqalibur
 from typing import List, Tuple, Dict, Union
 
 import qiskit.circuit
-from qiskit.circuit.library import TwoLocal
 
 H_matrix = (1/np.sqrt(2)) * pcvl.Matrix([[1.0, 1.0], [1.0, -1.0]])
 M_matrix = (1/np.sqrt(2)) * pcvl.Matrix([[1.0, 1.0], [1.0j, -1.0j]])
