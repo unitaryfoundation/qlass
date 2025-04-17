@@ -6,7 +6,7 @@ from qiskit_nature.second_q.drivers import PySCFDriver
 from qiskit_nature.second_q.mappers import JordanWignerMapper, ParityMapper
 from qiskit_nature.second_q.transformers import ActiveSpaceTransformer
 
-from typing import List, Tuple, Dict, Union
+from typing import Dict
 
 from qiskit.quantum_info import SparsePauliOp
 

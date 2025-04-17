@@ -5,7 +5,6 @@ import exqalibur
 from typing import List, Tuple, Dict, Union
 
 import qiskit.circuit
-from qiskit.circuit.library import TwoLocal
 
 H_matrix = (1/np.sqrt(2)) * pcvl.Matrix([[1.0, 1.0], [1.0, -1.0]])
 M_matrix = (1/np.sqrt(2)) * pcvl.Matrix([[1.0, 1.0], [1.0j, -1.0j]])
@@ -168,19 +167,6 @@ def loss_function(lp: np.ndarray, H: Dict[str, float], executor) -> float:
         loss += coefficient * expectation
     
     return loss
-
-def LE_ansatz(num_qubits: int) -> TwoLocal:
-    '''
-    Create a linear entangling ansatz circuit.
-    
-    Args:
-    num_qubits (int): Number of qubits
-
-    Returns:
-    TwoLocal: Linear entangling ansatz circuit
-    '''
-
-    return TwoLocal(num_qubits, 'ry', 'cz', reps=1)
 
 def linear_circuit_to_unitary(circuit: pcvl.Circuit) -> np.ndarray:
     '''
