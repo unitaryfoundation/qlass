@@ -169,19 +169,6 @@ def loss_function(lp: np.ndarray, H: Dict[str, float], executor) -> float:
     
     return loss
 
-def LE_ansatz(num_qubits: int) -> TwoLocal:
-    '''
-    Create a linear entangling ansatz circuit.
-    
-    Args:
-    num_qubits (int): Number of qubits
-
-    Returns:
-    TwoLocal: Linear entangling ansatz circuit
-    '''
-
-    return TwoLocal(num_qubits, 'ry', 'cz', reps=1)
-
 def linear_circuit_to_unitary(circuit: pcvl.Circuit) -> np.ndarray:
     '''
     Convert a linear optical circuit to a unitary matrix.
