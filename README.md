@@ -12,10 +12,29 @@ The development install of `qlass` requirements can be done by setting the worki
 QLASS builds upon open-source scientific software packages in Python: `scipy` for numerical optimization, `pyscf` and `qiskit-nature` for quantum chemistry, `qiskit` for quantum computing, and `perceval` for quantum photonics compilation.
 
 ## Getting started
-You can use [this notebook on the variational quantum eigensolver (VQE)](https://github.com/unitaryfund/qlass/blob/main/photonic_vqe.ipynb) to get started with the QLASS package.
+You can use [this notebook on the variational quantum eigensolver (VQE)](https://github.com/unitaryfund/qlass/blob/main/photonic_vqe.ipynb) to get started with the QLASS package, or check out the [example script](https://github.com/unitaryfoundation/qlass/blob/main/examples/vqe_example.py).
+
+## Features
+
+### Circuit Compilation
+
+`qlass` provides a convenient function to compile Qiskit quantum circuits to Perceval processors:
+
+```python
+from qiskit import QuantumCircuit
+from qlass import compile
+
+# Create a Qiskit circuit
+qc = QuantumCircuit(2)
+qc.h(0)
+qc.cx(0, 1)
+
+# Compile to Perceval processor
+processor = compile(qc)
+```
 
 ## Documentation
-The main functions of the package are commented using the Google style format. 
+The main functions of the package are commented using the Google style format and can be found [here](https://qlass.readthedocs.io/en/latest/).
 
 ## Contributing
 `qlass` is developed by the [Unitary Foundation](https://unitary.foundation/), in collaboration with QLASS performers.
