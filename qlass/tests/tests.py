@@ -1,6 +1,6 @@
 #TODO: add some tests for the helper functions and hamiltonian functions
 
-from qlass.helper_functions import compute_energy, get_probabilities, qubit_state_marginal, is_qubit_state
+from qlass.utils.utils import compute_energy, get_probabilities, qubit_state_marginal, is_qubit_state
 import perceval as pcvl
 
 import warnings
@@ -14,10 +14,10 @@ from perceval.algorithm import Sampler
 from scipy.optimize import minimize
 
 from qlass import compile
-from qlass.helper_functions import (
+from qlass.utils.utils import (
     loss_function,
 )
-from qlass.hamiltonians import LiH_hamiltonian
+from qlass.quantum_chemistry.hamiltonians import LiH_hamiltonian
 
 def test_compute_energy():
     # test case 1
