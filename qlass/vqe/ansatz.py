@@ -5,7 +5,7 @@ from qiskit.circuit.library import TwoLocal
 import perceval as pcvl
 import numpy as np
 from perceval.components import Processor
-from qlass.helper_functions import rotate_qubits
+from qlass.utils.utils import rotate_qubits
 
 qiskit_converter = QiskitConverter(backend_name="Naive") #or SLOS
 

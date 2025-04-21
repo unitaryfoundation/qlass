@@ -13,10 +13,10 @@ from perceval.algorithm import Sampler
 from scipy.optimize import minimize
 
 from qlass import compile
-from qlass.helper_functions import (
+from qlass.utils.utils import (
     loss_function,
 )
-from qlass.hamiltonians import LiH_hamiltonian
+from qlass.quantum_chemistry.hamiltonians import LiH_hamiltonian
 
 def executor(params, pauli_string, num_qubits=2):
     """
@@ -88,7 +88,7 @@ def main():
     print(f"Number of iterations: {result.nfev}")
     
     # Calculate exact ground state energy for comparison
-    from qlass.classical_solution import hamiltonian_matrix, brute_force_minimize
+    from qlass.quantum_chemistry.classical_solution import brute_force_minimize
     exact_energy = brute_force_minimize(hamiltonian)
     print(f"Exact ground state energy: {exact_energy:.6f}")
     print(f"Energy difference: {abs(result.fun - exact_energy):.6f}")
