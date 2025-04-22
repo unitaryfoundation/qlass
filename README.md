@@ -33,6 +33,63 @@ qc.cx(0, 1)
 processor = compile(qc)
 ```
 
+### Variational Quantum Eigensolver (VQE)
+
+`qlass` includes tools for implementing the Variational Quantum Eigensolver on photonic quantum computers:
+
+```python
+from qlass.vqe import le_ansatz
+from qlass.utils import loss_function
+from qlass.quantum_chemistry.hamiltonians import LiH_hamiltonian
+
+# Generate a Hamiltonian for the LiH molecule
+hamiltonian = LiH_hamiltonian(num_electrons=2, num_orbitals=1)
+
+# Define an executor function that uses the linear entangled ansatz
+def executor(params, pauli_string):
+    processor = le_ansatz(params, pauli_string)
+    sampler = Sampler(processor)
+    samples = sampler.samples(10_000)
+    return samples
+
+# Run VQE optimization
+from scipy.optimize import minimize
+import numpy as np
+
+initial_params = np.random.rand(4)
+
+result = minimize(
+    loss_function,
+    initial_params,
+    args=(hamiltonian, executor),
+    method='COBYLA',
+    options={'maxiter': 30}
+)
+```
+
+### Quantum Chemistry
+
+The package provides tools for working with quantum chemistry Hamiltonians:
+
+```python
+from qlass.quantum_chemistry import LiH_hamiltonian, brute_force_minimize
+
+# Generate a Hamiltonian for the LiH molecule
+hamiltonian = LiH_hamiltonian(num_electrons=2, num_orbitals=1)
+
+# Calculate the exact ground state energy for comparison
+exact_energy = brute_force_minimize(hamiltonian)
+```
+
+## Module Structure
+
+The `qlass` package is organized into several modules:
+
+- `qlass.compiler`: Functions for compiling quantum circuits to photonic processors
+- `qlass.quantum_chemistry`: Tools for generating and manipulating Hamiltonians
+- `qlass.vqe`: VQE ansatz implementations for photonic quantum computing
+- `qlass.utils`: Utility functions for executing algorithms and processing results
+
 ## Documentation
 The main functions of the package are commented using the Google style format and can be found [here](https://qlass.readthedocs.io/en/latest/).
 

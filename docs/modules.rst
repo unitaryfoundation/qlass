@@ -4,4 +4,7 @@ qlass
 .. toctree::
    :maxdepth: 4
 
-   qlass
+   qlass.compiler
+   qlass.quantum_chemistry
+   qlass.utils
+   qlass.vqe
