@@ -1,34 +1,74 @@
 qlass package
 =============
 
-qlass.classical\_solution module
---------------------------------
+qlass.compiler module
+--------------------
 
-.. automodule:: qlass.classical_solution
+.. automodule:: qlass.compiler
    :members:
    :show-inheritance:
    :undoc-members:
 
-qlass.hamiltonians module
--------------------------
+qlass.compiler.compiler module
+-----------------------------
 
-.. automodule:: qlass.hamiltonians
+.. automodule:: qlass.compiler.compiler
    :members:
    :show-inheritance:
    :undoc-members:
 
-qlass.helper\_functions module
-------------------------------
+qlass.quantum\_chemistry module
+-----------------------------
 
-.. automodule:: qlass.helper_functions
+.. automodule:: qlass.quantum_chemistry
    :members:
    :show-inheritance:
    :undoc-members:
 
-qlass.ansatz module
-------------------------------
+qlass.quantum\_chemistry.classical\_solution module
+------------------------------------------------
 
-.. automodule:: qlass.ansatz
+.. automodule:: qlass.quantum_chemistry.classical_solution
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+qlass.quantum\_chemistry.hamiltonians module
+-----------------------------------------
+
+.. automodule:: qlass.quantum_chemistry.hamiltonians
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+qlass.utils module
+----------------
+
+.. automodule:: qlass.utils
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+qlass.utils.utils module
+---------------------
+
+.. automodule:: qlass.utils.utils
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+qlass.vqe module
+--------------
+
+.. automodule:: qlass.vqe
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+qlass.vqe.ansatz module
+---------------------
+
+.. automodule:: qlass.vqe.ansatz
    :members:
    :show-inheritance:
    :undoc-members:
