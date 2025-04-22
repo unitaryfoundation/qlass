@@ -63,7 +63,7 @@ Running a VQE Algorithm
 
    from qlass.vqe import le_ansatz
    from qlass.utils import loss_function
-   from qlass.quantum_chemistry.hamiltonians import LiH_hamiltonian
+   from qlass.quantum_chemistry import LiH_hamiltonian
    
    # Generate a Hamiltonian for the LiH molecule
    hamiltonian = LiH_hamiltonian(num_electrons=2, num_orbitals=1)
@@ -80,7 +80,7 @@ Running a VQE Algorithm
    import numpy as np
 
    initial_params = np.random.rand(4)
-   
+
    result = minimize(
        loss_function,
        initial_params,
