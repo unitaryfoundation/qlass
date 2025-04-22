@@ -13,10 +13,8 @@ from perceval.algorithm import Sampler
 from scipy.optimize import minimize
 
 from qlass import compile
-from qlass.utils.utils import (
-    loss_function,
-)
-from qlass.quantum_chemistry.hamiltonians import LiH_hamiltonian
+from qlass.utils import loss_function
+from qlass.quantum_chemistry import LiH_hamiltonian
 
 def executor(params, pauli_string, num_qubits=2):
     """
