@@ -11,10 +11,9 @@ import numpy as np
 from qiskit import QuantumCircuit, transpile
 from qiskit.circuit.library import TwoLocal
 from perceval.algorithm import Sampler
-from scipy.optimize import minimize
 
 from qlass import compile
-from qlass.utils import loss_function
+from qlass.vqe import VQE, le_ansatz
 from qlass.quantum_chemistry import LiH_hamiltonian
 
 def test_compute_energy():
@@ -99,43 +98,11 @@ def test_is_qubit_state():
 
 def test_vqe_pipeline():
 
-    # Define an executor function
-    def executor(params, pauli_string, num_qubits=2):
-        """
-        Execute a quantum circuit with given parameters and measure in the basis specified by the Pauli string.
-        
-        Args:
-            params (np.ndarray): Parameters for the variational circuit
-            pauli_string (str): String representation of Pauli operators (e.g., "IXYZ")
-            num_qubits (int): Number of qubits in the circuit
-        
-        Returns:
-            dict: Sampling results
-        """
-        # Create a parameterized quantum circuit (ansatz)
-        ansatz = TwoLocal(num_qubits, 'ry', 'cx', reps=1)
-        
-        # Assign parameters
-        bound_circuit = ansatz.assign_parameters(params)
-        
-        # Apply measurement basis rotations based on the Pauli string
-        rotated_circuit = QuantumCircuit(num_qubits)
-        rotated_circuit.compose(bound_circuit, inplace=True)
-        
-        for i, pauli in enumerate(pauli_string):
-            if pauli == 'X':
-                rotated_circuit.h(i)
-            elif pauli == 'Y':
-                rotated_circuit.rx(np.pi/2, i)
-        
-        transpiled_circuit = transpile(rotated_circuit, basis_gates=['u3', 'cx'], optimization_level=3)
-        # Convert to Perceval processor using our compile function
-        processor = compile(transpiled_circuit)
-        
-        # Sample from the processor
+    # Define an executor function that uses the linear entangled ansatz
+    def executor(params, pauli_string):
+        processor = le_ansatz(params, pauli_string)
         sampler = Sampler(processor)
         samples = sampler.samples(10_000)
-        
         return samples
     
     # Number of qubits
@@ -146,16 +113,21 @@ def test_vqe_pipeline():
 
     # Initial random parameters for the variational circuit
     initial_params = np.random.rand(2 * num_qubits)
+
+    # Initialize the VQE solver with the custom executor
+    vqe = VQE(
+        hamiltonian=hamiltonian,
+        executor=executor,
+        num_params=2*num_qubits, # Number of parameters in the linear entangled ansatz
+    )
     
     # Run the VQE optimization
-    result = minimize(
-        loss_function,
-        initial_params,
-        args=(hamiltonian, executor),
-        method='COBYLA',
-        options={'maxiter': 3}
+    vqe_energy = vqe.run(
+        initial_params=initial_params, 
+        max_iterations=10,
+        verbose=True
     )
 
-    if not isinstance(result.fun, float):
+    if not isinstance(vqe_energy, float):
         raise ValueError("Optimization result is not a valid float")
     
