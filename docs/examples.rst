@@ -33,9 +33,9 @@ Implementing VQE to find the ground state energy of a molecule:
 
 .. code-block:: python
 
-    import warnings
-    warnings.simplefilter('ignore')
-    warnings.filterwarnings('ignore')
+   import warnings
+   warnings.simplefilter('ignore')
+   warnings.filterwarnings('ignore')
 
    import numpy as np
    from perceval.algorithm import Sampler
