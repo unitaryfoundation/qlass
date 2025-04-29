@@ -33,12 +33,14 @@ Implementing VQE to find the ground state energy of a molecule:
 
 .. code-block:: python
 
+    import warnings
+    warnings.simplefilter('ignore')
+    warnings.filterwarnings('ignore')
+
    import numpy as np
-   from scipy.optimize import minimize
    from perceval.algorithm import Sampler
    
-   from qlass.vqe import le_ansatz
-   from qlass.utils import loss_function
+   from qlass.vqe import VQE, le_ansatz
    from qlass.quantum_chemistry import LiH_hamiltonian
    from qlass.quantum_chemistry import brute_force_minimize
    
@@ -52,25 +54,26 @@ Implementing VQE to find the ground state energy of a molecule:
        samples = sampler.samples(10000)
        return samples
    
-   # Initial parameters for the variational circuit
-   initial_params = np.random.rand(4)  # For a 2-qubit system
-   
-   # Run the VQE optimization
-   result = minimize(
-       loss_function,
-       initial_params,
-       args=(hamiltonian, executor),
-       method='COBYLA',
-       options={'maxiter': 20}
-   )
+    # Initialize the VQE solver with the custom executor
+    vqe = VQE(
+        hamiltonian=hamiltonian,
+        executor=executor,
+        num_params=4, # Number of parameters in the linear entangled ansatz
+    )
+    
+    # Run the VQE optimization
+    vqe_energy = vqe.run(
+        max_iterations=10,
+        verbose=True
+    )
    
    # Print the results
-   print(f"VQE Energy: {result.fun:.6f}")
+   print(f"VQE Energy: {vqe_energy:.6f}")
    
    # Compare with the exact solution
    exact_energy = brute_force_minimize(hamiltonian)
    print(f"Exact Energy: {exact_energy:.6f}")
-   print(f"Energy Difference: {abs(result.fun - exact_energy):.6f}")
+   print(f"Energy Difference: {abs(vqe_energy - exact_energy):.6f}")
 
 Working with Molecular Hamiltonians
 ----------------------------------

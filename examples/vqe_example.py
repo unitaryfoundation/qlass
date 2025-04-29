@@ -1,5 +1,5 @@
 """
-Example demonstrating the use of the qlass.compile function in a VQE algorithm.
+Example demonstrating the use of the VQE class.
 """
 
 import warnings
@@ -7,89 +7,79 @@ warnings.simplefilter('ignore')
 warnings.filterwarnings('ignore')
 
 import numpy as np
+import matplotlib.pyplot as plt
 from qiskit import QuantumCircuit, transpile
 from qiskit.circuit.library import TwoLocal
 from perceval.algorithm import Sampler
-from scipy.optimize import minimize
 
 from qlass import compile
-from qlass.utils import loss_function
-from qlass.quantum_chemistry import LiH_hamiltonian
+from qlass.quantum_chemistry import LiH_hamiltonian, brute_force_minimize
+from qlass.vqe import VQE, le_ansatz
 
-def executor(params, pauli_string, num_qubits=2):
-    """
-    Execute a quantum circuit with given parameters and measure in the basis specified by the Pauli string.
-    
-    Args:
-        params (np.ndarray): Parameters for the variational circuit
-        pauli_string (str): String representation of Pauli operators (e.g., "IXYZ")
-        num_qubits (int): Number of qubits in the circuit
-    
-    Returns:
-        dict: Sampling results
-    """
-    # Create a parameterized quantum circuit (ansatz)
-    ansatz = TwoLocal(num_qubits, 'ry', 'cx', reps=1)
-    
-    # Assign parameters
-    bound_circuit = ansatz.assign_parameters(params)
-    
-    # Apply measurement basis rotations based on the Pauli string
-    rotated_circuit = QuantumCircuit(num_qubits)
-    rotated_circuit.compose(bound_circuit, inplace=True)
-    
-    for i, pauli in enumerate(pauli_string):
-        if pauli == 'X':
-            rotated_circuit.h(i)
-        elif pauli == 'Y':
-            rotated_circuit.rx(np.pi/2, i)
-    
-    transpiled_circuit = transpile(rotated_circuit, basis_gates=['u3', 'cx'], optimization_level=3)
-    # Convert to Perceval processor using our compile function
-    processor = compile(transpiled_circuit)
-    
-    # Sample from the processor
+# Define an executor function that uses the linear entangled ansatz
+def executor(params, pauli_string):
+    processor = le_ansatz(params, pauli_string)
     sampler = Sampler(processor)
     samples = sampler.samples(10_000)
-    
     return samples
 
 def main():
     # Number of qubits
     num_qubits = 2
     
-    # Generate a random 2-qubit Hamiltonian
+    # Generate a 2-qubit Hamiltonian for LiH
     hamiltonian = LiH_hamiltonian(num_electrons=2, num_orbitals=1)
     
     # Print the Hamiltonian
-    print("Random Hamiltonian:")
+    print("LiH Hamiltonian:")
     for pauli_string, coefficient in hamiltonian.items():
         print(f"  {pauli_string}: {coefficient:.4f}")
     
-    # Initial random parameters for the variational circuit
-    initial_params = np.random.rand(2 * num_qubits)
+    # Calculate exact ground state energy for comparison
+    exact_energy = brute_force_minimize(hamiltonian)
+    print(f"\nExact ground state energy: {exact_energy:.6f}")
+    
+    # Initialize the VQE solver with the custom executor
+    vqe = VQE(
+        hamiltonian=hamiltonian,
+        executor=executor,
+        num_params=2*num_qubits, # Number of parameters in the linear entangled ansatz
+    )
     
     # Run the VQE optimization
     print("\nRunning VQE optimization...")
-    result = minimize(
-        loss_function,
-        initial_params,
-        args=(hamiltonian, executor),
-        method='COBYLA',
-        options={'maxiter': 10}
+    vqe_energy = vqe.run(
+        max_iterations=10,
+        verbose=True
     )
+    
+    # Get the optimal parameters
+    optimal_params = vqe.get_optimal_parameters()
+    
+    # Compare with exact solution
+    comparison = vqe.compare_with_exact(exact_energy)
     
     # Print the results
     print(f"\nOptimization complete!")
-    print(f"Final energy: {result.fun:.6f}")
-    print(f"Optimal parameters: {result.x}")
-    print(f"Number of iterations: {result.nfev}")
-    
-    # Calculate exact ground state energy for comparison
-    from qlass.quantum_chemistry.classical_solution import brute_force_minimize
-    exact_energy = brute_force_minimize(hamiltonian)
+    print(f"Final energy: {vqe_energy:.6f}")
+    print(f"Optimal parameters: {optimal_params}")
+    print(f"Number of iterations: {vqe.optimization_result.nfev}")
     print(f"Exact ground state energy: {exact_energy:.6f}")
-    print(f"Energy difference: {abs(result.fun - exact_energy):.6f}")
+    print(f"Energy difference: {comparison['absolute_error']:.6f}")
+    
+    # Plot the convergence
+    print("\nPlotting convergence history...")
+    plt.figure(figsize=(10, 6))
+    iterations = range(len(vqe.energy_history))
+    plt.plot(iterations, vqe.energy_history, 'o-', label='VQE Energy')
+    plt.axhline(y=exact_energy, color='r', linestyle='--', label='Exact Energy')
+    plt.xlabel('Iteration')
+    plt.ylabel('Energy')
+    plt.title('VQE Convergence')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.savefig('vqe_convergence.png')
+    print("Convergence plot saved as 'vqe_convergence.png'")
 
 if __name__ == "__main__":
     main()

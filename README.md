@@ -38,9 +38,9 @@ processor = compile(qc)
 `qlass` includes tools for implementing the Variational Quantum Eigensolver on photonic quantum computers:
 
 ```python
-from qlass.vqe import le_ansatz
+from qlass.vqe import VQE, le_ansatz
 from qlass.utils import loss_function
-from qlass.quantum_chemistry.hamiltonians import LiH_hamiltonian
+from qlass.quantum_chemistry import LiH_hamiltonian
 
 # Generate a Hamiltonian for the LiH molecule
 hamiltonian = LiH_hamiltonian(num_electrons=2, num_orbitals=1)
@@ -56,14 +56,20 @@ def executor(params, pauli_string):
 from scipy.optimize import minimize
 import numpy as np
 
+# Initialize the VQE solver
+vqe = VQE(
+    hamiltonian=hamiltonian,
+    executor=executor,
+    num_params=4, # Number of parameters in the linear entangled ansatz
+)
+
 initial_params = np.random.rand(4)
 
-result = minimize(
-    loss_function,
-    initial_params,
-    args=(hamiltonian, executor),
-    method='COBYLA',
-    options={'maxiter': 30}
+# Run the VQE optimization
+vqe_energy = vqe.run(
+    initial_params=initial_params, 
+    max_iterations=10,
+    verbose=True
 )
 ```
 
