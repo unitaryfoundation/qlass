@@ -52,10 +52,6 @@ def executor(params, pauli_string):
     samples = sampler.samples(10_000)
     return samples
 
-# Run VQE optimization
-from scipy.optimize import minimize
-import numpy as np
-
 # Initialize the VQE solver
 vqe = VQE(
     hamiltonian=hamiltonian,
@@ -63,11 +59,8 @@ vqe = VQE(
     num_params=4, # Number of parameters in the linear entangled ansatz
 )
 
-initial_params = np.random.rand(4)
-
 # Run the VQE optimization
 vqe_energy = vqe.run(
-    initial_params=initial_params, 
     max_iterations=10,
     verbose=True
 )
