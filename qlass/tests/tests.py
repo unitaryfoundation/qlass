@@ -111,9 +111,6 @@ def test_vqe_pipeline():
     # Generate a 2-qubit Hamiltonian
     hamiltonian = LiH_hamiltonian(num_electrons=2, num_orbitals=1)
 
-    # Initial random parameters for the variational circuit
-    initial_params = np.random.rand(2 * num_qubits)
-
     # Initialize the VQE solver with the custom executor
     vqe = VQE(
         hamiltonian=hamiltonian,
@@ -123,7 +120,6 @@ def test_vqe_pipeline():
     
     # Run the VQE optimization
     vqe_energy = vqe.run(
-        initial_params=initial_params, 
         max_iterations=10,
         verbose=True
     )

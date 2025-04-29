@@ -61,12 +61,8 @@ Implementing VQE to find the ground state energy of a molecule:
         num_params=4, # Number of parameters in the linear entangled ansatz
     )
     
-    # Initial random parameters for the variational circuit
-    initial_params = np.random.rand(4)
-    
     # Run the VQE optimization
     vqe_energy = vqe.run(
-        initial_params=initial_params, 
         max_iterations=10,
         verbose=True
     )

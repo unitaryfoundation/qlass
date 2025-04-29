@@ -63,7 +63,7 @@ class VQE:
         """
         # Initialize parameters if not provided
         if initial_params is None:
-            initial_params = np.random.rand(2 * self.num_params)
+            initial_params = np.random.rand(self.num_params)
         
         # Reset history
         self.energy_history = []

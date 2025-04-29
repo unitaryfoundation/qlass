@@ -46,13 +46,9 @@ def main():
         num_params=2*num_qubits, # Number of parameters in the linear entangled ansatz
     )
     
-    # Initial random parameters for the variational circuit
-    initial_params = np.random.rand(2 * num_qubits)
-    
     # Run the VQE optimization
     print("\nRunning VQE optimization...")
     vqe_energy = vqe.run(
-        initial_params=initial_params, 
         max_iterations=10,
         verbose=True
     )
