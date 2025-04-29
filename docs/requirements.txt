@@ -1,6 +1,6 @@
 sphinx_rtd_theme
 numpy
-perceval-quandela==0.12.1
+perceval-quandela==0.13.0
 qiskit_aer
 qiskit_nature
 pyscf
