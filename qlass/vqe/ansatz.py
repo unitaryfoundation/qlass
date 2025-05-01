@@ -10,18 +10,18 @@ from qlass.utils.utils import rotate_qubits
 qiskit_converter = QiskitConverter(backend_name="Naive") #or SLOS
 
 def le_ansatz(lp: np.ndarray, pauli_string: str) -> Processor:
-    """""
+    """
     Creates Perceval quantum processor for the Linear Entangled Ansatz.
     This ansatz consists of a layer of parametrized rotations, followed by 
     a layer of CNOT gates, and finally another layer of parametrized rotations.
 
     Args:
-    lp (np.ndarray): Array of parameter values
-    pauli_string (str): Pauli string
+        lp (np.ndarray): Array of parameter values
+        pauli_string (str): Pauli string
 
     Returns:
-    Processor: The quantum circuit as a Perceval processor
-    """""
+        Processor: The quantum circuit as a Perceval processor
+    """
     num_qubits = len(pauli_string)
     ansatz = TwoLocal(num_qubits, 'ry', 'cx', reps=1)
 
