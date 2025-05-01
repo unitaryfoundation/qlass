@@ -1,4 +1,3 @@
-
 qlass documentation
 ===================
 

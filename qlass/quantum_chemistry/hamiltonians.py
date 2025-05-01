@@ -15,10 +15,10 @@ def sparsepauliop_dictionary(H: SparsePauliOp) -> Dict[str, float]:
     Convert a Hamiltonian SparsePauliOp form to a dictionary.
 
     Args:
-    H (SparsePauliOp): Hamiltonian
+        H (SparsePauliOp): Hamiltonian
 
     Returns:
-    Dict[str, float]: Dictionary with Pauli string keys and coefficient values
+        Dict[str, float]: Dictionary with Pauli string keys and coefficient values
     """
     pauli_strings = list(map(str, H.paulis))
     coeffs = H.coeffs
@@ -30,14 +30,14 @@ def LiH_hamiltonian(R=1.5, charge=0, spin=0, num_electrons=2, num_orbitals=2) ->
     Generate the qubit Hamiltonian for the LiH molecule at a given bond length.
 
     Args:
-    R (float): Bond length
-    charge (int): Charge of the molecule
-    spin (int): Spin of the molecule    
-    num_electrons (int): Number of electrons
-    num_orbitals (int): Number of molecular orbitals
+        R (float): Bond length
+        charge (int): Charge of the molecule
+        spin (int): Spin of the molecule    
+        num_electrons (int): Number of electrons
+        num_orbitals (int): Number of molecular orbitals
 
     Returns:
-    Dict[str, float]: Hamiltonian dictionary
+        Dict[str, float]: Hamiltonian dictionary
     """
     
     driver = PySCFDriver(
@@ -62,10 +62,10 @@ def generate_random_hamiltonian(num_qubits: int) -> Dict[str, float]:
     Generate a random Hamiltonian.
 
     Args:
-    num_qubits (int): Number of qubits
+        num_qubits (int): Number of qubits
 
     Returns:
-    Dict[str, float]: Hamiltonian dictionary
+        Dict[str, float]: Hamiltonian dictionary
     """
 
     # Generate all possible 3-letter bitstrings consisting of 'X', 'Y', 'Z', 'I'
@@ -83,10 +83,10 @@ def LiH_hamiltonian_tapered(R: float) -> Dict[str, float]:
     Generate the Hamiltonian for the LiH molecule at a given bond length using tapering technique.
 
     Args:
-    R (float): Bond length
+        R (float): Bond length
 
     Returns:
-    Dict[str, float]: Hamiltonian dictionary
+        Dict[str, float]: Hamiltonian dictionary
     """
 
     driver = PySCFDriver(

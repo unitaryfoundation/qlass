@@ -19,10 +19,10 @@ def is_qubit_state(state: exqalibur.FockState) -> Union[Tuple[int, ...], bool]:
     Check if a given state is a valid qubit state.
 
     Args:
-    state (exqalibur.FockState): The state to check
+        state (exqalibur.FockState): The state to check
 
     Returns:
-    Union[Tuple[int, ...], bool]: The corresponding qubit state if valid, False otherwise
+        Union[Tuple[int, ...], bool]: The corresponding qubit state if valid, False otherwise
     """
     q_state = []
     for i in range(state.m // 2):
@@ -42,10 +42,10 @@ def qubit_state_marginal(prob_dist: Dict[exqalibur.FockState, float]) -> Dict[Tu
     of Fock states.
 
     Args:
-    prob_dist (Dict[exqalibur.FockState, float]): Probability distribution of Fock states
+        prob_dist (Dict[exqalibur.FockState, float]): Probability distribution of Fock states
 
     Returns:
-    Dict[Tuple[int, ...], float]: Frequencies of measured qubit states
+        Dict[Tuple[int, ...], float]: Frequencies of measured qubit states
     """
     q_state_frequency = {}
     total_prob_mass = 0
@@ -65,10 +65,10 @@ def get_probabilities(samples: List[exqalibur.FockState]) -> Dict[exqalibur.Fock
     Get the probabilities of sampled Fock states.
 
     Args:
-    samples (List[exqalibur.FockState]): Sampled Fock states
+        samples (List[exqalibur.FockState]): Sampled Fock states
 
     Returns:
-    Dict[exqalibur.FockState, float]: Probabilities of sampled Fock states
+        Dict[exqalibur.FockState, float]: Probabilities of sampled Fock states
     """
     prob_dist = {}
     for state in samples:
@@ -88,11 +88,11 @@ def compute_energy(pauli_bin: Tuple[int, ...], res: Dict[Tuple[int, ...], float]
     Compute the expectation value for a given Pauli string and measurement results.
 
     Args:
-    pauli_bin (Tuple[int, ...]): A tuple of 0's and 1's (0's are identities, 1's are non-identities (X or Z))
-    res (Dict[Tuple[int, ...], float]): Frequencies of measured qubit bitstrings
+        pauli_bin (Tuple[int, ...]): A tuple of 0's and 1's (0's are identities, 1's are non-identities (X or Z))
+        res (Dict[Tuple[int, ...], float]): Frequencies of measured qubit bitstrings
 
     Returns:
-    float: The corresponding expectation value
+        float: The corresponding expectation value
     """
     for key in res.keys():
         inner = np.dot(key, pauli_bin)
@@ -107,10 +107,10 @@ def pauli_string_bin(pauli_string: str) -> Tuple[int, ...]:
     Convert a Pauli string to a binary representation.
 
     Args:
-    pauli_string (str): A string representation of Pauli operators (e.g., "IXZI")
+        pauli_string (str): A string representation of Pauli operators (e.g., "IXZI")
 
     Returns:
-    Tuple[int, ...]: Binary representation of the Pauli string
+        Tuple[int, ...]: Binary representation of the Pauli string
     """
     return tuple(0 if c == "I" else 1 for c in pauli_string)
 
@@ -119,11 +119,11 @@ def rotate_qubits(pauli_string: str, vqe_circuit: pcvl.Circuit | qiskit.QuantumC
     Apply the correct rotations on corresponding qubits for expectation value computation.
 
     Args:
-    pauli_string (str): A string representation of Pauli operators
-    vqe_circuit (pcvl.Circuit): The VQE circuit to modify
+        pauli_string (str): A string representation of Pauli operators
+        vqe_circuit (pcvl.Circuit): The VQE circuit to modify
 
     Returns:
-    pcvl.Circuit: The modified VQE circuit with applied rotations
+        pcvl.Circuit: The modified VQE circuit with applied rotations
     """
     if isinstance(vqe_circuit, qiskit.QuantumCircuit):
         for i, pauli in enumerate(pauli_string):
@@ -148,12 +148,12 @@ def loss_function(lp: np.ndarray, H: Dict[str, float], executor) -> float:
     Compute the loss function for the VQE algorithm.
 
     Args:
-    lp (np.ndarray): Array of parameter values
-    H (Dict[str, float]): Hamiltonian dictionary
-    executor: A callable function that executes the quantum circuit
+        lp (np.ndarray): Array of parameter values
+        H (Dict[str, float]): Hamiltonian dictionary
+        executor: A callable function that executes the quantum circuit
 
     Returns:
-    float: The computed loss value
+        float: The computed loss value
     """
     loss = 0.0
     for pauli_string, coefficient in H.items():
@@ -169,15 +169,15 @@ def loss_function(lp: np.ndarray, H: Dict[str, float], executor) -> float:
     return loss
 
 def linear_circuit_to_unitary(circuit: pcvl.Circuit) -> np.ndarray:
-    '''
+    """
     Convert a linear optical circuit to a unitary matrix.
 
     Args:
-    circuit (pcvl.Circuit): Linear optical circuit
+        circuit (pcvl.Circuit): Linear optical circuit
 
     Returns:    
-    np.ndarray: Unitary matrix representation of the circuit
-    '''
+        np.ndarray: Unitary matrix representation of the circuit
+    """
 
     unitary_matrix = np.array(circuit.compute_unitary())
 

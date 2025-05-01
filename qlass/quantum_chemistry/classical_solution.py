@@ -8,10 +8,10 @@ def pauli_string_to_matrix(pauli_string: str) -> np.ndarray:
     Convert a Pauli string to a matrix representation.
     
     Args:
-    pauli_string (str): A string of Pauli operators (I, X, Y, Z)
+        pauli_string (str): A string of Pauli operators (I, X, Y, Z)
 
     Returns:
-    np.ndarray: Matrix representation of the Pauli string
+        np.ndarray: Matrix representation of the Pauli string
 
     '''
 
@@ -40,10 +40,10 @@ def hamiltonian_matrix(H: Dict[str, float]) -> np.ndarray:
     Convert a Hamiltonian dictionary to a matrix representation.
 
     Args:
-    H (Dict[str, float]): Hamiltonian dictionary
+        H (Dict[str, float]): Hamiltonian dictionary
 
     Returns:
-    np.ndarray: Matrix representation of the Hamiltonian
+        np.ndarray: Matrix representation of the Hamiltonian
 
     '''
 
@@ -58,10 +58,10 @@ def brute_force_minimize(H: Dict[str, float]) -> float:
     Compute the minimum eigenvalue of a Hamiltonian using brute force.
 
     Args:
-    H (Dict[str, float]): Hamiltonian dictionary
+        H (Dict[str, float]): Hamiltonian dictionary
 
     Returns:
-    float: Minimum eigenvalue of the Hamiltonian
+        float: Minimum eigenvalue of the Hamiltonian
 
     '''
 
@@ -78,11 +78,11 @@ def Lanczos( A, v, m=100):
     Lanczos algorithm for computing the eigenvalues of a matrix.
 
     Args:
-    A (np.ndarray): Matrix to compute the eigenvalues of
-    v (np.ndarray): Initial vector
+        A (np.ndarray): Matrix to compute the eigenvalues of
+        v (np.ndarray): Initial vector
 
     Returns:
-    Tuple[np.ndarray, np.ndarray]: Tuple containing the tridiagonal matrix and the eigenvectors
+        Tuple[np.ndarray, np.ndarray]: Tuple containing the tridiagonal matrix and the eigenvectors
 
     '''
 
@@ -127,12 +127,12 @@ def eig_decomp_lanczos(R, n=1, m=100):
     Compute the eigenvalues of a matrix using the Lanczos algorithm.
 
     Args:
-    R (np.ndarray): Matrix to compute the eigenvalues of
-    n (int): Number of eigenvalues to compute
-    m (int): Number of iterations
+        R (np.ndarray): Matrix to compute the eigenvalues of
+        n (int): Number of eigenvalues to compute
+        m (int): Number of iterations
 
     Returns:
-    np.ndarray: Eigenvalues of the matrix
+        np.ndarray: Eigenvalues of the matrix
 
     '''
 

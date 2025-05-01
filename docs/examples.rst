@@ -41,8 +41,7 @@ Implementing VQE to find the ground state energy of a molecule:
    from perceval.algorithm import Sampler
    
    from qlass.vqe import VQE, le_ansatz
-   from qlass.quantum_chemistry import LiH_hamiltonian
-   from qlass.quantum_chemistry import brute_force_minimize
+   from qlass.quantum_chemistry import LiH_hamiltonian, brute_force_minimize
    
    # Create a molecular Hamiltonian
    hamiltonian = LiH_hamiltonian(num_electrons=2, num_orbitals=1)
@@ -76,7 +75,7 @@ Implementing VQE to find the ground state energy of a molecule:
    print(f"Energy Difference: {abs(vqe_energy - exact_energy):.6f}")
 
 Working with Molecular Hamiltonians
-----------------------------------
+-----------------------------------
 
 Generating and analyzing molecular Hamiltonians:
 
