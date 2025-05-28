@@ -13,9 +13,8 @@ from qiskit.circuit.library import TwoLocal
 from perceval.algorithm import Sampler
 
 from qlass import compile
-from qlass.vqe import VQE, le_ansatz
+from qlass.vqe import VQE, le_ansatz, custom_unitary_ansatz
 from qlass.quantum_chemistry import LiH_hamiltonian
-from qlass.ansatz import custom_unitary_ansatz
 
 def test_compute_energy():
     # test case 1
