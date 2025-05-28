@@ -8,7 +8,7 @@ from .quantum_chemistry.classical_solution import hamiltonian_matrix, brute_forc
 from .quantum_chemistry.hamiltonians import LiH_hamiltonian
 
 # export from vqe module
-from .vqe.ansatz import le_ansatz
+from .vqe.ansatz import le_ansatz, custom_unitary_ansatz
 
 # export from utils module 
 from .utils.utils import loss_function, rotate_qubits
@@ -20,6 +20,7 @@ __all__ = [
     "brute_force_minimize",
     "LiH_hamiltonian",
     "le_ansatz",
+    "custom_unitary_ansatz",
     "loss_function",
     "rotate_qubits",
 ]
