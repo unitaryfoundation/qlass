@@ -33,3 +33,37 @@ def le_ansatz(lp: np.ndarray, pauli_string: str) -> Processor:
     processor.with_input(pcvl.LogicalState([0]*num_qubits))
 
     return processor
+
+def custom_unitary_ansatz(lp: np.ndarray, pauli_string: str, U: np.ndarray) -> Processor:
+    """
+    Creates Perceval quantum processor that directly implements a given unitary matrix.
+    This function serves as a custom ansatz that bypasses circuit construction and instead 
+    loads a full unitary matrix representing the quantum operation.
+
+    The unitary is embedded in a Qiskit QuantumCircuit, converted to Perceval format,
+    and returned as a Processor object with post-selection enabled.
+
+    Args:
+        lp (np.ndarray): Placeholder array of parameter values (unused, for compatibility).
+        pauli_string (str): Pauli string used to determine the number of qubits.
+        U (np.ndarray): A unitary matrix of shape (2^n, 2^n) where n = len(pauli_string).
+
+    Returns:
+        Processor: The quantum circuit as a Perceval processor implementing unitary U.
+    """
+    num_qubits = len(pauli_string)
+    dim = 2 ** num_qubits
+
+    if U.shape != (dim, dim):
+        raise ValueError(f"Expected unitary of shape ({dim}, {dim}), got {U.shape}")
+    if not np.allclose(U @ U.conj().T, np.eye(dim), atol=1e-10):
+        raise ValueError("Matrix U is not unitary")
+
+    qc = QuantumCircuit(num_qubits)
+    qc.unitary(U, range(num_qubits))
+
+    qc_rotated = rotate_qubits(pauli_string, qc.copy())
+    processor = qiskit_converter.convert(qc_rotated, use_postselection=True)
+    processor.with_input(pcvl.LogicalState([0]*num_qubits))
+
+    return processor
