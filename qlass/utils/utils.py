@@ -1,6 +1,7 @@
 import numpy as np
 import perceval as pcvl
 import qiskit
+import exqalibur
 from typing import List, Tuple, Dict, Union
 
 import qiskit.circuit
@@ -13,12 +14,12 @@ H_circ = pcvl.Circuit.decomposition(H_matrix, mzi, shape=pcvl.InterferometerShap
 M_circ = pcvl.Circuit.decomposition(M_matrix, mzi, shape=pcvl.InterferometerShape.TRIANGLE)
 
 
-def is_qubit_state(state: pcvl.BasicState) -> Union[Tuple[int, ...], bool]:
+def is_qubit_state(state: exqalibur.FockState) -> Union[Tuple[int, ...], bool]:
     """
-    Check if a given state is a valid qubit state.
+    Check if a given Fock state is a valid qubit state.
 
     Args:
-        state (pcvl.BasicState): The state to check
+        state (exqalibur.FockState): The Fock state to check
 
     Returns:
         Union[Tuple[int, ...], bool]: The corresponding qubit state if valid, False otherwise
@@ -35,16 +36,16 @@ def is_qubit_state(state: pcvl.BasicState) -> Union[Tuple[int, ...], bool]:
         
     return tuple(q_state)
 
-def qubit_state_marginal(prob_dist: Dict[Union[pcvl.BasicState, Tuple[int, ...]], float]) -> Dict[Tuple[int, ...], float]:
+def qubit_state_marginal(prob_dist: Dict[Union[exqalibur.FockState, Tuple[int, ...]], float]) -> Dict[Tuple[int, ...], float]:
     """
     Calculate the frequencies of measured qubit states from a probability distribution.
     
     This function now handles both Fock states and bitstring inputs:
-    - If input contains Fock states, converts them to qubit states
+    - If input contains Fock states, converts them to qubit states using is_qubit_state
     - If input already contains bitstrings (tuples), passes them through directly
 
     Args:
-        prob_dist (Dict[Union[pcvl.BasicState, Tuple[int, ...]], float]): 
+        prob_dist (Dict[Union[exqalibur.FockState, Tuple[int, ...]], float]): 
                   Probability distribution of either Fock states or bitstrings
 
     Returns:
@@ -82,21 +83,21 @@ def qubit_state_marginal(prob_dist: Dict[Union[pcvl.BasicState, Tuple[int, ...]]
     
     return q_state_frequency
 
-def get_probabilities(samples: List[Union[pcvl.BasicState, Tuple[int, ...], str]]) -> Dict[Union[pcvl.BasicState, Tuple[int, ...]], float]:
+def get_probabilities(samples: List[Union[exqalibur.FockState, Tuple[int, ...], str]]) -> Dict[Union[exqalibur.FockState, Tuple[int, ...]], float]:
     """
     Get the probabilities of sampled states.
     
     This function now handles:
-    - Fock states: List[pcvl.BasicState] -> Dict[pcvl.BasicState, float]
+    - Fock states: List[exqalibur.FockState] -> Dict[exqalibur.FockState, float]
     - Bitstring tuples: List[Tuple[int, ...]] -> Dict[Tuple[int, ...], float]  
     - Bitstring strings (from Qiskit): List[str] -> Dict[Tuple[int, ...], float]
 
     Args:
-        samples (List[Union[pcvl.BasicState, Tuple[int, ...], str]]): 
+        samples (List[Union[exqalibur.FockState, Tuple[int, ...], str]]): 
                 Sampled states (Fock states, bitstring tuples, or bitstring strings)
 
     Returns:
-        Dict[Union[pcvl.BasicState, Tuple[int, ...]], float]: 
+        Dict[Union[exqalibur.FockState, Tuple[int, ...]], float]: 
         Probabilities of sampled states
     """
     if not samples:
@@ -185,20 +186,20 @@ def rotate_qubits(pauli_string: str, vqe_circuit: pcvl.Circuit | qiskit.QuantumC
     return vqe_circuit
 
 
-def normalize_samples(samples) -> List[Union[pcvl.BasicState, Tuple[int, ...]]]:
+def normalize_samples(samples) -> List[Union[exqalibur.FockState, Tuple[int, ...]]]:
     """
     Normalize samples from different executor formats to a consistent format.
     
     Handles:
     - Qiskit bitstring format: ['00', '01', '11'] -> [(0,0), (0,1), (1,1)]
     - Already normalized tuples: [(0,0), (0,1)] -> [(0,0), (0,1)]
-    - Perceval BasicStates: [BasicState, ...] -> [BasicState, ...]
+    - ExQalibur FockStates: [FockState, ...] -> [FockState, ...]
     
     Args:
         samples: Raw samples in various formats
         
     Returns:
-        List[Union[pcvl.BasicState, Tuple[int, ...]]]: Normalized samples
+        List[Union[exqalibur.FockState, Tuple[int, ...]]]: Normalized samples
     """
     if not samples:
         return []
@@ -212,7 +213,7 @@ def normalize_samples(samples) -> List[Union[pcvl.BasicState, Tuple[int, ...]]]:
             # Convert list/tuple of ints to tuple
             normalized.append(tuple(sample))
         else:
-            # Assume it's already in correct format (e.g., pcvl.BasicState)
+            # Assume it's already in correct format (e.g., exqalibur.FockState)
             normalized.append(sample)
     
     return normalized
@@ -223,7 +224,7 @@ def loss_function(lp: np.ndarray, H: Dict[str, float], executor) -> float:
     Compute the loss function for the VQE algorithm.
     
     This function now works with executors that return either:
-    1. Fock states (from linear optical circuits)
+    1. Fock states (from linear optical circuits) - exqalibur.FockState objects
     2. Bitstring tuples (from regular qubit-based circuits)  
     3. Bitstring strings (from Qiskit Sampler)
     
