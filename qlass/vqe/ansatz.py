@@ -1,5 +1,5 @@
 from perceval.converters import QiskitConverter
-from qiskit import transpile
+from qiskit import transpile, QuantumCircuit
 from qiskit.circuit.library import TwoLocal
 
 import perceval as pcvl

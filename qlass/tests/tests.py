@@ -13,7 +13,7 @@ from qiskit.circuit.library import TwoLocal
 from perceval.algorithm import Sampler
 
 from qlass import compile
-from qlass.vqe import VQE, le_ansatz
+from qlass.vqe import VQE, le_ansatz, custom_unitary_ansatz
 from qlass.quantum_chemistry import LiH_hamiltonian
 
 def test_compute_energy():
@@ -126,4 +126,41 @@ def test_vqe_pipeline():
 
     if not isinstance(vqe_energy, float):
         raise ValueError("Optimization result is not a valid float")
+
+def test_custom_unitary_ansatz():
+    """
+    Test that custom_unitary_ansatz correctly implements the Hadamard gate
+    by checking the output probability distribution from the Perceval processor.
+    """
+
+    # Define 1-qubit Hadamard gate
+    H = 1 / np.sqrt(2) * np.array([[1, 1],
+                                   [1, -1]])
+    lp_dummy = np.array([0.0])
+    pauli_string = "Z"
+
+    # Create processor
+    processor = custom_unitary_ansatz(lp_dummy, pauli_string, H)
+
+    # Sample from the processor using Perceval's Sampler
+    sampler = pcvl.algorithm.Sampler(processor)
+    samples = sampler.samples(10000)
+    sample_count = sampler.sample_count(10000)
+    prob_dist = sampler.probs()
+
+    # Extract probabilities from BSDistribution
+    prob_dict = {state: float(prob) for state, prob in prob_dist['results'].items()}
+
+    # Assert both logical outcomes are present and roughly balanced
+    assert len(prob_dict) == 2, f"Unexpected number of outcomes: {prob_dict}"
+    keys = list(prob_dict.keys())
+    assert all(state in prob_dict for state in [pcvl.BasicState('|1,0>'), pcvl.BasicState('|0,1>')]), \
+        f"Expected states |1,0> and |0,1> not found in results: {prob_dict}"
+
+    prob_0 = prob_dict[pcvl.BasicState('|1,0>')]
+    prob_1 = prob_dict[pcvl.BasicState('|0,1>')]
+
+    assert 0.45 <= prob_0 <= 0.55, f"Unexpected probability for |0⟩: {prob_0}"
+    assert 0.45 <= prob_1 <= 0.55, f"Unexpected probability for |1⟩: {prob_1}"
+
     
