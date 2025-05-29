@@ -6,7 +6,7 @@ from qiskit_nature.second_q.drivers import PySCFDriver
 from qiskit_nature.second_q.mappers import JordanWignerMapper, ParityMapper
 from qiskit_nature.second_q.transformers import ActiveSpaceTransformer
 
-from typing import Dict
+from typing import Dict, List
 
 from qiskit.quantum_info import SparsePauliOp
 
@@ -123,3 +123,54 @@ def LiH_hamiltonian_tapered(R: float) -> Dict[str, float]:
     qubit_op = tapered_mapper.map(fermionic_op)
 
     return sparsepauliop_dictionary(qubit_op)
+
+def check_commutation(pauli1: str, pauli2: str) -> bool:
+    """
+    Check if two given strings of Pauli operators commute.
+
+    Args:
+        pauli1 (str): first string of Pauli operators
+        pauli2 (str): second string of Pauli operators
+
+    Returns:
+        Boolean
+    """
+
+    non_commuting_elements = 0
+    for a, b in zip(pauli1, pauli2):
+        # Check if the elements that occupy the same position in each of the strings commute (i.e. if they are equal or if one or more is the identity I)
+        if a == 'I' or b == 'I' or a == b:
+            continue
+        # Count the elements that don't commute
+        non_commuting_elements += 1
+
+    # Two commuting strings of Pauli operators will have an even number of non-commuting Pauli operators
+    return non_commuting_elements % 2 == 0
+
+def group_commuting_terms(hamiltonian: Dict[str, float]) -> List[Dict[str, float]]:
+    """
+    Group the Hamiltonian Pauli operator strings by commutation
+    
+    Args:
+        Dict[str, float]: Hamiltonian dictionary
+
+    Returns:
+        List[Dict[str, float]]: List of Hamiltonian terms grouped by commutation
+    """
+
+    groups: List[Dict[str, float]] = []
+
+    for string, coef in hamiltonian.items():
+        placed = False
+        # Iterate over all groups of commuting strings (0 at the beggining, that's why placed is set to False)
+        for group in groups:
+            # If the current Pauli string commutes with all the strings of the current group, place it (and its coefficient) there and move to the next string
+            if all(check_commutation(string, other) for other in group):
+                group[string] = coef
+                placed = True
+                break
+        # If it doesn't commute with every string of the group, create a new group and append it to the groups list
+        if not placed:
+            groups.append({string: coef})
+
+    return groups
