@@ -163,4 +163,124 @@ def test_custom_unitary_ansatz():
     assert 0.45 <= prob_0 <= 0.55, f"Unexpected probability for |0⟩: {prob_0}"
     assert 0.45 <= prob_1 <= 0.55, f"Unexpected probability for |1⟩: {prob_1}"
 
+def test_get_probabilities_string_format():
+    # test case 1: Qiskit string format
+    samples = ['00', '01', '00', '10', '01']
+    expected = {(0, 0): 0.4, (0, 1): 0.4, (1, 0): 0.2}
+    assert get_probabilities(samples) == expected
+
+    # test case 2: single qubit strings  
+    samples = ['0', '1', '0', '0']
+    expected = {(0,): 0.75, (1,): 0.25}
+    assert get_probabilities(samples) == expected
+
+    # test case 3: 3-qubit strings
+    samples = ['000', '001', '010', '000'] 
+    expected = {(0, 0, 0): 0.5, (0, 0, 1): 0.25, (0, 1, 0): 0.25}
+    assert get_probabilities(samples) == expected
+
+def test_qubit_state_marginal_bitstring_input():
+    # test case 1: input already as bitstring tuples
+    prob_dist = {(0, 0): 0.5, (0, 1): 0.3, (1, 0): 0.2}
+    expected = {(0, 0): 0.5, (0, 1): 0.3, (1, 0): 0.2}
+    assert qubit_state_marginal(prob_dist) == expected
+
+    # test case 2: single entry
+    prob_dist = {(1, 1, 0): 1.0}
+    expected = {(1, 1, 0): 1.0}
+    assert qubit_state_marginal(prob_dist) == expected
+
+    # test case 3: empty input
+    assert qubit_state_marginal({}) == {}
+
+def test_loss_function_perceval_format():
+    from qlass.utils.utils import loss_function
     
+    # Mock Perceval-style executor
+    def mock_perceval_executor(params, pauli_string):
+        return {
+            'results': [
+                pcvl.BasicState([1, 0, 1, 0]),  # |01⟩ 
+                pcvl.BasicState([0, 1, 0, 1]),  # |11⟩
+                pcvl.BasicState([1, 0, 0, 1]),  # |00⟩
+            ]
+        }
+    
+    hamiltonian = {"II": 0.5, "ZZ": 0.3}
+    result = loss_function(np.array([0.1, 0.2]), hamiltonian, mock_perceval_executor)
+    assert isinstance(result, float)
+
+def test_loss_function_qiskit_bitstring_format():
+    from qlass.utils.utils import loss_function
+    
+    # Mock Qiskit bitstring executor
+    def mock_qiskit_executor(params, pauli_string):
+        return {'results': ['00', '01', '10', '11']}
+    
+    hamiltonian = {"II": 1.0, "ZZ": 0.5}
+    result = loss_function(np.array([0.1, 0.2]), hamiltonian, mock_qiskit_executor)
+    assert isinstance(result, float)
+
+def test_loss_function_qiskit_counts_format():
+    from qlass.utils.utils import loss_function
+    
+    # Mock Qiskit counts executor
+    def mock_counts_executor(params, pauli_string):
+        return {'counts': {'00': 250, '01': 250, '10': 250, '11': 250}}
+    
+    hamiltonian = {"II": 1.0, "ZI": 0.2}
+    result = loss_function(np.array([0.1, 0.2]), hamiltonian, mock_counts_executor)
+    assert isinstance(result, float)
+
+def test_loss_function_direct_list_format():
+    from qlass.utils.utils import loss_function
+    
+    # Mock direct list executor
+    def mock_direct_executor(params, pauli_string):
+        return [(0, 0), (0, 1), (1, 0), (1, 1)]
+    
+    hamiltonian = {"ZZ": 1.0, "XX": -0.5}
+    result = loss_function(np.array([0.1, 0.2]), hamiltonian, mock_direct_executor)
+    assert isinstance(result, float)
+
+def test_loss_function_error_handling():
+    from qlass.utils.utils import loss_function
+    
+    # Mock invalid executor
+    def invalid_executor(params, pauli_string):
+        return "invalid_format"
+    
+    hamiltonian = {"ZZ": 1.0}
+    
+    try:
+        loss_function(np.array([0.1]), hamiltonian, invalid_executor)
+        assert False, "Expected ValueError"
+    except ValueError as e:
+        assert "unexpected format" in str(e).lower()
+
+def test_loss_function_format_consistency():
+    from qlass.utils.utils import loss_function
+    
+    # Fixed samples for consistent comparison
+    fixed_samples = [(0, 0), (0, 1), (1, 0), (1, 1)]
+    
+    def executor1(params, pauli_string):
+        return {'results': fixed_samples}
+    
+    def executor2(params, pauli_string):
+        return {'results': ['00', '01', '10', '11']}
+    
+    def executor3(params, pauli_string):
+        return fixed_samples
+    
+    hamiltonian = {"ZZ": 1.0, "XX": -0.5}
+    params = np.array([0.1, 0.2])
+    
+    result1 = loss_function(params, hamiltonian, executor1)
+    result2 = loss_function(params, hamiltonian, executor2)
+    result3 = loss_function(params, hamiltonian, executor3)
+    
+    # Allow small numerical differences
+    tolerance = 1e-10
+    assert abs(result1 - result2) < tolerance
+    assert abs(result1 - result3) < tolerance
