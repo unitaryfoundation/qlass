@@ -1,81 +1,96 @@
 import itertools
 import numpy as np
-
 # OpenFermion imports - replacing qiskit_nature
 from openfermion.chem import MolecularData
 from openfermion.transforms import get_fermion_operator, jordan_wigner
+# Import QubitOperator para type hinting
+from openfermion.ops import InteractionOperator, QubitOperator
 from openfermionpyscf import run_pyscf
 
-from typing import Dict, Tuple, List, Union
-QubitOperatorTermKey = Tuple[Tuple[int, str], ...]
-
+from typing import Dict
 def sparsepauliop_dictionary(H: QubitOperator) -> Dict[str, float]:
     """
-    Convert a Hamiltonian QubitOperator form to a dictionary.
+    Converts an OpenFermion QubitOperator into a dictionary representation.
+
+    This function translates the structure of an OpenFermion QubitOperator,
+    which represents a sum of Pauli strings, into a Python dictionary.
+    The keys of the dictionary are string representations of Pauli operators
+    (e.g., "IXYZ"), and the values are their corresponding real coefficients.
 
     Args:
-        H: OpenFermion QubitOperator. Its .terms attribute is a dictionary where keys are
-           tuples of ((qubit_index, pauli_operator_str), ...) representing Pauli terms,
-           and values are their complex coefficients. An empty tuple () as a key
-           represents the identity term.
+        H: The OpenFermion QubitOperator to be converted. Each term in this
+           operator is a product of Pauli operators acting on specific qubits.
 
     Returns:
-        Dict[str, float]: Dictionary with Pauli string keys (e.g., "IXYZ")
-                          and the real part of their corresponding coefficient values as floats.
+        A dictionary where each key is a Pauli string (e.g., "IZX")
+        representing a term in the Hamiltonian, and its value is the
+        real part of the coefficient for that term.
     """
     pauli_dict: Dict[str, float] = {}
-    
-    # Determine the number of qubits. This logic mirrors the original code's behavior.
-    max_qubit_idx: int = 0
+
+    # Determine the total number of qubits in the system.
+    # This is found by identifying the highest qubit index acted upon by any Pauli operator.
+    max_qubit_idx = -1 # Initialize to -1 to correctly handle 0-indexed qubits
     if H.terms:
-        term_key_for_max_idx: QubitOperatorTermKey # Type hint para la clave del término
-        for term_key_for_max_idx in H.terms.keys():
-            if term_key_for_max_idx:  # If not the identity tuple ()
-                # Find the maximum qubit index within this specific term
-                current_term_max_idx: int = 0
-                # Ensure term_key_for_max_idx is not empty before calling max, for type checker robustness
-                if term_key_for_max_idx: 
-                    current_term_max_idx = max(idx for idx, _ in term_key_for_max_idx)
-                
-                if current_term_max_idx > max_qubit_idx:
-                    max_qubit_idx = current_term_max_idx
-        num_qubits: int = max_qubit_idx + 1
-    else: # H.terms is empty (e.g., H is QubitOperator() or QubitOperator.zero())
-        num_qubits: int = 1 # Original behavior: defaults to 1 qubit representation.
-                           # If H is QubitOperator(), this function will return an empty dict {}.
-                           # If H is QubitOperator((), 0.0), num_qubits becomes 1,
-                           # and the result is {'I': 0.0}.
+        for pauli_term_key in H.terms.keys():
+            if pauli_term_key:  # Checks if the term is not the global identity `()`
+                # pauli_term_key is a tuple of (qubit_index, Pauli_operator_char) tuples, e.g., ((0, 'X'), (1, 'Y'))
+                current_max_for_term = max(idx for idx, _ in pauli_term_key)
+                if current_max_for_term > max_qubit_idx:
+                    max_qubit_idx = current_max_for_term
+        num_qubits = max_qubit_idx + 1
+    else:
+        # If there are no terms (H is an empty QubitOperator, representing zero),
+        # or if H is only an identity (QubitOperator('') which has H.terms = {(): 1.0}),
+        # default to a 1-qubit system for constructing identity strings.
+        # This ensures QubitOperator('') results in {'I': 1.0}.
+        # An empty QubitOperator() will result in num_qubits = 0 (from max_qubit_idx = -1),
+        # and the loop over H.terms won't run, returning an empty pauli_dict.
+        num_qubits = max_qubit_idx + 1 # If max_qubit_idx remains -1, num_qubits becomes 0.
 
-    # Iterate over the terms of the QubitOperator to convert them
-    term_key: QubitOperatorTermKey # Type hint para la clave del término
-    coefficient: Union[float, complex] # Coefficients in OpenFermion can be float or complex
+    # If H is QubitOperator() (zero operator), num_qubits will be 0.
+    # If H is QubitOperator('') (identity), num_qubits will be 1 (from max_qubit_idx= -1 -> 0, then +1).
+    # This logic for num_qubits seems fine.
+    # The case for QubitOperator('') being handled as 'I' (1 qubit) is implicitly covered
+    # when the loop processes the {(): coefficient} term if num_qubits was set to 1.
+    # If num_qubits became 0 (for an empty QubitOperator), the identity string would be empty.
+    # Let's ensure num_qubits is at least 1 if an identity term is present and no other terms define size.
+    if not H.terms and num_qubits == 0 : # Truly empty QubitOperator
+        return {} # An empty operator has no Pauli terms.
+    if H.terms and not any(bool(term) for term in H.terms.keys()) and num_qubits == 0:
+        # This means H.terms only contains {(): coeff}, e.g. QubitOperator('')
+        # max_qubit_idx was -1, num_qubits became 0. For an identity string, we need at least 1 qubit.
+        num_qubits = 1
 
-    for term_key, coefficient in H.terms.items():
-        pauli_string_representation: str
-        if not term_key:  # This is the identity term, its key in H.terms is an empty tuple ()
-            pauli_string_representation = 'I' * num_qubits
+
+    # Iterate through each term in the QubitOperator.
+    # A term consists of a Pauli product (pauli_string_openfermion) and its coefficient.
+    for pauli_string_openfermion, coefficient in H.terms.items():
+        if not pauli_string_openfermion:  # This is the global identity term, represented by an empty tuple `()`.
+            # The Pauli key for the identity is a string of 'I's, one for each qubit.
+            pauli_key = 'I' * num_qubits
         else:
-            # For non-identity terms, construct the Pauli string
-            pauli_array: List[str] = ['I'] * num_qubits
+            # For non-identity terms, construct the Pauli string.
+            # Initialize a list representing the Pauli operators on all qubits, default to 'I'.
+            pauli_array = ['I'] * num_qubits
             
-            qubit_idx: int
-            pauli_char: str
-            for qubit_idx, pauli_char in term_key:
-                # This check ensures we don't write out of bounds if num_qubits was
-                # somehow miscalculated, though with the current logic it should be correct.
-                if 0 <= qubit_idx < num_qubits:
-                    pauli_array[qubit_idx] = pauli_char
-                # else:
-                    # Potentially raise an error or log a warning if qubit_idx is out of expected range.
-                    # For now, we assume num_qubits is determined correctly to cover all indices.
+            # Populate the array with the specific Pauli operators (X, Y, Z) at their respective qubit indices.
+            for qubit_idx, pauli_op_char in pauli_string_openfermion:
+                if qubit_idx < num_qubits: # Ensure index is within bounds
+                    pauli_array[qubit_idx] = pauli_op_char
+                else:
+                    # This case should ideally not happen if num_qubits was determined correctly.
+                    # It implies a Pauli operator acts on a qubit index higher than initially detected.
+                    # Handling this robustly might involve resizing pauli_array or raising an error.
+                    # For now, we assume num_qubits is correctly pre-calculated.
+                    pass 
             
-            pauli_string_representation = ''.join(pauli_array)
+            pauli_key = ''.join(pauli_array)
         
-        # Store the Pauli string with the real part of its coefficient
-        pauli_dict[pauli_string_representation] = float(coefficient.real)
+        # Store the term in the dictionary, using only the real part of the coefficient.
+        pauli_dict[pauli_key] = float(coefficient.real)
     
     return pauli_dict
-
 def LiH_hamiltonian(R=1.5, charge=0, spin=0, num_electrons=2, num_orbitals=2) -> Dict[str, float]:
     """
     Generate the qubit Hamiltonian for the LiH molecule at a given bond length.
