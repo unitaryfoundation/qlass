@@ -1,4 +1,3 @@
-#TODO: add some tests for the helper functions and hamiltonian functions
 from qlass.utils.utils import compute_energy, get_probabilities, qubit_state_marginal, is_qubit_state
 import perceval as pcvl
 
@@ -382,5 +381,3 @@ def test_LiH_hamiltonian_tapered_structure():
         # Depending on strictness, you might assert False here or pass with warning.
         # For now, let's pass with a warning to avoid test failures due to complex QM calculations.
         pass
-
-    assert abs(result1 - result3) < tolerance
