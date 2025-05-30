@@ -9,8 +9,8 @@ dependencies = [
 "qiskit==1.4.2",
 "numpy",
 "perceval-quandela==0.13.0",
-"qiskit_aer",
-"qiskit_nature",
+"openfermion",
+"openfermionpyscf",
 "pyscf",
 "tqdm",
 "numba"
