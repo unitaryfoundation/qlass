@@ -1,4 +1,5 @@
-from qlass.utils.utils import compute_energy, get_probabilities, qubit_state_marginal, is_qubit_state
+from qlass.utils.utils import compute_energy, get_probabilities, qubit_state_marginal, is_qubit_state, loss_function
+from qlass.quantum_chemistry.hamiltonians import pauli_commute, group_commuting_pauli_terms
 import perceval as pcvl
 
 import warnings
@@ -102,6 +103,91 @@ def test_is_qubit_state():
     # test case 8
     state = pcvl.BasicState([0,0,0,1])
     assert is_qubit_state(state) == False
+
+def test_pauli_commute():
+    """
+    Test the pauli_commute function for various combinations of Pauli strings.
+    """
+    # test case 1: identical strings should commute
+    assert pauli_commute("XYZI", "XYZI") == True
+    
+    # test case 2: all identity strings should commute
+    assert pauli_commute("IIII", "IIII") == True
+    
+    # test case 3: strings that differ in even number of non-identity positions should commute
+    assert pauli_commute("XYZI", "XZYI") == True  # differ at positions 1,2 (Y≠Z, Z≠Y) = 2 differences (even)
+    
+    # test case 4: strings that differ in odd number of non-identity positions should not commute
+    assert pauli_commute("XYZI", "XZII") == False  # differ at position 1 (Y≠Z) = 1 difference (odd)
+    
+    # test case 5: simple 2-qubit case - should commute (different operators on different qubits)
+    assert pauli_commute("XY", "YX") == True  # differ at positions 0,1 (X≠Y, Y≠X) = 2 differences (even) → commute
+    
+    # test case 6: simple 2-qubit case - should commute  
+    assert pauli_commute("XX", "XX") == True
+    
+    # test case 7: mixed with identities
+    assert pauli_commute("XI", "IX") == True  # no positions where both are non-identity and different
+
+def test_group_commuting_pauli_terms():
+    """
+    Test the group_commuting_pauli_terms function with various Hamiltonian configurations.
+    """
+    # test case 1: empty hamiltonian
+    empty_ham = {}
+    assert group_commuting_pauli_terms(empty_ham) == []
+    
+    # test case 2: single term hamiltonian
+    single_ham = {"XYZI": 1.5}
+    result = group_commuting_pauli_terms(single_ham)
+    assert len(result) == 1
+    assert result[0] == {"XYZI": 1.5}
+    
+    # test case 3: all terms commute with each other
+    commuting_ham = {"XXII": 1.0, "IIYY": 0.5, "XXZZ": -0.3}
+    result = group_commuting_pauli_terms(commuting_ham)
+    assert len(result) == 1  # should all be in one group
+    assert result[0] == commuting_ham
+    
+    # test case 4: no terms commute (worst case)
+    non_commuting_ham = {"XI": 1.0, "YI": 0.5, "ZI": -0.3}
+    result = group_commuting_pauli_terms(non_commuting_ham)
+    assert len(result) == 3  # each term in its own group
+    
+    # test case 5: mixed scenario with some commuting groups
+    mixed_ham = {"XXII": 1.0, "IIYY": 0.5, "XYII": 0.3, "IIXY": -0.2}
+    result = group_commuting_pauli_terms(mixed_ham)
+    # XXII and IIYY should commute (no overlap in non-identity positions)
+    # XYII and IIXY should commute (no overlap in non-identity positions)
+    assert len(result) == 2
+
+def test_loss_function_automatic_grouping():
+    """
+    Test that loss_function automatically uses Pauli grouping when available.
+    This test verifies that the function can import and use the grouping functionality.
+    """
+    # Define a simple mock executor for testing
+    def mock_executor(params, pauli_string):
+        # Return a simple mock result that's consistent
+        return {'results': [pcvl.BasicState([1,0,0,1]), pcvl.BasicState([0,1,1,0])]}
+    
+    # test case 1: simple 2-qubit hamiltonian with commuting terms
+    simple_ham = {"II": 1.0, "ZI": 0.5, "IZ": -0.3, "ZZ": 0.2}
+    test_params = np.array([0.1, 0.2])
+    
+    # Function should work with automatic grouping
+    result = loss_function(test_params, simple_ham, mock_executor)
+    assert isinstance(result, float), "loss_function should return a float"
+    
+    # test case 2: empty hamiltonian should work
+    empty_ham = {}
+    result_empty = loss_function(test_params, empty_ham, mock_executor)
+    assert result_empty == 0.0, "Empty Hamiltonian should give zero loss"
+    
+    # test case 3: single term should work
+    single_ham = {"ZZ": 1.0}
+    result_single = loss_function(test_params, single_ham, mock_executor)
+    assert isinstance(result_single, float), "Single term should work correctly"
 
 def test_vqe_pipeline():
 

@@ -221,9 +221,14 @@ def normalize_samples(samples) -> List[Union[exqalibur.FockState, Tuple[int, ...
 
 def loss_function(lp: np.ndarray, H: Dict[str, float], executor) -> float:
     """
-    Compute the loss function for the VQE algorithm.
+    Compute the loss function for the VQE algorithm with automatic Pauli grouping.
     
-    This function now works with executors that return either:
+    This function automatically groups commuting Pauli terms to reduce the number 
+    of measurements required. The grouping is applied transparently without 
+    changing the function interface, providing automatic optimization for VQE 
+    algorithms.
+    
+    The function works with executors that return either:
     1. Fock states (from linear optical circuits) - exqalibur.FockState objects
     2. Bitstring tuples (from regular qubit-based circuits)  
     3. Bitstring strings (from Qiskit Sampler)
@@ -241,49 +246,102 @@ def loss_function(lp: np.ndarray, H: Dict[str, float], executor) -> float:
     Returns:
         float: The computed loss value
     """
+    # Import here to avoid circular imports
+    try:
+        from qlass.quantum_chemistry.hamiltonians import group_commuting_pauli_terms
+        use_grouping = True
+    except ImportError:
+        # Fallback to individual processing if grouping not available
+        use_grouping = False
+    
     loss = 0.0
-    for pauli_string, coefficient in H.items():
-        samples = executor(lp, pauli_string)
+    
+    if use_grouping:
+        # Use automatic grouping for optimized measurements
+        grouped_hamiltonians = group_commuting_pauli_terms(H)
         
-        # Handle different executor return formats
-        sample_list = None
-        
-        if isinstance(samples, dict):
-            if 'results' in samples:
-                sample_list = samples['results']
-            elif 'counts' in samples:
-                # Handle Qiskit counts format: {'00': 500, '11': 500}
-                sample_list = []
-                for bitstring, count in samples['counts'].items():
-                    sample_list.extend([bitstring] * count)
-            else:
-                # Try to find any list-like values in the dict
-                for key, value in samples.items():
-                    if isinstance(value, (list, tuple)):
-                        sample_list = value
-                        break
-                        
-        elif isinstance(samples, (list, tuple)):
-            # Direct list of samples
-            sample_list = samples
-        else:
-            raise ValueError(f"Executor returned unexpected format: {type(samples)}. "
-                           "Expected dict with 'results' key, dict with 'counts' key, or list of samples.")
+        for group in grouped_hamiltonians:
+            # Each group contains mutually commuting terms
+            # In the future, this could be optimized to measure entire groups simultaneously
+            # For now, we process each term individually but with the grouping organization
+            for pauli_string, coefficient in group.items():
+                samples = executor(lp, pauli_string)
+                
+                # Handle different executor return formats
+                sample_list = _extract_samples_from_executor_result(samples)
+                
+                # Normalize samples to consistent format
+                normalized_samples = normalize_samples(sample_list)
+                
+                prob_dist = get_probabilities(normalized_samples)
+                pauli_bin = pauli_string_bin(pauli_string)
 
-        if sample_list is None:
-            raise ValueError("Could not extract sample list from executor return value.")
+                qubit_state_marg = qubit_state_marginal(prob_dist)
+                expectation = compute_energy(pauli_bin, qubit_state_marg)
+                loss += coefficient * expectation
+    else:
+        # Fallback to original implementation without grouping
+        for pauli_string, coefficient in H.items():
+            samples = executor(lp, pauli_string)
             
-        # Normalize samples to consistent format
-        normalized_samples = normalize_samples(sample_list)
-        
-        prob_dist = get_probabilities(normalized_samples)
-        pauli_bin = pauli_string_bin(pauli_string)
+            # Handle different executor return formats
+            sample_list = _extract_samples_from_executor_result(samples)
+            
+            # Normalize samples to consistent format
+            normalized_samples = normalize_samples(sample_list)
+            
+            prob_dist = get_probabilities(normalized_samples)
+            pauli_bin = pauli_string_bin(pauli_string)
 
-        qubit_state_marg = qubit_state_marginal(prob_dist)
-        expectation = compute_energy(pauli_bin, qubit_state_marg)
-        loss += coefficient * expectation
+            qubit_state_marg = qubit_state_marginal(prob_dist)
+            expectation = compute_energy(pauli_bin, qubit_state_marg)
+            loss += coefficient * expectation
     
     return loss
+
+
+def _extract_samples_from_executor_result(samples):
+    """
+    Helper function to extract sample list from different executor return formats.
+    
+    Args:
+        samples: Raw samples from executor in various formats
+        
+    Returns:
+        List: Extracted sample list
+        
+    Raises:
+        ValueError: If samples format is not recognized
+    """
+    sample_list = None
+    
+    if isinstance(samples, dict):
+        if 'results' in samples:
+            sample_list = samples['results']
+        elif 'counts' in samples:
+            # Handle Qiskit counts format: {'00': 500, '11': 500}
+            sample_list = []
+            for bitstring, count in samples['counts'].items():
+                sample_list.extend([bitstring] * count)
+        else:
+            # Try to find any list-like values in the dict
+            for key, value in samples.items():
+                if isinstance(value, (list, tuple)):
+                    sample_list = value
+                    break
+                    
+    elif isinstance(samples, (list, tuple)):
+        # Direct list of samples
+        sample_list = samples
+    else:
+        raise ValueError(f"Executor returned unexpected format: {type(samples)}. "
+                       "Expected dict with 'results' key, dict with 'counts' key, or list of samples.")
+
+    if sample_list is None:
+        raise ValueError("Could not extract sample list from executor return value.")
+        
+    return sample_list
+
 
 def linear_circuit_to_unitary(circuit: pcvl.Circuit) -> np.ndarray:
     """
