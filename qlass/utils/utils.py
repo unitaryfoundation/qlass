@@ -16,10 +16,10 @@ M_circ = pcvl.Circuit.decomposition(M_matrix, mzi, shape=pcvl.InterferometerShap
 
 def is_qubit_state(state: exqalibur.FockState) -> Union[Tuple[int, ...], bool]:
     """
-    Check if a given state is a valid qubit state.
+    Check if a given Fock state is a valid qubit state.
 
     Args:
-        state (exqalibur.FockState): The state to check
+        state (exqalibur.FockState): The Fock state to check
 
     Returns:
         Union[Tuple[int, ...], bool]: The corresponding qubit state if valid, False otherwise
@@ -36,42 +36,79 @@ def is_qubit_state(state: exqalibur.FockState) -> Union[Tuple[int, ...], bool]:
         
     return tuple(q_state)
 
-def qubit_state_marginal(prob_dist: Dict[exqalibur.FockState, float]) -> Dict[Tuple[int, ...], float]:
+def qubit_state_marginal(prob_dist: Dict[Union[exqalibur.FockState, Tuple[int, ...]], float]) -> Dict[Tuple[int, ...], float]:
     """
-    Calculate the frequencies of measured qubit states from a probability distribution
-    of Fock states.
+    Calculate the frequencies of measured qubit states from a probability distribution.
+    
+    This function now handles both Fock states and bitstring inputs:
+    - If input contains Fock states, converts them to qubit states using is_qubit_state
+    - If input already contains bitstrings (tuples), passes them through directly
 
     Args:
-        prob_dist (Dict[exqalibur.FockState, float]): Probability distribution of Fock states
+        prob_dist (Dict[Union[exqalibur.FockState, Tuple[int, ...]], float]): 
+                  Probability distribution of either Fock states or bitstrings
 
     Returns:
         Dict[Tuple[int, ...], float]: Frequencies of measured qubit states
     """
     q_state_frequency = {}
     total_prob_mass = 0
-    for state in prob_dist:
-        q_state = is_qubit_state(state)
-        if q_state is not False:
-            total_prob_mass += prob_dist[state]
-            q_state_frequency[q_state] = prob_dist[state]
     
-    for key in q_state_frequency.keys():
-        q_state_frequency[key] /= total_prob_mass
+    # Check if we're dealing with Fock states or bitstrings
+    if not prob_dist:
+        return q_state_frequency
+        
+    first_key = next(iter(prob_dist.keys()))
+    
+    if isinstance(first_key, tuple):
+        # Input is already bitstrings, normalize probabilities and return
+        total_prob_mass = sum(prob_dist.values())
+        for bitstring, prob in prob_dist.items():
+            q_state_frequency[bitstring] = prob / total_prob_mass
+    else:
+        # Input is Fock states, convert to qubit states
+        for state in prob_dist:
+            q_state = is_qubit_state(state)
+            if q_state is not False:
+                total_prob_mass += prob_dist[state]
+                if q_state in q_state_frequency:
+                    q_state_frequency[q_state] += prob_dist[state]
+                else:
+                    q_state_frequency[q_state] = prob_dist[state]
+        
+        # Normalize probabilities
+        if total_prob_mass > 0:
+            for key in q_state_frequency.keys():
+                q_state_frequency[key] /= total_prob_mass
     
     return q_state_frequency
 
-def get_probabilities(samples: List[exqalibur.FockState]) -> Dict[exqalibur.FockState, float]:
+def get_probabilities(samples: List[Union[exqalibur.FockState, Tuple[int, ...], str]]) -> Dict[Union[exqalibur.FockState, Tuple[int, ...]], float]:
     """
-    Get the probabilities of sampled Fock states.
+    Get the probabilities of sampled states.
+    
+    This function now handles:
+    - Fock states: List[exqalibur.FockState] -> Dict[exqalibur.FockState, float]
+    - Bitstring tuples: List[Tuple[int, ...]] -> Dict[Tuple[int, ...], float]  
+    - Bitstring strings (from Qiskit): List[str] -> Dict[Tuple[int, ...], float]
 
     Args:
-        samples (List[exqalibur.FockState]): Sampled Fock states
+        samples (List[Union[exqalibur.FockState, Tuple[int, ...], str]]): 
+                Sampled states (Fock states, bitstring tuples, or bitstring strings)
 
     Returns:
-        Dict[exqalibur.FockState, float]: Probabilities of sampled Fock states
+        Dict[Union[exqalibur.FockState, Tuple[int, ...]], float]: 
+        Probabilities of sampled states
     """
+    if not samples:
+        return {}
+        
     prob_dist = {}
     for state in samples:
+        # Convert string bitstrings (from Qiskit) to tuples
+        if isinstance(state, str):
+            state = tuple(int(bit) for bit in state)
+            
         if state in prob_dist:
             prob_dist[state] += 1
         else:
@@ -94,12 +131,18 @@ def compute_energy(pauli_bin: Tuple[int, ...], res: Dict[Tuple[int, ...], float]
     Returns:
         float: The corresponding expectation value
     """
-    for key in res.keys():
+    if not res:
+        return 0.0
+        
+    # Create a copy to avoid modifying the original dictionary
+    res_copy = res.copy()
+    
+    for key in res_copy.keys():
         inner = np.dot(key, pauli_bin)
         sign = (-1)**inner
-        res[key] *= sign
+        res_copy[key] *= sign
     
-    energy = float(np.sum(np.fromiter(res.values(), dtype=float), where=np.isfinite))
+    energy = float(np.sum(np.fromiter(res_copy.values(), dtype=float), where=np.isfinite))
     return energy
 
 def pauli_string_bin(pauli_string: str) -> Tuple[int, ...]:
@@ -143,14 +186,57 @@ def rotate_qubits(pauli_string: str, vqe_circuit: pcvl.Circuit | qiskit.QuantumC
     return vqe_circuit
 
 
+def normalize_samples(samples) -> List[Union[exqalibur.FockState, Tuple[int, ...]]]:
+    """
+    Normalize samples from different executor formats to a consistent format.
+    
+    Handles:
+    - Qiskit bitstring format: ['00', '01', '11'] -> [(0,0), (0,1), (1,1)]
+    - Already normalized tuples: [(0,0), (0,1)] -> [(0,0), (0,1)]
+    - ExQalibur FockStates: [FockState, ...] -> [FockState, ...]
+    
+    Args:
+        samples: Raw samples in various formats
+        
+    Returns:
+        List[Union[exqalibur.FockState, Tuple[int, ...]]]: Normalized samples
+    """
+    if not samples:
+        return []
+        
+    normalized = []
+    for sample in samples:
+        if isinstance(sample, str):
+            # Convert Qiskit bitstring format '00' -> (0,0)
+            normalized.append(tuple(int(bit) for bit in sample))
+        elif isinstance(sample, (list, tuple)) and all(isinstance(x, (int, np.integer)) for x in sample):
+            # Convert list/tuple of ints to tuple
+            normalized.append(tuple(sample))
+        else:
+            # Assume it's already in correct format (e.g., exqalibur.FockState)
+            normalized.append(sample)
+    
+    return normalized
+
+
 def loss_function(lp: np.ndarray, H: Dict[str, float], executor) -> float:
     """
     Compute the loss function for the VQE algorithm.
+    
+    This function now works with executors that return either:
+    1. Fock states (from linear optical circuits) - exqalibur.FockState objects
+    2. Bitstring tuples (from regular qubit-based circuits)  
+    3. Bitstring strings (from Qiskit Sampler)
+    
+    The executor should return samples in one of these formats:
+    - Dict with 'results' key: {'results': [samples]}
+    - Direct list of samples: [samples]
+    - Qiskit-style format with bitstrings or counts
 
     Args:
         lp (np.ndarray): Array of parameter values
         H (Dict[str, float]): Hamiltonian dictionary
-        executor: A callable function that executes the quantum circuit
+        executor: A callable function that executes the quantum circuit.
 
     Returns:
         float: The computed loss value
@@ -158,8 +244,39 @@ def loss_function(lp: np.ndarray, H: Dict[str, float], executor) -> float:
     loss = 0.0
     for pauli_string, coefficient in H.items():
         samples = executor(lp, pauli_string)
+        
+        # Handle different executor return formats
+        sample_list = None
+        
+        if isinstance(samples, dict):
+            if 'results' in samples:
+                sample_list = samples['results']
+            elif 'counts' in samples:
+                # Handle Qiskit counts format: {'00': 500, '11': 500}
+                sample_list = []
+                for bitstring, count in samples['counts'].items():
+                    sample_list.extend([bitstring] * count)
+            else:
+                # Try to find any list-like values in the dict
+                for key, value in samples.items():
+                    if isinstance(value, (list, tuple)):
+                        sample_list = value
+                        break
+                        
+        elif isinstance(samples, (list, tuple)):
+            # Direct list of samples
+            sample_list = samples
+        else:
+            raise ValueError(f"Executor returned unexpected format: {type(samples)}. "
+                           "Expected dict with 'results' key, dict with 'counts' key, or list of samples.")
 
-        prob_dist = get_probabilities(samples['results'])
+        if sample_list is None:
+            raise ValueError("Could not extract sample list from executor return value.")
+            
+        # Normalize samples to consistent format
+        normalized_samples = normalize_samples(sample_list)
+        
+        prob_dist = get_probabilities(normalized_samples)
         pauli_bin = pauli_string_bin(pauli_string)
 
         qubit_state_marg = qubit_state_marginal(prob_dist)
