@@ -83,7 +83,7 @@ def qubit_state_marginal(prob_dist: Dict[Union[exqalibur.FockState, Tuple[int, .
     
     return q_state_frequency
 
-def get_probabilities(samples: List[Union[exqalibur.FockState, Tuple[int, ...], str]]) -> Dict[Union[exqalibur.FockState, Tuple[int, ...]], float]:
+def get_probabilities(samples: Union[List[Union[exqalibur.FockState, Tuple[int, ...], str]], Dict[str, float]]) -> Dict[Union[exqalibur.FockState, Tuple[int, ...]], float]:
     """
     Get the probabilities of sampled states.
     
@@ -91,10 +91,11 @@ def get_probabilities(samples: List[Union[exqalibur.FockState, Tuple[int, ...], 
     - Fock states: List[exqalibur.FockState] -> Dict[exqalibur.FockState, float]
     - Bitstring tuples: List[Tuple[int, ...]] -> Dict[Tuple[int, ...], float]  
     - Bitstring strings (from Qiskit): List[str] -> Dict[Tuple[int, ...], float]
+    - Frequency dictionary: Dict[str, float] -> Dict[Tuple[int, ...], float]
 
     Args:
-        samples (List[Union[exqalibur.FockState, Tuple[int, ...], str]]): 
-                Sampled states (Fock states, bitstring tuples, or bitstring strings)
+        samples (Union[List[Union[exqalibur.FockState, Tuple[int, ...], str]], Dict[str, float]]): 
+                Sampled states (Fock states, bitstring tuples, bitstring strings) or frequency dict
 
     Returns:
         Dict[Union[exqalibur.FockState, Tuple[int, ...]], float]: 
@@ -102,7 +103,25 @@ def get_probabilities(samples: List[Union[exqalibur.FockState, Tuple[int, ...], 
     """
     if not samples:
         return {}
+    
+    # Handle frequency dictionary input (Dict[str, float])
+    if isinstance(samples, dict):
+        prob_dist = {}
+        total_freq = sum(samples.values())
         
+        if total_freq == 0:
+            return {}
+            
+        for bitstring, freq in samples.items():
+            # Convert string bitstrings to tuples
+            if isinstance(bitstring, str):
+                state = tuple(int(bit) for bit in bitstring)
+            else:
+                state = bitstring
+            prob_dist[state] = freq / total_freq
+        return prob_dist
+        
+    # Handle list input
     prob_dist = {}
     for state in samples:
         # Convert string bitstrings (from Qiskit) to tuples
@@ -194,6 +213,8 @@ def normalize_samples(samples) -> List[Union[exqalibur.FockState, Tuple[int, ...
     - Qiskit bitstring format: ['00', '01', '11'] -> [(0,0), (0,1), (1,1)]
     - Already normalized tuples: [(0,0), (0,1)] -> [(0,0), (0,1)]
     - ExQalibur FockStates: [FockState, ...] -> [FockState, ...]
+    - Numpy arrays: [np.array([0,1])] -> [(0,1)]
+    - Mixed formats
     
     Args:
         samples: Raw samples in various formats
@@ -208,10 +229,27 @@ def normalize_samples(samples) -> List[Union[exqalibur.FockState, Tuple[int, ...
     for sample in samples:
         if isinstance(sample, str):
             # Convert Qiskit bitstring format '00' -> (0,0)
-            normalized.append(tuple(int(bit) for bit in sample))
+            try:
+                normalized.append(tuple(int(bit) for bit in sample))
+            except ValueError:
+                # Skip invalid string formats
+                continue
+        elif isinstance(sample, np.ndarray):
+            # Convert numpy array to tuple
+            try:
+                normalized.append(tuple(int(x) for x in sample.flatten()))
+            except (ValueError, TypeError):
+                continue
         elif isinstance(sample, (list, tuple)) and all(isinstance(x, (int, np.integer)) for x in sample):
             # Convert list/tuple of ints to tuple
-            normalized.append(tuple(sample))
+            normalized.append(tuple(int(x) for x in sample))
+        elif hasattr(sample, '__iter__') and not isinstance(sample, str):
+            # Handle other iterable types
+            try:
+                normalized.append(tuple(int(x) for x in sample))
+            except (ValueError, TypeError):
+                # Assume it's already in correct format (e.g., exqalibur.FockState)
+                normalized.append(sample)
         else:
             # Assume it's already in correct format (e.g., exqalibur.FockState)
             normalized.append(sample)
@@ -223,14 +261,17 @@ def loss_function(lp: np.ndarray, H: Dict[str, float], executor) -> float:
     """
     Compute the loss function for the VQE algorithm.
     
-    This function now works with executors that return either:
+    This function works with executors that return any of the following formats:
     1. Fock states (from linear optical circuits) - exqalibur.FockState objects
     2. Bitstring tuples (from regular qubit-based circuits)  
     3. Bitstring strings (from Qiskit Sampler)
+    4. Frequency dictionaries (Dict[str, float]) - bitstring frequencies
     
     The executor should return samples in one of these formats:
-    - Dict with 'results' key: {'results': [samples]}
+    - Dict with 'results' key: {'results': [samples]} or {'results': Dict[str, float]}
+    - Dict with 'counts' key: {'counts': {'00': 500, '11': 500}}
     - Direct list of samples: [samples]
+    - Direct frequency dictionary: {'00': 0.5, '11': 0.5}
     - Qiskit-style format with bitstrings or counts
 
     Args:
@@ -246,39 +287,58 @@ def loss_function(lp: np.ndarray, H: Dict[str, float], executor) -> float:
         samples = executor(lp, pauli_string)
         
         # Handle different executor return formats
-        sample_list = None
+        sample_data = None
         
         if isinstance(samples, dict):
             if 'results' in samples:
-                sample_list = samples['results']
+                sample_data = samples['results']
             elif 'counts' in samples:
                 # Handle Qiskit counts format: {'00': 500, '11': 500}
-                sample_list = []
-                for bitstring, count in samples['counts'].items():
-                    sample_list.extend([bitstring] * count)
+                counts = samples['counts']
+                if isinstance(counts, dict):
+                    # Convert counts to frequency dictionary
+                    total_counts = sum(counts.values())
+                    if total_counts > 0:
+                        sample_data = {k: v/total_counts for k, v in counts.items()}
+                    else:
+                        sample_data = {}
+                else:
+                    raise ValueError(f"Invalid counts format: {type(counts)}. Expected dict.")
             else:
-                # Try to find any list-like values in the dict
-                for key, value in samples.items():
-                    if isinstance(value, (list, tuple)):
-                        sample_list = value
-                        break
-                        
+                # Check if this is a direct frequency dictionary (all values are floats)
+                if all(isinstance(v, (int, float)) for v in samples.values()):
+                    # Treat as frequency dictionary
+                    sample_data = samples
+                else:
+                    # Try to find any list-like values in the dict
+                    for key, value in samples.items():
+                        if isinstance(value, (list, tuple)):
+                            sample_data = value
+                            break
+                            
         elif isinstance(samples, (list, tuple)):
             # Direct list of samples
-            sample_list = samples
+            sample_data = samples
+        elif isinstance(samples, dict) and all(isinstance(k, str) for k in samples.keys()):
+            # Direct frequency dictionary format
+            sample_data = samples
         else:
-            raise ValueError(f"Executor returned unexpected format: {type(samples)}. "
-                           "Expected dict with 'results' key, dict with 'counts' key, or list of samples.")
+            raise ValueError(
+                f"Executor returned unexpected format: {type(samples)}. "
+                f"Expected dict with 'results'/'counts' key, list of samples, or frequency dict."
+            )
 
-        if sample_list is None:
-            raise ValueError("Could not extract sample list from executor return value.")
+        if sample_data is None:
+            raise ValueError("Could not extract sample data from executor return value.")
             
-        # Normalize samples to consistent format
-        normalized_samples = normalize_samples(sample_list)
+        # Get probabilities - this now handles both lists and frequency dicts
+        prob_dist = get_probabilities(sample_data)
         
-        prob_dist = get_probabilities(normalized_samples)
+        if not prob_dist:
+            # If no valid samples, skip this term
+            continue
+            
         pauli_bin = pauli_string_bin(pauli_string)
-
         qubit_state_marg = qubit_state_marginal(prob_dist)
         expectation = compute_energy(pauli_bin, qubit_state_marg)
         loss += coefficient * expectation

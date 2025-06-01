@@ -381,3 +381,143 @@ def test_LiH_hamiltonian_tapered_structure():
         # Depending on strictness, you might assert False here or pass with warning.
         # For now, let's pass with a warning to avoid test failures due to complex QM calculations.
         pass
+
+def test_get_probabilities_frequency_dict():
+    """Test get_probabilities with frequency dictionary input."""
+    from qlass.utils.utils import get_probabilities
+    
+    # Test case 1: Frequency dictionary with string keys
+    freq_dict = {'00': 0.5, '01': 0.3, '10': 0.2}
+    expected = {(0, 0): 0.5, (0, 1): 0.3, (1, 0): 0.2}
+    result = get_probabilities(freq_dict)
+    assert result == expected
+    
+    # Test case 2: Frequency dictionary that needs normalization
+    freq_dict = {'0': 100, '1': 200}
+    expected = {(0,): 100/300, (1,): 200/300}
+    result = get_probabilities(freq_dict)
+    assert result == expected
+    
+    # Test case 3: Empty frequency dictionary
+    result = get_probabilities({})
+    assert result == {}
+    
+    # Test case 4: Frequency dictionary with zero total
+    freq_dict = {'00': 0, '11': 0}
+    result = get_probabilities(freq_dict)
+    assert result == {}
+
+def test_loss_function_frequency_dict_executor():
+    """Test loss function with executor returning frequency dictionary."""
+    from qlass.utils.utils import loss_function
+    
+    # Mock executor that returns frequency dictionary
+    def freq_dict_executor(params, pauli_string):
+        return {'00': 0.25, '01': 0.25, '10': 0.25, '11': 0.25}
+    
+    hamiltonian = {"ZZ": 1.0, "XX": -0.5}
+    result = loss_function(np.array([0.1, 0.2]), hamiltonian, freq_dict_executor)
+    assert isinstance(result, float)
+
+def test_loss_function_results_frequency_dict():
+    """Test loss function with executor returning {'results': freq_dict}."""
+    from qlass.utils.utils import loss_function
+    
+    # Mock executor that returns results with frequency dict
+    def results_freq_executor(params, pauli_string):
+        return {'results': {'00': 0.4, '01': 0.3, '10': 0.2, '11': 0.1}}
+    
+    hamiltonian = {"II": 1.0, "ZI": 0.2}
+    result = loss_function(np.array([0.1, 0.2]), hamiltonian, results_freq_executor)
+    assert isinstance(result, float)
+
+def test_loss_function_improved_counts_format():
+    """Test loss function with improved counts handling."""
+    from qlass.utils.utils import loss_function
+    
+    # Mock executor with counts that need normalization
+    def counts_executor(params, pauli_string):
+        return {'counts': {'00': 1000, '01': 500, '10': 300, '11': 200}}
+    
+    hamiltonian = {"ZZ": 1.0, "XX": -0.5, "II": 0.1}
+    result = loss_function(np.array([0.1, 0.2]), hamiltonian, counts_executor)
+    assert isinstance(result, float)
+
+def test_loss_function_empty_samples_handling():
+    """Test loss function handles empty samples gracefully."""
+    from qlass.utils.utils import loss_function
+    
+    # Mock executor that sometimes returns empty samples
+    def empty_samples_executor(params, pauli_string):
+        if pauli_string == "XX":
+            return []  # Empty samples
+        else:
+            return [(0, 0), (1, 1)]
+    
+    hamiltonian = {"ZZ": 1.0, "XX": -0.5}
+    result = loss_function(np.array([0.1, 0.2]), hamiltonian, empty_samples_executor)
+    assert isinstance(result, float)  # Should not crash
+
+def test_loss_function_mixed_executor_formats():
+    """Test loss function consistency across different executor formats with same data."""
+    from qlass.utils.utils import loss_function
+    
+    # All executors return equivalent data in different formats
+    def list_executor(params, pauli_string):
+        return [(0, 0), (0, 1), (1, 0), (1, 1)]
+    
+    def freq_executor(params, pauli_string):
+        return {'00': 0.25, '01': 0.25, '10': 0.25, '11': 0.25}
+    
+    def results_list_executor(params, pauli_string):
+        return {'results': ['00', '01', '10', '11']}
+    
+    def results_freq_executor(params, pauli_string):
+        return {'results': {'00': 0.25, '01': 0.25, '10': 0.25, '11': 0.25}}
+    
+    def counts_executor(params, pauli_string):
+        return {'counts': {'00': 250, '01': 250, '10': 250, '11': 250}}
+    
+    hamiltonian = {"ZZ": 1.0, "XX": -0.5}
+    params = np.array([0.1, 0.2])
+    
+    # All should give the same result
+    result1 = loss_function(params, hamiltonian, list_executor)
+    result2 = loss_function(params, hamiltonian, freq_executor)
+    result3 = loss_function(params, hamiltonian, results_list_executor)
+    result4 = loss_function(params, hamiltonian, results_freq_executor)
+    result5 = loss_function(params, hamiltonian, counts_executor)
+    
+    tolerance = 1e-10
+    assert abs(result1 - result2) < tolerance
+    assert abs(result1 - result3) < tolerance
+    assert abs(result1 - result4) < tolerance
+    assert abs(result1 - result5) < tolerance
+
+def test_loss_function_error_handling_improved():
+    """Test improved error handling in loss function."""
+    from qlass.utils.utils import loss_function
+    
+    # Test invalid executor return type
+    def invalid_executor1(params, pauli_string):
+        return "invalid_string_format"
+    
+    # Test invalid counts format
+    def invalid_executor2(params, pauli_string):
+        return {'counts': "not_a_dict"}
+    
+    hamiltonian = {"ZZ": 1.0}
+    
+    # Should raise ValueError for invalid format
+    try:
+        loss_function(np.array([0.1]), hamiltonian, invalid_executor1)
+        assert False, "Expected ValueError for invalid format"
+    except ValueError as e:
+        assert "unexpected format" in str(e).lower()
+    
+    # Should raise ValueError for invalid counts
+    try:
+        loss_function(np.array([0.1]), hamiltonian, invalid_executor2)
+        assert False, "Expected ValueError for invalid counts"
+    except ValueError as e:
+        assert "invalid counts format" in str(e).lower()
