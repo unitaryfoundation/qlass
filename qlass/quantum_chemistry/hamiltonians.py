@@ -7,7 +7,8 @@ from openfermion.transforms import get_fermion_operator, jordan_wigner
 from openfermion.ops import InteractionOperator, QubitOperator
 from openfermionpyscf import run_pyscf
 
-from typing import Dict
+from typing import Dict, List
+
 def sparsepauliop_dictionary(H: QubitOperator) -> Dict[str, float]:
     """
     Converts an OpenFermion QubitOperator into a dictionary representation.
@@ -91,6 +92,135 @@ def sparsepauliop_dictionary(H: QubitOperator) -> Dict[str, float]:
         pauli_dict[pauli_key] = float(coefficient.real)
     
     return pauli_dict
+
+def pauli_commute(p1: str, p2: str) -> bool:
+    """
+    Check if two Pauli strings commute.
+    
+    Two Pauli strings commute if and only if the number of positions where
+    both have non-identity operators that are different is even.
+
+    Args:
+        p1 (str): First Pauli string
+        p2 (str): Second Pauli string
+
+    Returns:
+        bool: True if the Pauli strings commute, False otherwise
+        
+    Raises:
+        ValueError: If Pauli strings have different lengths
+    """
+    if len(p1) != len(p2):
+        raise ValueError("Pauli strings must have the same length")
+    
+    diff_count = 0
+    for i in range(len(p1)):
+        # Count positions where both are non-identity and different
+        if p1[i] != 'I' and p2[i] != 'I' and p1[i] != p2[i]:
+            diff_count += 1
+    
+    return diff_count % 2 == 0
+
+def group_commuting_pauli_terms(hamiltonian: Dict[str, float]) -> List[Dict[str, float]]:
+    """
+    Group commuting Pauli terms in a Hamiltonian.
+    
+    This function takes a Hamiltonian represented as a dictionary of Pauli strings
+    and their coefficients, and returns a list of Hamiltonians where each group
+    contains only mutually commuting Pauli terms. This grouping can be used to
+    reduce the number of measurements needed in quantum algorithms like VQE.
+    
+    This function provides a more general approach than OpenFermion's 
+    group_into_tensor_product_basis_sets, which only groups terms that are
+    diagonal in the same tensor product basis. Our function groups all
+    mutually commuting terms regardless of the measurement basis required.
+
+    Args:
+        hamiltonian (Dict[str, float]): Hamiltonian dictionary with Pauli string 
+                                       keys and coefficient values
+
+    Returns:
+        List[Dict[str, float]]: List of grouped Hamiltonians, where each group
+                               contains mutually commuting Pauli terms
+    """
+    if not hamiltonian:
+        return []
+    
+    groups = []
+    
+    for pauli_string, coefficient in hamiltonian.items():
+        placed = False
+        
+        # Try to place this term in an existing group
+        for group in groups:
+            # Check if this term commutes with all terms in the group
+            if all(pauli_commute(pauli_string, existing) for existing in group.keys()):
+                group[pauli_string] = coefficient
+                placed = True
+                break
+        
+        # If it doesn't fit in any existing group, create a new one
+        if not placed:
+            groups.append({pauli_string: coefficient})
+    
+    return groups
+
+def group_commuting_pauli_terms_openfermion_hybrid(hamiltonian: Dict[str, float]) -> List[Dict[str, float]]:
+    """
+    Hybrid approach that tries to use OpenFermion's grouping when possible,
+    fallback to our implementation otherwise.
+    
+    This function attempts to leverage OpenFermion's optimized grouping functions
+    when they are applicable, while maintaining full compatibility with our
+    general commuting term grouping for all other cases.
+
+    Args:
+        hamiltonian (Dict[str, float]): Hamiltonian dictionary with Pauli string 
+                                       keys and coefficient values
+
+    Returns:
+        List[Dict[str, float]]: List of grouped Hamiltonians, where each group
+                               contains mutually commuting Pauli terms
+    """
+    if not hamiltonian:
+        return []
+    
+    try:
+        # Try to use OpenFermion's grouping for tensor product basis sets
+        from openfermion.measurements import group_into_tensor_product_basis_sets
+        from openfermion.ops import QubitOperator
+        
+        # Convert Dict to QubitOperator
+        qubit_op = QubitOperator()
+        for pauli_string, coeff in hamiltonian.items():
+            # Convert our format to OpenFermion format
+            of_term = []
+            for i, pauli in enumerate(pauli_string):
+                if pauli != 'I':
+                    of_term.append((i, pauli))
+            
+            if of_term:
+                qubit_op += QubitOperator(tuple(of_term), coeff)
+            else:
+                # Identity term
+                qubit_op += QubitOperator((), coeff)
+        
+        # Use OpenFermion's grouping
+        of_groups = group_into_tensor_product_basis_sets(qubit_op)
+        
+        # Convert back to our format
+        groups = []
+        for of_group in of_groups:
+            group_dict = sparsepauliop_dictionary(of_group)
+            if group_dict:  # Only add non-empty groups
+                groups.append(group_dict)
+        
+        return groups
+        
+    except (ImportError, Exception):
+        # Fallback to our implementation if OpenFermion grouping fails
+        return group_commuting_pauli_terms(hamiltonian)
+
 def LiH_hamiltonian(R=1.5, charge=0, spin=0, num_electrons=2, num_orbitals=2) -> Dict[str, float]:
     """
     Generate the qubit Hamiltonian for the LiH molecule at a given bond length.
@@ -182,7 +312,6 @@ def generate_random_hamiltonian(num_qubits: int) -> Dict[str, float]:
     H = dict(zip(bitstrings, random_values))
 
     return H
-
 
 def LiH_hamiltonian_tapered(R: float) -> Dict[str, float]:
     """
