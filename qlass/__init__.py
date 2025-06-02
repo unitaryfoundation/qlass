@@ -1,11 +1,14 @@
-# qlass/__init__.py
-
 # export from compiler module
 from .compiler.compiler import compile
 
 # export from problems module
 from .quantum_chemistry.classical_solution import hamiltonian_matrix, brute_force_minimize
-from .quantum_chemistry.hamiltonians import LiH_hamiltonian
+from .quantum_chemistry.hamiltonians import (
+    LiH_hamiltonian, 
+    pauli_commute, 
+    group_commuting_pauli_terms,
+    sparsepauliop_dictionary
+)
 
 # export from vqe module
 from .vqe.ansatz import le_ansatz, custom_unitary_ansatz
@@ -19,6 +22,9 @@ __all__ = [
     "hamiltonian_matrix",
     "brute_force_minimize",
     "LiH_hamiltonian",
+    "pauli_commute",
+    "group_commuting_pauli_terms",
+    "sparsepauliop_dictionary",
     "le_ansatz",
     "custom_unitary_ansatz",
     "loss_function",
