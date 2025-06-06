@@ -41,20 +41,8 @@ def sparsepauliop_dictionary(H: QubitOperator) -> Dict[str, float]:
                     max_qubit_idx = current_max_for_term
         num_qubits = max_qubit_idx + 1
     else:
-        # If there are no terms (H is an empty QubitOperator, representing zero),
-        # or if H is only an identity (QubitOperator('') which has H.terms = {(): 1.0}),
-        # default to a 1-qubit system for constructing identity strings.
-        # This ensures QubitOperator('') results in {'I': 1.0}.
-        # An empty QubitOperator() will result in num_qubits = 0 (from max_qubit_idx = -1),
-        # and the loop over H.terms won't run, returning an empty pauli_dict.
         num_qubits = max_qubit_idx + 1 # If max_qubit_idx remains -1, num_qubits becomes 0.
 
-    # If H is QubitOperator() (zero operator), num_qubits will be 0.
-    # If H is QubitOperator('') (identity), num_qubits will be 1 (from max_qubit_idx= -1 -> 0, then +1).
-    # This logic for num_qubits seems fine.
-    # The case for QubitOperator('') being handled as 'I' (1 qubit) is implicitly covered
-    # when the loop processes the {(): coefficient} term if num_qubits was set to 1.
-    # If num_qubits became 0 (for an empty QubitOperator), the identity string would be empty.
     # Let's ensure num_qubits is at least 1 if an identity term is present and no other terms define size.
     if not H.terms and num_qubits == 0 : # Truly empty QubitOperator
         return {} # An empty operator has no Pauli terms.
@@ -62,9 +50,7 @@ def sparsepauliop_dictionary(H: QubitOperator) -> Dict[str, float]:
         # This means H.terms only contains {(): coeff}, e.g. QubitOperator('')
         # max_qubit_idx was -1, num_qubits became 0. For an identity string, we need at least 1 qubit.
         num_qubits = 1
-
-
-    # Iterate through each term in the QubitOperator.
+        
     # A term consists of a Pauli product (pauli_string_openfermion) and its coefficient.
     for pauli_string_openfermion, coefficient in H.terms.items():
         if not pauli_string_openfermion:  # This is the global identity term, represented by an empty tuple `()`.
@@ -80,9 +66,6 @@ def sparsepauliop_dictionary(H: QubitOperator) -> Dict[str, float]:
                 if qubit_idx < num_qubits: # Ensure index is within bounds
                     pauli_array[qubit_idx] = pauli_op_char
                 else:
-                    # This case should ideally not happen if num_qubits was determined correctly.
-                    # It implies a Pauli operator acts on a qubit index higher than initially detected.
-                    # Handling this robustly might involve resizing pauli_array or raising an error.
                     # For now, we assume num_qubits is correctly pre-calculated.
                     pass 
             
@@ -271,12 +254,9 @@ def LiH_hamiltonian(R=1.5, charge=0, spin=0, num_electrons=2, num_orbitals=2) ->
         active_indices=active_indices
     )
     
-    # Remove nuclear repulsion energy for qiskit_nature compatibility
-    # qiskit_nature excludes nuclear energy from qubit hamiltonian
-    # but OpenFermion includes it by default
     from openfermion.ops import InteractionOperator
     molecular_hamiltonian_no_nuclear = InteractionOperator(
-        constant=0.0,  # Set constant to 0 to match qiskit_nature
+        constant=0.0,  
         one_body_tensor=molecular_hamiltonian.one_body_tensor,
         two_body_tensor=molecular_hamiltonian.two_body_tensor
     )
@@ -345,17 +325,12 @@ def LiH_hamiltonian_tapered(R: float) -> Dict[str, float]:
     # Run PySCF calculation
     molecule = run_pyscf(molecule, run_scf=True, run_fci=True)
     
-    # Apply active space equivalent to qiskit_nature's tapering approach
-    # This mimics ActiveSpaceTransformer(2, 3, active_orbitals=[1,2,5])
-    
     # Apply active space reduction equivalent to tapering
     # Freeze core orbital (1s of Li)
     n_core_orbitals = 1
     occupied_indices = list(range(n_core_orbitals))
     
-    # Select specific active orbitals (equivalent to qiskit_nature's selection)
-    # This corresponds to orbitals [1,2,5] from the original qiskit code
-    active_indices = [1, 2, 5]  # As specified in the original qiskit code
+    active_indices = [1, 2, 5]  
     
     try:
         # Attempt to get molecular hamiltonian with active space
@@ -370,7 +345,7 @@ def LiH_hamiltonian_tapered(R: float) -> Dict[str, float]:
             active_indices=[1, 2]  # Use only 2 active orbitals
         )
     
-    # Remove nuclear repulsion energy for consistency with qiskit_nature
+    # Remove nuclear repulsion energy
     from openfermion.ops import InteractionOperator
     molecular_hamiltonian_no_nuclear = InteractionOperator(
         constant=0.0,  # Set constant to 0 to match qiskit_nature
@@ -382,7 +357,6 @@ def LiH_hamiltonian_tapered(R: float) -> Dict[str, float]:
     fermionic_op = get_fermion_operator(molecular_hamiltonian_no_nuclear)
     
     # Apply Jordan-Wigner transformation
-    # Note: OpenFermion doesn't have automatic tapering like qiskit_nature's 
     # ParityMapper, but active space selection achieves similar goals
     qubit_op = jordan_wigner(fermionic_op)
     
