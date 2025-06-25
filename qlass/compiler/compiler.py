@@ -5,8 +5,11 @@ import perceval as pcvl
 from qiskit import QuantumCircuit
 
 
-def compile(circuit: QuantumCircuit, backend_name: str = "Naive", use_postselection: bool = True, 
-            input_state: Optional[Union[pcvl.StateVector, pcvl.BasicState]] = None, noise_model: NoiseModel = None) -> pcvl.Processor:
+def compile(circuit: QuantumCircuit, 
+            backend_name: str = "Naive", 
+            use_postselection: bool = True, 
+            input_state: Optional[Union[pcvl.StateVector, pcvl.BasicState]] = None, 
+            noise_model: NoiseModel = None) -> pcvl.Processor:
     """
     Convert a Qiskit quantum circuit to a Perceval processor.
     
