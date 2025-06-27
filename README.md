@@ -9,7 +9,7 @@ project funded by the European Union.
 
 ## Installing `qlass`
 The development install of `qlass` requirements can be done by setting the working directory to the top level of the repository and running `pip install -e .`. 
-`qlass` builds upon open-source scientific software packages in Python: `scipy` for numerical optimization, `pyscf` and `qiskit-nature` for quantum chemistry, `qiskit` for quantum computing, and `perceval` for quantum photonics compilation.
+`qlass` builds upon open-source scientific software packages in Python: `scipy` for numerical optimization, `pyscf` and `openfermion` for quantum chemistry, `qiskit` for quantum computing, and `perceval` for quantum photonics compilation.
 
 ## Getting started
 You can use [this notebook on the variational quantum eigensolver (VQE)](https://github.com/unitaryfund/qlass/blob/main/photonic_vqe.ipynb) to get started with the `qlass` package, or check out the [example script](https://github.com/unitaryfoundation/qlass/blob/main/examples/vqe_example.py).
