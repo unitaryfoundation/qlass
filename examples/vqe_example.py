@@ -8,11 +8,8 @@ warnings.filterwarnings('ignore')
 
 import numpy as np
 import matplotlib.pyplot as plt
-from qiskit import QuantumCircuit, transpile
-from qiskit.circuit.library import TwoLocal
 from perceval.algorithm import Sampler
 
-from qlass import compile
 from qlass.quantum_chemistry import LiH_hamiltonian, brute_force_minimize
 from qlass.vqe import VQE, le_ansatz
 
