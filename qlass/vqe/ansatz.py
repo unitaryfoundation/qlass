@@ -1,15 +1,15 @@
 from perceval.converters import QiskitConverter
+from perceval.utils import NoiseModel
 from qiskit import transpile, QuantumCircuit
 from qiskit.circuit.library import TwoLocal
 
 import perceval as pcvl
 import numpy as np
 from perceval.components import Processor
-from qlass.utils.utils import rotate_qubits
+from qlass.utils import rotate_qubits
+from qlass.compiler import compile
 
-qiskit_converter = QiskitConverter(backend_name="Naive") #or SLOS
-
-def le_ansatz(lp: np.ndarray, pauli_string: str) -> Processor:
+def le_ansatz(lp: np.ndarray, pauli_string: str, noise_model: NoiseModel = None) -> Processor:
     """
     Creates Perceval quantum processor for the Linear Entangled Ansatz.
     This ansatz consists of a layer of parametrized rotations, followed by 
@@ -18,6 +18,7 @@ def le_ansatz(lp: np.ndarray, pauli_string: str) -> Processor:
     Args:
         lp (np.ndarray): Array of parameter values
         pauli_string (str): Pauli string
+        noise_model (NoiseModel): A perceval NoiseModel object representing the noise model
 
     Returns:
         Processor: The quantum circuit as a Perceval processor
@@ -29,12 +30,14 @@ def le_ansatz(lp: np.ndarray, pauli_string: str) -> Processor:
     ansatz_transpiled = transpile(ansatz_assigned, basis_gates=['u3', 'cx'], optimization_level=3)
 
     ansatz_rot = rotate_qubits(pauli_string, ansatz_transpiled.copy())
-    processor = qiskit_converter.convert(ansatz_rot, use_postselection=True)  
-    processor.with_input(pcvl.LogicalState([0]*num_qubits))
+    processor = compile(ansatz_rot, input_state=pcvl.LogicalState([0]*num_qubits), noise_model=noise_model)  
 
     return processor
 
-def custom_unitary_ansatz(lp: np.ndarray, pauli_string: str, U: np.ndarray) -> Processor:
+def custom_unitary_ansatz(lp: np.ndarray, 
+                          pauli_string: str, 
+                          U: np.ndarray, 
+                          noise_model: NoiseModel = None) -> Processor:
     """
     Creates Perceval quantum processor that directly implements a given unitary matrix.
     This function serves as a custom ansatz that bypasses circuit construction and instead 
@@ -47,6 +50,7 @@ def custom_unitary_ansatz(lp: np.ndarray, pauli_string: str, U: np.ndarray) -> P
         lp (np.ndarray): Placeholder array of parameter values (unused, for compatibility).
         pauli_string (str): Pauli string used to determine the number of qubits.
         U (np.ndarray): A unitary matrix of shape (2^n, 2^n) where n = len(pauli_string).
+        noise_model (NoiseModel): A perceval NoiseModel object representing the noise model.
 
     Returns:
         Processor: The quantum circuit as a Perceval processor implementing unitary U.
@@ -63,7 +67,7 @@ def custom_unitary_ansatz(lp: np.ndarray, pauli_string: str, U: np.ndarray) -> P
     qc.unitary(U, range(num_qubits))
 
     qc_rotated = rotate_qubits(pauli_string, qc.copy())
-    processor = qiskit_converter.convert(qc_rotated, use_postselection=True)
+    processor = compile(qc_rotated, input_state=pcvl.LogicalState([0]*num_qubits), noise_model=noise_model)
     processor.with_input(pcvl.LogicalState([0]*num_qubits))
 
     return processor
