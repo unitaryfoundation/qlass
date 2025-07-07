@@ -1,5 +1,6 @@
 # export from compiler module
-from .compiler.compiler import compile
+from .compiler.compiler import compile, ResourceAwareCompiler, generate_report
+from .compiler.hardware_config import HardwareConfig
 
 # export from problems module
 from .quantum_chemistry.classical_solution import hamiltonian_matrix, brute_force_minimize
@@ -29,6 +30,9 @@ __all__ = [
     "custom_unitary_ansatz",
     "loss_function",
     "rotate_qubits",
+    "ResourceAwareCompiler",
+    "HardwareConfig",
+    "generate_report"
 ]
 
 # Version information
