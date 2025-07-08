@@ -6,7 +6,7 @@ class HardwareConfig:
     A data structure to hold the physical properties of a photonic hardware backend.
     """
     # System-wide transmittance, e.g., 0.9 means 10% photon loss
-    transmittance=0.9
+    transmittance: float = 0.9
     # Small random phase shifts (in radians)
     phase_imprecision: float = 0.01  
 
