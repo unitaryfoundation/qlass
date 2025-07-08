@@ -63,7 +63,7 @@ class ResourceAwareCompiler:
         num_bs = sum(1 for _, component in circuit if isinstance(component, BS))
     
         num_components = num_ps + num_bs # Simplified count
-        num_qubits = processor.m // 2
+        num_modes = processor.m  # Total number of modes in the circuit
 
         # 2. Estimate Photon Loss
         component_loss_db = num_components * self.config.photon_loss_component_db
@@ -76,15 +76,15 @@ class ResourceAwareCompiler:
 
         # 3. Estimate Overall Success Probability
         # This is a chain of probabilities
-        source_prob = self.config.source_efficiency ** num_qubits
+        source_prob = self.config.source_efficiency ** num_modes
         fusion_prob = (effective_fusion_prob_per_gate ** num_cnots) if num_cnots > 0 else 1.0
-        detector_prob = self.config.detector_efficiency ** num_qubits
+        detector_prob = self.config.detector_efficiency ** num_modes
 
         overall_success_prob = source_prob * photon_survival_prob * fusion_prob * detector_prob
 
         # 4. Populate the report
         self.analysis_report = {
-            "num_qubits": num_qubits,
+            "num_modes": num_modes,
             "component_count": {
                 "PhaseShifter": num_ps,
                 "BeamSplitter": num_bs,
@@ -125,7 +125,7 @@ def generate_report(analysis_report) -> None:
     print("\n--- qlass Resource-Aware Compiler Report ---")
 
     report = analysis_report
-    print(f"  Circuit Qubits: {report['num_qubits']}")
+    print(f"  Circuit modes: {report['num_modes']}")
     print(f"  Component Count: {report['component_count']['Total']} "
             f"(PS: {report['component_count']['PhaseShifter']}, BS: {report['component_count']['BeamSplitter']})")
     print("\n[Performance Estimation]")
