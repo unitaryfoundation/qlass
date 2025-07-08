@@ -8,7 +8,7 @@ class HardwareConfig:
     # System-wide transmittance, e.g., 0.9 means 10% photon loss
     transmittance=0.9
     # Small random phase shifts (in radians)
-    phase_imprecision=0.01  
+    phase_imprecision: float = 0.01  
 
     # Photon Loss Parameters
     photon_loss_component_db: float = 0.05  # Loss per optical component in dB
