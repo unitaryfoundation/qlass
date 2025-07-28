@@ -2,7 +2,7 @@ import itertools
 import numpy as np
 # OpenFermion imports - replacing qiskit_nature
 from openfermion.chem import MolecularData
-from openfermion.transforms import get_fermion_operator, jordan_wigner
+from openfermion.transforms import get_fermion_operator, jordan_wigner, symmetry_conserving_bravyi_kitaev
 # Import QubitOperator para type hinting
 from openfermion.ops import InteractionOperator, QubitOperator
 from openfermionpyscf import run_pyscf
@@ -324,6 +324,7 @@ def LiH_hamiltonian_tapered(R: float) -> Dict[str, float]:
     
     # Run PySCF calculation
     molecule = run_pyscf(molecule, run_scf=True, run_fci=True)
+    total_n_elec = molecule.n_electrons
     
     # Apply active space reduction equivalent to tapering
     # Freeze core orbital (1s of Li)
@@ -331,6 +332,9 @@ def LiH_hamiltonian_tapered(R: float) -> Dict[str, float]:
     occupied_indices = list(range(n_core_orbitals))
     
     active_indices = [1, 2, 5]  
+    active_spin_orbitals = 2*len(active_indices)
+
+    active_n_elec = total_n_elec - 2*n_core_orbitals
     
     try:
         # Attempt to get molecular hamiltonian with active space
@@ -356,8 +360,7 @@ def LiH_hamiltonian_tapered(R: float) -> Dict[str, float]:
     # Convert to fermionic operator
     fermionic_op = get_fermion_operator(molecular_hamiltonian_no_nuclear)
     
-    # Apply Jordan-Wigner transformation
-    # ParityMapper, but active space selection achieves similar goals
-    qubit_op = jordan_wigner(fermionic_op)
-    
+    # Apply Bravyi-Kitaev transformation
+    qubit_op = symmetry_conserving_bravyi_kitaev(fermionic_op, active_spin_orbitals, active_n_elec)
+
     return sparsepauliop_dictionary(qubit_op)
