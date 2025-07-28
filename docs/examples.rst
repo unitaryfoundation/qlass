@@ -26,6 +26,38 @@ Compiling a quantum circuit from Qiskit to a Perceval processor:
    sampler = Sampler(processor)
    results = sampler.samples(1000)
 
+Resource-Aware Compilation
+--------------------------
+
+Analyzing quantum circuits against hardware configurations to estimate real-world performance:
+
+.. code-block:: python
+
+   from qiskit import QuantumCircuit
+   from qlass.compiler import ResourceAwareCompiler, HardwareConfig, generate_report
+
+   # Create a quantum circuit
+   qc = QuantumCircuit(2)
+   qc.h(0)
+   qc.cx(0, 1)
+
+   # Define hardware configuration for a photonic chip
+   chip_config = HardwareConfig(
+       photon_loss_component_db=0.05,
+       fusion_success_prob=0.11,
+       hom_visibility=0.95
+   )
+
+   # Compile with resource analysis
+   compiler = ResourceAwareCompiler(config=chip_config)
+   processor = compiler.compile(qc)
+
+   # Access and display the analysis report
+   report = processor.analysis_report
+   generate_report(report)
+
+The report provides insights into component counts, estimated photon loss, and overall success probability for running the circuit on the specified hardware.
+
 Variational Quantum Eigensolver (VQE)
 -------------------------------------
 

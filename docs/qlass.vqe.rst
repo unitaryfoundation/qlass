@@ -3,19 +3,10 @@ qlass.vqe package
 
 The ``vqe`` module provides implementations of Variational Quantum Eigensolver ansatzes tailored for photonic quantum computing.
 
-qlass.vqe.ansatz module
-----------------------
+Submodules
+----------
 
-.. automodule:: qlass.vqe.ansatz
-   :members:
-   :show-inheritance:
-   :undoc-members:
-   :no-index:
-
-qlass.vqe.vqe module
--------------------
-
-.. automodule:: qlass.vqe.vqe
+.. automodule:: qlass.vqe
    :members:
    :show-inheritance:
    :undoc-members:
