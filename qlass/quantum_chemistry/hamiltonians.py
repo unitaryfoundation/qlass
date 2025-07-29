@@ -336,19 +336,11 @@ def LiH_hamiltonian_tapered(R: float) -> Dict[str, float]:
 
     active_n_elec = total_n_elec - 2*n_core_orbitals
     
-    try:
-        # Attempt to get molecular hamiltonian with active space
-        molecular_hamiltonian = molecule.get_molecular_hamiltonian(
-            occupied_indices=occupied_indices,
-            active_indices=active_indices
-        )
-    except:
-        # If it fails, use a simpler approach with fewer orbitals
-        molecular_hamiltonian = molecule.get_molecular_hamiltonian(
-            occupied_indices=[0],  # Freeze first orbital
-            active_indices=[1, 2]  # Use only 2 active orbitals
-        )
-    
+    molecular_hamiltonian = molecule.get_molecular_hamiltonian(
+        occupied_indices=occupied_indices,
+        active_indices=active_indices
+    )
+
     # Remove nuclear repulsion energy
     from openfermion.ops import InteractionOperator
     molecular_hamiltonian_no_nuclear = InteractionOperator(
