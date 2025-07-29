@@ -8,13 +8,12 @@ warnings.filterwarnings('ignore')
 
 import numpy as np
 import matplotlib.pyplot as plt
-from perceval.algorithm import Sampler
 
 from qlass.quantum_chemistry import LiH_hamiltonian_tapered, brute_force_minimize
 from qlass.vqe import VQE, le_ansatz
 from qlass.utils import rotate_qubits
 
-from qiskit import QuantumCircuit, transpile
+from qiskit import transpile
 from qiskit.circuit.library import TwoLocal
 from qiskit_aer import AerSimulator
 
