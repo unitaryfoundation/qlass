@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from perceval.algorithm import Sampler
 
-from qlass.quantum_chemistry import LiH_hamiltonian, brute_force_minimize
+from qlass.quantum_chemistry import LiH_hamiltonian_tapered, brute_force_minimize
 from qlass.vqe import VQE, le_ansatz
 from qlass.utils import rotate_qubits
 
@@ -55,7 +55,8 @@ def qiskit_executor(params: np.ndarray, pauli_string: str, shots: int = 4096) ->
 
 def main():
     # Define a simple 2-qubit Hamiltonian (e.g., for H2 molecule)
-    hamiltonian = LiH_hamiltonian(num_electrons=2, num_orbitals=2)
+    # hamiltonian = LiH_hamiltonian(num_electrons=2, num_orbitals=2)
+    hamiltonian = LiH_hamiltonian_tapered(R=0.1)
     num_qubits = 4
     
     # Calculate exact ground state energy for comparison
