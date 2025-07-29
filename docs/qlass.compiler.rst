@@ -7,19 +7,6 @@ Submodules
 ----------
 
 .. automodule:: qlass.compiler
-   :members: compile, ResourceAwareCompiler, generate_report
-   :show-inheritance:
-   :undoc-members:
-
-Resource-Aware Compilation
--------------------------
-
-The compiler module includes a ``ResourceAwareCompiler`` that analyzes quantum circuits against hardware configurations to estimate real-world performance. The ``HardwareConfig`` dataclass allows you to specify physical properties of your photonic hardware, including photon loss, detector efficiency, and gate success probabilities.
-
-qlass.compiler.hardware_config module
------------------------------------
-
-.. automodule:: qlass.compiler
-   :members: HardwareConfig
+   :members: compile, ResourceAwareCompiler, HardwareConfig, generate_report
    :show-inheritance:
    :undoc-members:
