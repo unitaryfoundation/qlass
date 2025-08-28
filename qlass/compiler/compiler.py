@@ -49,7 +49,15 @@ class ResourceAwareCompiler:
     """
     def __init__(self, config: HardwareConfig):
         self.config = config
-        self.noise_model = NoiseModel(transmittance=self.config.transmittance, phase_imprecision=self.config.phase_imprecision)
+
+        self.noise_model = NoiseModel(brightness=self.config.brightness,
+                                    indistinguishability=self.config.indistinguishability,
+                                    g2=self.config.g2,
+                                    g2_distinguishable=self.config.g2_distinguishable,
+                                    transmittance=self.config.transmittance, 
+                                    phase_imprecision=self.config.phase_imprecision,
+                                    phase_error=self.config.phase_error)
+        
         self.qiskit_converter = QiskitConverter(backend_name="Naive", noise_model=self.noise_model)
         self.analysis_report: Dict[str, Any] = {}
 
