@@ -9,16 +9,53 @@ warnings.filterwarnings('ignore')
 import numpy as np
 import matplotlib.pyplot as plt
 from perceval.algorithm import Sampler
+import perceval as pcvl
+from qiskit import transpile
+from qiskit.circuit.library import TwoLocal
 
 from qlass.quantum_chemistry import LiH_hamiltonian, brute_force_minimize
-from qlass.vqe import VQE, le_ansatz
+from qlass.vqe import VQE
+from qlass.compiler import ResourceAwareCompiler, HardwareConfig
+from qlass.utils import rotate_qubits
 
-# Define an executor function that uses the linear entangled ansatz
+# Define an executor function that uses the TwoLocal ansatz
 def executor(params, pauli_string):
     """
-    Executor function that creates a processor with the le_ansatz.
+    Executor function that creates a TwoLocal ansatz and compiles it
+    using the ResourceAwareCompiler for resource analysis.
     """
-    processor = le_ansatz(params, pauli_string)
+    # Create the TwoLocal ansatz circuit
+    num_qubits = len(pauli_string)
+    ansatz = TwoLocal(num_qubits, 'ry', 'cx', reps=1)
+    
+    # Assign parameters to the ansatz
+    ansatz_assigned = ansatz.assign_parameters(params)
+    ansatz_transpiled = transpile(ansatz_assigned, basis_gates=['u3', 'cx'], optimization_level=3)
+    
+    # Apply rotation for Pauli measurement
+    ansatz_rot = rotate_qubits(pauli_string, ansatz_transpiled.copy())
+    
+    # Define hardware configuration for the example photonic chip
+    chip_config = HardwareConfig(
+        photon_loss_component_db=0.05,
+        fusion_success_prob=0.11,
+        hom_visibility=0.95,
+        source_efficiency=0.9,
+        detector_efficiency=0.95
+    )
+    
+    # Compile with ResourceAwareCompiler
+    compiler = ResourceAwareCompiler(config=chip_config)
+    processor = compiler.compile(ansatz_rot)
+    
+    # Access the analysis report (optional - could log this if needed)
+    # report = processor.analysis_report
+    # print(f"Success probability: {report['probability_estimation']['overall_success_prob']:.4%}")
+    
+    # Set the input state
+    processor.with_input(pcvl.LogicalState([0]*num_qubits))
+    
+    # Run the sampler
     sampler = Sampler(processor)
     samples = sampler.samples(10_000)
     return samples
