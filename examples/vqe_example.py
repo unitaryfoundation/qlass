@@ -13,7 +13,7 @@ import perceval as pcvl
 from qiskit import transpile
 from qiskit.circuit.library import TwoLocal
 
-from qlass.quantum_chemistry import LiH_hamiltonian, brute_force_minimize
+from qlass.quantum_chemistry import LiH_hamiltonian_tapered, brute_force_minimize
 from qlass.vqe import VQE
 from qlass.compiler import ResourceAwareCompiler, HardwareConfig
 from qlass.utils import rotate_qubits
@@ -62,10 +62,10 @@ def executor(params, pauli_string):
 
 def main():
     # Number of qubits
-    num_qubits = 2
+    num_qubits = 4
     
     # Generate a 2-qubit Hamiltonian for LiH
-    hamiltonian = LiH_hamiltonian(num_electrons=2, num_orbitals=1)
+    hamiltonian = LiH_hamiltonian_tapered(R=1.0)
     
     # Print the Hamiltonian
     print("LiH Hamiltonian:")
@@ -86,7 +86,7 @@ def main():
     # Run the VQE optimization
     print("\nRunning VQE optimization...")
     vqe_energy = vqe.run(
-        max_iterations=10,
+        max_iterations=100,
         verbose=True
     )
     
