@@ -9,7 +9,7 @@ dependencies = [
 "qiskit==1.4.2",
 "qiskit_aer",
 "numpy",
-"perceval-quandela==0.13.0",
+"perceval-quandela==1.0.0",
 "openfermion",
 "openfermionpyscf",
 "pyscf",
