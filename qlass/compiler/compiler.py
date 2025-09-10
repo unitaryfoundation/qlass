@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Optional, Union, Dict, Any
 from perceval.converters import QiskitConverter
 from perceval.utils import NoiseModel
 import perceval as pcvl
