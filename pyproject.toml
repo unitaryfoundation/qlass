@@ -20,7 +20,7 @@ dependencies = [
 readme = "README.md"
 
 license = "Apache License"
-license-files = "LICENSE"
+license-files = ["LICENSE"]
 
 [tool.poetry.dev-dependencies]
 pytest = "^8.3"
