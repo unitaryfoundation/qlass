@@ -58,4 +58,4 @@ jobs:
 
     - name: Run tests with pytest
       run: |
-        pytest qlass/tests/tests.py
+        pytest qlass/tests/test_all.py
