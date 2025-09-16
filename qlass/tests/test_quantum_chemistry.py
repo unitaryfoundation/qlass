@@ -6,7 +6,7 @@ from qlass.quantum_chemistry import (
     hamiltonian_matrix,
     brute_force_minimize,
     eig_decomp_lanczos,
-    Lanczos,
+    lanczos,
     group_commuting_pauli_terms_openfermion_hybrid,
     pauli_commute
 )
@@ -213,7 +213,7 @@ def test_lanczos_tridiagonalization():
     m = dim  # Use full number of iterations for a complete basis
 
     # 2. Run the lanczos function
-    T, V = Lanczos(A, v_init, m=m)
+    T, V = lanczos(A, v_init, m=m)
 
     # 3. Verify the properties of the output
 

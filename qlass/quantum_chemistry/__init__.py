@@ -4,7 +4,7 @@ from .classical_solution import (
     brute_force_minimize,
     pauli_string_to_matrix,
     eig_decomp_lanczos,
-    Lanczos,
+    lanczos,
 
 )
 from .hamiltonians import (
@@ -20,7 +20,7 @@ from .hamiltonians import (
 __all__ = [
     "hamiltonian_matrix",
     "brute_force_minimize",
-    "Lanczos",
+    "lanczos",
     "pauli_string_to_matrix",
     "eig_decomp_lanczos",
     "LiH_hamiltonian",

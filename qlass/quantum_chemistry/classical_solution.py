@@ -72,7 +72,7 @@ def brute_force_minimize(H: Dict[str, float]) -> float:
     return l0[0]
 
 @njit
-def Lanczos(A, v_init, m):
+def lanczos(A, v_init, m):
     n = len(v_init)
     if m > n:
         m = n
@@ -141,7 +141,7 @@ def eig_decomp_lanczos(R, n=1, m=100):
 
     v0   = np.array(np.random.rand( np.shape(R)[0]) , dtype=np.complex128); v0 /= np.sqrt( np.abs(np.dot( v0, np.conjugate(v0) ) ) )
 
-    T, V = Lanczos(R, v0, m=m )
+    T, V = lanczos(R, v0, m=m )
     esT, vsT = np.linalg.eigh( T )
     esT_sort_idx = np.argsort(esT)[::-1]
     lm_eig = np.matrix(V.T @ (vsT[:, esT_sort_idx[:n].squeeze()]))
