@@ -58,4 +58,7 @@ jobs:
 
     - name: Run tests with pytest
       run: |
-        pytest qlass/tests/test_all.py
+        pytest qlass/tests/test_compiler.py
+        pytest qlass/tests/test_vqe.py
+        pytest qlass/tests/test_quantum_chemistry.py
+        pytest qlass/tests/test_utils.py
