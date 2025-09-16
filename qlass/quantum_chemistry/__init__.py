@@ -20,6 +20,9 @@ from .hamiltonians import (
 __all__ = [
     "hamiltonian_matrix",
     "brute_force_minimize",
+    "Lanczos",
+    "pauli_string_to_matrix",
+    "eig_decomp_lanczos",
     "LiH_hamiltonian",
     "generate_random_hamiltonian", 
     "LiH_hamiltonian_tapered",
