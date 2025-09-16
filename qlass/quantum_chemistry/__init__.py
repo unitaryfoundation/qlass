@@ -1,5 +1,11 @@
 
-from .classical_solution import hamiltonian_matrix, brute_force_minimize
+from .classical_solution import (
+    hamiltonian_matrix, 
+    brute_force_minimize,
+    pauli_string_to_matrix,
+    eig_decomp_lanczos,
+
+)
 from .hamiltonians import (
     LiH_hamiltonian, 
     generate_random_hamiltonian, 
@@ -7,7 +13,7 @@ from .hamiltonians import (
     pauli_commute,
     group_commuting_pauli_terms,
     group_commuting_pauli_terms_openfermion_hybrid,
-    sparsepauliop_dictionary
+    sparsepauliop_dictionary,
 )
 
 __all__ = [
