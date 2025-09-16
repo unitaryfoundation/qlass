@@ -202,3 +202,33 @@ def test_loss_function_format_consistency():
     tolerance = 1e-10
     assert abs(result1 - result2) < tolerance
     assert abs(result1 - result3) < tolerance
+
+def test_get_probabilities_string_format():
+    # test case 1: Qiskit string format
+    samples = ['00', '01', '00', '10', '01']
+    expected = {(0, 0): 0.4, (0, 1): 0.4, (1, 0): 0.2}
+    assert get_probabilities(samples) == expected
+
+    # test case 2: single qubit strings  
+    samples = ['0', '1', '0', '0']
+    expected = {(0,): 0.75, (1,): 0.25}
+    assert get_probabilities(samples) == expected
+
+    # test case 3: 3-qubit strings
+    samples = ['000', '001', '010', '000'] 
+    expected = {(0, 0, 0): 0.5, (0, 0, 1): 0.25, (0, 1, 0): 0.25}
+    assert get_probabilities(samples) == expected
+
+def test_qubit_state_marginal_bitstring_input():
+    # test case 1: input already as bitstring tuples
+    prob_dist = {(0, 0): 0.5, (0, 1): 0.3, (1, 0): 0.2}
+    expected = {(0, 0): 0.5, (0, 1): 0.3, (1, 0): 0.2}
+    assert qubit_state_marginal(prob_dist) == expected
+
+    # test case 2: single entry
+    prob_dist = {(1, 1, 0): 1.0}
+    expected = {(1, 1, 0): 1.0}
+    assert qubit_state_marginal(prob_dist) == expected
+
+    # test case 3: empty input
+    assert qubit_state_marginal({}) == {}

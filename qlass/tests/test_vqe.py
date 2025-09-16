@@ -141,8 +141,6 @@ def test_custom_unitary_ansatz():
 
     # Sample from the processor using Perceval's Sampler
     sampler = pcvl.algorithm.Sampler(processor)
-    samples = sampler.samples(10000)
-    sample_count = sampler.sample_count(10000)
     prob_dist = sampler.probs()
 
     # Extract probabilities from BSDistribution
