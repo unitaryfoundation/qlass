@@ -7,9 +7,12 @@ from qlass.quantum_chemistry import (
     brute_force_minimize,
     eig_decomp_lanczos,
     Lanczos,
+    group_commuting_pauli_terms_openfermion_hybrid,
+    pauli_commute
 )
 import numpy as np
 from typing import Dict
+import pytest
 
 import warnings
 warnings.simplefilter('ignore')
@@ -225,3 +228,70 @@ def test_lanczos_tridiagonalization():
     lhs = A @ V.T
     rhs = V.T @ T
     assert np.allclose(lhs, rhs), "Tridiagonal matrix T does not satisfy the Lanczos relation"
+
+
+def check_groups(groups):
+    """Helper function to validate that all terms within each group mutually commute."""
+    for group in groups:
+        terms = list(group.keys())
+        for i in range(len(terms)):
+            for j in range(i + 1, len(terms)):
+                assert pauli_commute(terms[i], terms[j]), f"{terms[i]} and {terms[j]} do not commute"
+
+def test_hybrid_grouping_openfermion_success():
+    """
+    Tests the hybrid grouping function assuming the OpenFermion backend succeeds.
+    """
+    # Define a Hamiltonian with two distinct groups that OpenFermion can separate
+    hamiltonian = {
+        "IZ": 1.0,
+        "ZI": -1.0,
+        "ZZ": 0.5, # This group can be measured in the Z-basis
+        "XX": 0.2, # This group requires a change to the X-basis
+        "XI": -0.3 # This also requires a change to the X-basis
+    }
+
+    groups = group_commuting_pauli_terms_openfermion_hybrid(hamiltonian)
+    
+    # OpenFermion's `group_into_tensor_product_basis_sets` will group by measurement basis.
+    # We expect two groups: one for Z-basis terms and one for X-basis terms.
+    assert len(groups) == 2, "Expected two measurement groups (Z-basis and X-basis)"
+    
+    # Verify that the terms within each group are mutually commuting
+    check_groups(groups)
+
+    # Check that the total number of terms is conserved
+    total_terms_in_groups = sum(len(g) for g in groups)
+    assert total_terms_in_groups == len(hamiltonian)
+
+def test_hybrid_grouping_fallback_behavior(mocker):
+    """
+    Tests the fallback mechanism of the hybrid function by mocking an ImportError.
+    """
+    # Mock the OpenFermion import to trigger the fallback to the custom implementation
+    mocker.patch(
+        'openfermion.measurements.group_into_tensor_product_basis_sets', 
+        side_effect=ImportError("Simulating OpenFermion not found")
+    )
+    
+    # Define a Hamiltonian. The custom grouper will find all mutually commuting terms.
+    hamiltonian = {
+        "XX": 1.0,
+        "YY": 1.0, # XX and YY commute
+        "XI": 0.5, # XI does not commute with YY
+        "IZ": -0.5 # IZ commutes with all of the above
+    }
+
+    groups = group_commuting_pauli_terms_openfermion_hybrid(hamiltonian)
+    
+    # The custom fallback grouper is greedy. The expected grouping is:
+    # Group 1: {"XX", "YY", "IZ"}
+    # Group 2: {"XI"}
+    assert len(groups) == 2, "Expected 2 groups from the fallback implementation"
+    
+    # Verify that the terms within each group are mutually commuting
+    check_groups(groups)
+
+    # Check that all original terms are present in the final groups
+    all_grouped_terms = {term for group in groups for term in group}
+    assert all_grouped_terms == set(hamiltonian.keys())

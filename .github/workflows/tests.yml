@@ -55,6 +55,7 @@ jobs:
     - name: Install pytest
       run: |
         pip install pytest
+        pip install pytest-mock
 
     - name: Run tests with pytest
       run: |

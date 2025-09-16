@@ -73,7 +73,7 @@ def brute_force_minimize(H: Dict[str, float]) -> float:
 
 
 @njit
-def lanczos(A, v_init, m):
+def Lanczos(A, v_init, m):
     n = len(v_init)
     if m > n:
         m = n
