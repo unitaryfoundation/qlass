@@ -7,6 +7,7 @@ from qlass.utils.utils import (
 )
 import perceval as pcvl
 import numpy as np
+import pytest
 
 def test_compute_energy():
     # test case 1
@@ -232,3 +233,34 @@ def test_qubit_state_marginal_bitstring_input():
 
     # test case 3: empty input
     assert qubit_state_marginal({}) == {}
+
+def test_loss_function_fallback_without_grouping(mocker):
+    """
+    Tests the loss_function's fallback to individual term processing
+    when the grouping utility is not available.
+    """
+    # 1. Mock the grouping function to trigger an ImportError
+    mocker.patch(
+        'qlass.utils.utils.group_commuting_pauli_terms',
+        side_effect=ImportError("Simulating grouping utility not found")
+    )
+
+    # 2. Define a simple mock executor that returns a consistent result
+    def mock_executor(params, pauli_string):
+        # Always returns a sample of |01>
+        return {'counts': {'01': 1000}}
+
+    # 3. Define a simple Hamiltonian
+    hamiltonian = {"ZI": 0.5, "IZ": -0.5}
+    params = np.array([0.1, 0.2]) # Dummy parameters
+
+    # 4. Manually calculate the expected energy for the |01> state
+    # For "ZI" (pauli_bin=(1,0)), sample=(0,1): inner dot = 0, sign = (-1)^0 = 1. Expectation = 1.0
+    # For "IZ" (pauli_bin=(0,1)), sample=(0,1): inner dot = 1, sign = (-1)^1 = -1. Expectation = -1.0
+    # Total expected loss = (0.5 * 1.0) + (-0.5 * -1.0) = 0.5 + 0.5 = 1.0
+    expected_loss = 1.0
+
+    # 5. Run the loss function and assert the result
+    calculated_loss = loss_function(params, hamiltonian, mock_executor)
+
+    assert np.isclose(calculated_loss, expected_loss)
