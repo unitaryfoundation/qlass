@@ -4,6 +4,7 @@ from .classical_solution import (
     brute_force_minimize,
     pauli_string_to_matrix,
     eig_decomp_lanczos,
+    Lanczos,
 
 )
 from .hamiltonians import (

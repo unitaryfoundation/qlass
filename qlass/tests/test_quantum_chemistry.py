@@ -5,7 +5,8 @@ from qlass.quantum_chemistry import (
     pauli_string_to_matrix,
     hamiltonian_matrix,
     brute_force_minimize,
-    eig_decomp_lanczos
+    eig_decomp_lanczos,
+    Lanczos,
 )
 import numpy as np
 from typing import Dict
@@ -188,3 +189,39 @@ def test_LiH_hamiltonian_tapered_structure():
         # Depending on strictness, you might assert False here or pass with warning.
         # For now, let's pass with a warning to avoid test failures due to complex QM calculations.
         pass
+
+def test_lanczos_tridiagonalization():
+    """
+    Tests the core lanczos function.
+
+    It verifies that the output vectors V are orthonormal and that the
+    tridiagonal matrix T satisfies the Lanczos relation: A*V.T = V.T*T.
+    """
+    # 1. Set up a sample Hermitian matrix and initial vector
+    dim = 4
+    A = np.array([
+        [2, -1, 0, 0],
+        [-1, 2, -1, 0],
+        [0, -1, 2, -1],
+        [0, 0, -1, 2]
+    ], dtype=np.complex128)
+
+    v_init = np.random.rand(dim).astype(np.complex128)
+    m = dim  # Use full number of iterations for a complete basis
+
+    # 2. Run the lanczos function
+    T, V = Lanczos(A, v_init, m=m)
+
+    # 3. Verify the properties of the output
+
+    # Property I: The rows of V (the Lanczos vectors) should be orthonormal.
+    # V is an (m x n) matrix, so V @ V.conj().T should be the identity matrix.
+    identity_matrix = np.eye(m, dtype=np.complex128)
+    assert np.allclose(V @ V.conj().T, identity_matrix), "Lanczos vectors (V) are not orthonormal"
+
+    # Property II: The tridiagonal matrix T must satisfy the Lanczos relation.
+    # The relation is A @ V.T = V.T @ T
+    # A is (n x n), V.T is (n x m), T is (m x m)
+    lhs = A @ V.T
+    rhs = V.T @ T
+    assert np.allclose(lhs, rhs), "Tridiagonal matrix T does not satisfy the Lanczos relation"
