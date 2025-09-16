@@ -241,7 +241,7 @@ def test_loss_function_fallback_without_grouping(mocker):
     """
     # 1. Mock the grouping function to trigger an ImportError
     mocker.patch(
-        'qlass.utils.utils.group_commuting_pauli_terms',
+        'qlass.quantum_chemistry.group_commuting_pauli_terms',
         side_effect=ImportError("Simulating grouping utility not found")
     )
 
