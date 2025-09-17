@@ -72,59 +72,117 @@ def brute_force_minimize(H: Dict[str, float]) -> float:
 
     return l0[0]
 
-@njit(disable_jit=os.environ.get('QLASS_DISABLE_JIT', '0') == '1')
-def lanczos(A, v_init, m):
-    n = len(v_init)
-    if m > n:
-        m = n
-        
-    V = np.zeros((m, n), dtype=np.complex128)
-    T = np.zeros((m, m), dtype=np.complex128)
+# Check if JIT should be disabled via environment variable
+DISABLE_JIT = os.environ.get('QLASS_DISABLE_JIT', '0') == '1'
 
-    # Normalize the initial vector
-    v = v_init / np.linalg.norm(v_init)
-    V[0, :] = v
-
-    # First step
-    w = A @ v
-    alpha = np.dot(w.conj(), v)
-    w = w - alpha * v
-    T[0, 0] = alpha
-
-    # Main iteration loop
-    for j in range(1, m):
-        beta = np.linalg.norm(w)
-        
-        # If beta is very small, the process has converged or the Krylov space is exhausted
-        if beta < 1e-12: 
-            break
+if not DISABLE_JIT:
+    @njit
+    def lanczos(A, v_init, m):
+        n = len(v_init)
+        if m > n:
+            m = n
             
-        # Normalize the next vector
-        v = w / beta
-        
-        # --- Start of Re-orthogonalization ---
-        # Explicitly make the new vector orthogonal to all previous vectors
-        # This is the key to fixing numerical stability issues.
-        for i in range(j):
-            v -= np.dot(v.conj(), V[i, :]) * V[i, :]
-        v /= np.linalg.norm(v) # Re-normalize after correction
-        # --- End of Re-orthogonalization ---
-        
-        V[j, :] = v
-        
-        # Perform the next step of the Lanczos iteration
+        V = np.zeros((m, n), dtype=np.complex128)
+        T = np.zeros((m, m), dtype=np.complex128)
+
+        # Normalize the initial vector
+        v = v_init / np.linalg.norm(v_init)
+        V[0, :] = v
+
+        # First step
         w = A @ v
         alpha = np.dot(w.conj(), v)
-        T[j, j] = alpha
-        
-        # Update w using the previous vector
-        w = w - alpha * v - beta * V[j - 1, :]
-        
-        # Store beta in the off-diagonal of T
-        T[j, j - 1] = beta
-        T[j - 1, j] = beta
-        
-    return T, V
+        w = w - alpha * v
+        T[0, 0] = alpha
+
+        # Main iteration loop
+        for j in range(1, m):
+            beta = np.linalg.norm(w)
+            
+            # If beta is very small, the process has converged or the Krylov space is exhausted
+            if beta < 1e-12: 
+                break
+                
+            # Normalize the next vector
+            v = w / beta
+            
+            # --- Start of Re-orthogonalization ---
+            # Explicitly make the new vector orthogonal to all previous vectors
+            # This is the key to fixing numerical stability issues.
+            for i in range(j):
+                v -= np.dot(v.conj(), V[i, :]) * V[i, :]
+            v /= np.linalg.norm(v) # Re-normalize after correction
+            # --- End of Re-orthogonalization ---
+            
+            V[j, :] = v
+            
+            # Perform the next step of the Lanczos iteration
+            w = A @ v
+            alpha = np.dot(w.conj(), v)
+            T[j, j] = alpha
+            
+            # Update w using the previous vector
+            w = w - alpha * v - beta * V[j - 1, :]
+            
+            # Store beta in the off-diagonal of T
+            T[j, j - 1] = beta
+            T[j - 1, j] = beta
+            
+        return T, V
+else:
+    # Non-JIT version for testing/debugging
+    def lanczos(A, v_init, m):
+        n = len(v_init)
+        if m > n:
+            m = n
+            
+        V = np.zeros((m, n), dtype=np.complex128)
+        T = np.zeros((m, m), dtype=np.complex128)
+
+        # Normalize the initial vector
+        v = v_init / np.linalg.norm(v_init)
+        V[0, :] = v
+
+        # First step
+        w = A @ v
+        alpha = np.dot(w.conj(), v)
+        w = w - alpha * v
+        T[0, 0] = alpha
+
+        # Main iteration loop
+        for j in range(1, m):
+            beta = np.linalg.norm(w)
+            
+            # If beta is very small, the process has converged or the Krylov space is exhausted
+            if beta < 1e-12: 
+                break
+                
+            # Normalize the next vector
+            v = w / beta
+            
+            # --- Start of Re-orthogonalization ---
+            # Explicitly make the new vector orthogonal to all previous vectors
+            # This is the key to fixing numerical stability issues.
+            for i in range(j):
+                v -= np.dot(v.conj(), V[i, :]) * V[i, :]
+            v /= np.linalg.norm(v) # Re-normalize after correction
+            # --- End of Re-orthogonalization ---
+            
+            V[j, :] = v
+            
+            # Perform the next step of the Lanczos iteration
+            w = A @ v
+            alpha = np.dot(w.conj(), v)
+            T[j, j] = alpha
+            
+            # Update w using the previous vector
+            w = w - alpha * v - beta * V[j - 1, :]
+            
+            # Store beta in the off-diagonal of T
+            T[j, j - 1] = beta
+            T[j - 1, j] = beta
+            
+        return T, V
 
 def eig_decomp_lanczos(R, n=1, m=100):
     '''
