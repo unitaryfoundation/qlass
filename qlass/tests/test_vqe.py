@@ -157,3 +157,41 @@ def test_custom_unitary_ansatz():
 
     assert 0.45 <= prob_0 <= 0.55, f"Unexpected probability for |0⟩: {prob_0}"
     assert 0.45 <= prob_1 <= 0.55, f"Unexpected probability for |1⟩: {prob_1}"
+
+def test_plot_convergence(simple_vqe, mocker):
+    """
+    Tests the plot_convergence method.
+
+    It verifies that a ValueError is raised if no optimization history exists,
+    and that matplotlib plotting functions are called correctly when data is available.
+    """
+    # 1. Test ValueError when history is empty
+    with pytest.raises(ValueError, match="No optimization history available."):
+        simple_vqe.plot_convergence()
+
+    # 2. Mock all pyplot functions to avoid GUI pop-ups
+    mock_figure = mocker.patch('matplotlib.pyplot.figure')
+    mock_plot = mocker.patch('matplotlib.pyplot.plot')
+    mock_axhline = mocker.patch('matplotlib.pyplot.axhline')
+    mock_xlabel = mocker.patch('matplotlib.pyplot.xlabel')
+    mock_ylabel = mocker.patch('matplotlib.pyplot.ylabel')
+    mock_title = mocker.patch('matplotlib.pyplot.title')
+    mock_legend = mocker.patch('matplotlib.pyplot.legend')
+    mock_grid = mocker.patch('matplotlib.pyplot.grid')
+    mock_show = mocker.patch('matplotlib.pyplot.show')
+
+    # 3. Run VQE to populate history and call the plot function
+    simple_vqe.run(max_iterations=3, verbose=False)
+    exact_energy_val = -1.0
+    simple_vqe.plot_convergence(exact_energy=exact_energy_val)
+
+    # 4. Assert that the plotting functions were called as expected
+    mock_figure.assert_called_once()
+    mock_plot.assert_called_once()
+    mock_axhline.assert_called_once_with(y=exact_energy_val, color='r', linestyle='--', label='Exact Energy')
+    mock_xlabel.assert_called_once()
+    mock_ylabel.assert_called_once()
+    mock_title.assert_called_once()
+    mock_legend.assert_called_once()
+    mock_grid.assert_called_once()
+    mock_show.assert_called_once()

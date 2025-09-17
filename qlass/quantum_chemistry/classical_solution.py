@@ -1,5 +1,6 @@
 import numpy as np
 from numba import njit
+import os
 
 from typing import Dict
 
@@ -71,56 +72,68 @@ def brute_force_minimize(H: Dict[str, float]) -> float:
 
     return l0[0]
 
+def _lanczos_impl(A, v_init, m):
+    """Core Lanczos algorithm implementation."""
+    n = len(v_init)
+    if m > n:
+        m = n
+        
+    V = np.zeros((m, n), dtype=np.complex128)
+    T = np.zeros((m, m), dtype=np.complex128)
 
-@njit
-def Lanczos( A, v, m=100):
-    '''
-    Lanczos algorithm for computing the eigenvalues of a matrix.
-
-    Args:
-        A (np.ndarray): Matrix to compute the eigenvalues of
-        v (np.ndarray): Initial vector
-
-    Returns:
-        Tuple[np.ndarray, np.ndarray]: Tuple containing the tridiagonal matrix and the eigenvectors
-
-    '''
-
-    n = len(v)
-    if m>n: m = n;
-    # from here https://en.wikipedia.org/wiki/Lanczos_algorithm
-    V = np.zeros((m,n), dtype=np.complex128)
-    T = np.zeros((m,m), dtype=np.complex128)
+    # Normalize the initial vector
+    v = v_init / np.linalg.norm(v_init)
     V[0, :] = v
 
-    # step 2.1 - 2.3 in https://en.wikipedia.org/wiki/Lanczos_algorithm
-    w = np.dot(A, v)
-    alfa = np.dot(np.conj(w), v)
-    w = w - alfa*v
-    T[0, 0] = alfa
+    # First step
+    w = A @ v
+    alpha = np.dot(w.conj(), v)
+    w = w - alpha * v
+    T[0, 0] = alpha
 
-    # needs to start the iterations from indices 1
-    for j in range(1, m-1):
-        # beta = np.sqrt( np.abs( np.dot( np.conj(w), w ) ) )
+    # Main iteration loop
+    for j in range(1, m):
         beta = np.linalg.norm(w)
-
-        V[j, :] = w/beta
-
-        # This performs some rediagonalization to make sure all the vectors are orthogonal to eachother
-        for i in range(j-1):
-            V[j, :] = V[j, :] - np.dot(V[j, :], np.conj(V[i, :]))*V[i, :]
-        V[j, :] = V[j, :]/np.linalg.norm(V[j, :])
-
-        w = np.dot(A, V[j, :])
-        alfa = np.dot(np.conj(w), V[j, :])
-        w = w - alfa * V[j, :] - beta*V[j-1, :]
-
-        T[j, j] = alfa
-        T[j-1, j] = beta
-        T[j, j-1] = beta
-
-
+        
+        # If beta is very small, the process has converged or the Krylov space is exhausted
+        if beta < 1e-12: 
+            break
+            
+        # Normalize the next vector
+        v = w / beta
+        
+        # --- Start of Re-orthogonalization ---
+        # Explicitly make the new vector orthogonal to all previous vectors
+        # This is the key to fixing numerical stability issues.
+        for i in range(j):
+            v -= np.dot(v.conj(), V[i, :]) * V[i, :]
+        v /= np.linalg.norm(v) # Re-normalize after correction
+        # --- End of Re-orthogonalization ---
+        
+        V[j, :] = v
+        
+        # Perform the next step of the Lanczos iteration
+        w = A @ v
+        alpha = np.dot(w.conj(), v)
+        T[j, j] = alpha
+        
+        # Update w using the previous vector
+        w = w - alpha * v - beta * V[j - 1, :]
+        
+        # Store beta in the off-diagonal of T
+        T[j, j - 1] = beta
+        T[j - 1, j] = beta
+        
     return T, V
+
+# Check if JIT should be disabled via environment variable
+DISABLE_JIT = os.environ.get('QLASS_DISABLE_JIT', '0') == '1'
+
+# Create JIT-compiled version if enabled
+if not DISABLE_JIT:
+    lanczos = njit(_lanczos_impl)
+else:
+    lanczos = _lanczos_impl
 
 def eig_decomp_lanczos(R, n=1, m=100):
     '''
@@ -138,7 +151,7 @@ def eig_decomp_lanczos(R, n=1, m=100):
 
     v0   = np.array(np.random.rand( np.shape(R)[0]) , dtype=np.complex128); v0 /= np.sqrt( np.abs(np.dot( v0, np.conjugate(v0) ) ) )
 
-    T, V = Lanczos(R, v0, m=m )
+    T, V = lanczos(R, v0, m=m )
     esT, vsT = np.linalg.eigh( T )
     esT_sort_idx = np.argsort(esT)[::-1]
     lm_eig = np.matrix(V.T @ (vsT[:, esT_sort_idx[:n].squeeze()]))

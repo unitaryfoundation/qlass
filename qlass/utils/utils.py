@@ -297,7 +297,7 @@ def loss_function(lp: np.ndarray, H: Dict[str, float], executor) -> float:
             expectation = compute_energy(pauli_bin, qubit_state_marg)
             loss += coefficient * expectation
     
-    return loss
+    return loss.real
 
 
 def _extract_samples_from_executor_result(samples):

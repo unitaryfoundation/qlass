@@ -5,10 +5,14 @@ from qlass.quantum_chemistry import (
     pauli_string_to_matrix,
     hamiltonian_matrix,
     brute_force_minimize,
-    eig_decomp_lanczos
+    eig_decomp_lanczos,
+    lanczos,
+    group_commuting_pauli_terms_openfermion_hybrid,
+    pauli_commute
 )
 import numpy as np
 from typing import Dict
+import pytest
 
 import warnings
 warnings.simplefilter('ignore')
@@ -98,6 +102,66 @@ def test_eig_decomp_lanczos():
     
     assert np.allclose(exact_eigenvalues[0], lanczos_eigenvalues[0], atol=1e-3)
 
+def test_lanczos_tridiagonalization():
+    """
+    Tests the core lanczos function.
+
+    It verifies that the output vectors V are orthonormal and that the
+    tridiagonal matrix T satisfies the Lanczos relation: A*V.T = V.T*T.
+    """
+    # 1. Set up a sample Hermitian matrix and initial vector
+    dim = 4
+    A = np.array([
+        [2, -1, 0, 0],
+        [-1, 2, -1, 0],
+        [0, -1, 2, -1],
+        [0, 0, -1, 2]
+    ], dtype=np.complex128)
+
+    v_init = np.random.rand(dim).astype(np.complex128)
+    m = dim  # Use full number of iterations for a complete basis
+
+    # 2. Run the lanczos function
+    T, V = lanczos(A, v_init, m=m)
+    # 3. Verify the properties of the output
+
+    # Property I: The rows of V (the Lanczos vectors) should be orthonormal.
+    # V is an (m x n) matrix, so V @ V.conj().T should be the identity matrix.
+    identity_matrix = np.eye(m, dtype=np.complex128)
+    assert np.allclose(V @ V.conj().T, identity_matrix), "Lanczos vectors (V) are not orthonormal"
+
+    # Property II: The tridiagonal matrix T must satisfy the Lanczos relation.
+    # The relation is A @ V.T = V.T @ T
+    # A is (n x n), V.T is (n x m), T is (m x m)
+    lhs = A @ V.T
+    rhs = V.T @ T
+    assert np.allclose(lhs, rhs), "Tridiagonal matrix T does not satisfy the Lanczos relation"
+
+def test_lanczos_early_exit():
+    """
+    Tests the early exit condition of the lanczos function when beta becomes zero.
+    This happens when the Krylov subspace is exhausted before m iterations.
+    """
+    dim = 4
+    # A matrix with a simple eigensystem.
+    A = np.diag([1, 2, 3, 4]).astype(np.complex128)
+
+    # An initial vector that is an eigenvector of A.
+    # The Krylov subspace will be 1-dimensional, forcing beta to be zero on the second iteration.
+    v_init = np.array([0, 0, 1, 0], dtype=np.complex128)
+    
+    # We expect the loop to break after the first iteration (j=1)
+    m = dim
+    T, V = lanczos(A, v_init, m=m)
+
+    # The tridiagonal matrix T should be non-zero only for the iterations that ran.
+    # We expect only T[0,0] to be populated (with the eigenvalue 3.0).
+    # All other betas (T[1,0], T[2,1], etc.) should be zero because the loop broke.
+    assert np.isclose(T[0, 0], 3.0)
+    assert np.isclose(T[1, 0], 0.0) # This confirms beta was ~0
+    
+    # The rest of the T matrix should also be zero
+    assert np.count_nonzero(T) == 1
 
 def check_hamiltonian_structure(hamiltonian: Dict[str, float], expected_num_qubits: int):
     """
@@ -188,3 +252,69 @@ def test_LiH_hamiltonian_tapered_structure():
         # Depending on strictness, you might assert False here or pass with warning.
         # For now, let's pass with a warning to avoid test failures due to complex QM calculations.
         pass
+
+def check_groups(groups):
+    """Helper function to validate that all terms within each group mutually commute."""
+    for group in groups:
+        terms = list(group.keys())
+        for i in range(len(terms)):
+            for j in range(i + 1, len(terms)):
+                assert pauli_commute(terms[i], terms[j]), f"{terms[i]} and {terms[j]} do not commute"
+
+def test_hybrid_grouping_openfermion_success():
+    """
+    Tests the hybrid grouping function assuming the OpenFermion backend succeeds.
+    """
+    # Define a Hamiltonian with two distinct groups that OpenFermion can separate
+    hamiltonian = {
+        "IZ": 1.0,
+        "ZI": -1.0,
+        "ZZ": 0.5, # This group can be measured in the Z-basis
+        "XX": 0.2, # This group requires a change to the X-basis
+        "XI": -0.3 # This also requires a change to the X-basis
+    }
+
+    groups = group_commuting_pauli_terms_openfermion_hybrid(hamiltonian)
+    
+    # OpenFermion's `group_into_tensor_product_basis_sets` will group by measurement basis.
+    # We expect two groups: one for Z-basis terms and one for X-basis terms.
+    assert len(groups) == 2, "Expected two measurement groups (Z-basis and X-basis)"
+    
+    # Verify that the terms within each group are mutually commuting
+    check_groups(groups)
+
+    # Check that the total number of terms is conserved
+    total_terms_in_groups = sum(len(g) for g in groups)
+    assert total_terms_in_groups == len(hamiltonian)
+
+def test_hybrid_grouping_fallback_behavior(mocker):
+    """
+    Tests the fallback mechanism of the hybrid function by mocking an ImportError.
+    """
+    # Mock the OpenFermion import to trigger the fallback to the custom implementation
+    mocker.patch(
+        'openfermion.measurements.group_into_tensor_product_basis_sets', 
+        side_effect=ImportError("Simulating OpenFermion not found")
+    )
+    
+    # Define a Hamiltonian. The custom grouper will find all mutually commuting terms.
+    hamiltonian = {
+        "XX": 1.0,
+        "YY": 1.0, # XX and YY commute
+        "XI": 0.5, # XI does not commute with YY
+        "IZ": -0.5 # IZ commutes with all of the above
+    }
+
+    groups = group_commuting_pauli_terms_openfermion_hybrid(hamiltonian)
+    
+    # The custom fallback grouper is greedy. The expected grouping is:
+    # Group 1: {"XX", "YY", "IZ"}
+    # Group 2: {"XI"}
+    assert len(groups) == 2, "Expected 2 groups from the fallback implementation"
+    
+    # Verify that the terms within each group are mutually commuting
+    check_groups(groups)
+
+    # Check that all original terms are present in the final groups
+    all_grouped_terms = {term for group in groups for term in group}
+    assert all_grouped_terms == set(hamiltonian.keys())
