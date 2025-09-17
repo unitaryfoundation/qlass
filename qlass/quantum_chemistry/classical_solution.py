@@ -1,5 +1,6 @@
 import numpy as np
 from numba import njit
+import os
 
 from typing import Dict
 
@@ -71,7 +72,7 @@ def brute_force_minimize(H: Dict[str, float]) -> float:
 
     return l0[0]
 
-@njit
+@njit(disable_jit=os.environ.get('QLASS_DISABLE_JIT', '0') == '1')
 def lanczos(A, v_init, m):
     n = len(v_init)
     if m > n:
