@@ -29,7 +29,6 @@ jobs:
 
     - name: Run tests and collect coverage
       run: |
-        # This single command runs all tests and collects coverage data
         coverage run -m pytest
       env:
         # This disables Numba's JIT for accurate coverage reporting
