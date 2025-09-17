@@ -102,6 +102,66 @@ def test_eig_decomp_lanczos():
     
     assert np.allclose(exact_eigenvalues[0], lanczos_eigenvalues[0], atol=1e-3)
 
+def test_lanczos_tridiagonalization():
+    """
+    Tests the core lanczos function.
+
+    It verifies that the output vectors V are orthonormal and that the
+    tridiagonal matrix T satisfies the Lanczos relation: A*V.T = V.T*T.
+    """
+    # 1. Set up a sample Hermitian matrix and initial vector
+    dim = 4
+    A = np.array([
+        [2, -1, 0, 0],
+        [-1, 2, -1, 0],
+        [0, -1, 2, -1],
+        [0, 0, -1, 2]
+    ], dtype=np.complex128)
+
+    v_init = np.random.rand(dim).astype(np.complex128)
+    m = dim  # Use full number of iterations for a complete basis
+
+    # 2. Run the lanczos function
+    T, V = lanczos(A, v_init, m=m)
+    # 3. Verify the properties of the output
+
+    # Property I: The rows of V (the Lanczos vectors) should be orthonormal.
+    # V is an (m x n) matrix, so V @ V.conj().T should be the identity matrix.
+    identity_matrix = np.eye(m, dtype=np.complex128)
+    assert np.allclose(V @ V.conj().T, identity_matrix), "Lanczos vectors (V) are not orthonormal"
+
+    # Property II: The tridiagonal matrix T must satisfy the Lanczos relation.
+    # The relation is A @ V.T = V.T @ T
+    # A is (n x n), V.T is (n x m), T is (m x m)
+    lhs = A @ V.T
+    rhs = V.T @ T
+    assert np.allclose(lhs, rhs), "Tridiagonal matrix T does not satisfy the Lanczos relation"
+
+def test_lanczos_early_exit():
+    """
+    Tests the early exit condition of the lanczos function when beta becomes zero.
+    This happens when the Krylov subspace is exhausted before m iterations.
+    """
+    dim = 4
+    # A matrix with a simple eigensystem.
+    A = np.diag([1, 2, 3, 4]).astype(np.complex128)
+
+    # An initial vector that is an eigenvector of A.
+    # The Krylov subspace will be 1-dimensional, forcing beta to be zero on the second iteration.
+    v_init = np.array([0, 0, 1, 0], dtype=np.complex128)
+    
+    # We expect the loop to break after the first iteration (j=1)
+    m = dim
+    T, V = lanczos(A, v_init, m=m)
+
+    # The tridiagonal matrix T should be non-zero only for the iterations that ran.
+    # We expect only T[0,0] to be populated (with the eigenvalue 3.0).
+    # All other betas (T[1,0], T[2,1], etc.) should be zero because the loop broke.
+    assert np.isclose(T[0, 0], 3.0)
+    assert np.isclose(T[1, 0], 0.0) # This confirms beta was ~0
+    
+    # The rest of the T matrix should also be zero
+    assert np.count_nonzero(T) == 1
 
 def check_hamiltonian_structure(hamiltonian: Dict[str, float], expected_num_qubits: int):
     """
@@ -192,43 +252,6 @@ def test_LiH_hamiltonian_tapered_structure():
         # Depending on strictness, you might assert False here or pass with warning.
         # For now, let's pass with a warning to avoid test failures due to complex QM calculations.
         pass
-
-def test_lanczos_tridiagonalization():
-    """
-    Tests the core lanczos function.
-
-    It verifies that the output vectors V are orthonormal and that the
-    tridiagonal matrix T satisfies the Lanczos relation: A*V.T = V.T*T.
-    """
-    # 1. Set up a sample Hermitian matrix and initial vector
-    dim = 4
-    A = np.array([
-        [2, -1, 0, 0],
-        [-1, 2, -1, 0],
-        [0, -1, 2, -1],
-        [0, 0, -1, 2]
-    ], dtype=np.complex128)
-
-    v_init = np.random.rand(dim).astype(np.complex128)
-    m = dim  # Use full number of iterations for a complete basis
-
-    # 2. Run the lanczos function
-    T, V = lanczos(A, v_init, m=m)
-
-    # 3. Verify the properties of the output
-
-    # Property I: The rows of V (the Lanczos vectors) should be orthonormal.
-    # V is an (m x n) matrix, so V @ V.conj().T should be the identity matrix.
-    identity_matrix = np.eye(m, dtype=np.complex128)
-    assert np.allclose(V @ V.conj().T, identity_matrix), "Lanczos vectors (V) are not orthonormal"
-
-    # Property II: The tridiagonal matrix T must satisfy the Lanczos relation.
-    # The relation is A @ V.T = V.T @ T
-    # A is (n x n), V.T is (n x m), T is (m x m)
-    lhs = A @ V.T
-    rhs = V.T @ T
-    assert np.allclose(lhs, rhs), "Tridiagonal matrix T does not satisfy the Lanczos relation"
-
 
 def check_groups(groups):
     """Helper function to validate that all terms within each group mutually commute."""
