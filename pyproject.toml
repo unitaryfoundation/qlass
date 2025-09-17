@@ -14,7 +14,7 @@ dependencies = [
 "openfermionpyscf",
 "pyscf",
 "tqdm",
-"numba"
+"numba>=0.59.0"
 ]
 
 readme = "README.md"
