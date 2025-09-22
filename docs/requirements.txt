@@ -1,5 +1,5 @@
 sphinx_rtd_theme
-qiskit==2.1.2
+qiskit==2.2.0
 numpy
 perceval-quandela==0.13.2
 openfermion
