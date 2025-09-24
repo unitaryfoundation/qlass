@@ -157,6 +157,6 @@ The package is actively maintained by the Unitary Foundation as part of the QLAS
 
 # Acknowledgements
 
-We acknowledge support from the European Union through the QLASS project (EU Horizon Europe grant agreement 101135876). Views and opinions expressed are however those of the authors only and do not necessarily reflect those of the European Union. Neither the European Union nor the granting authority can be held responsible for them. We thank the contributors to the open-source quantum computing ecosystem, particularly the developers of Qiskit, Perceval, OpenFermion, and PySCF. We would like to thank Bruno Senjean, Jean-Sebastian Filhol and Francesco Malaspino for their valuable insight and the Github users @Kitsunp and @Qubit1718 for their code contributions.
+We acknowledge support from the European Union through the QLASS project (EU Horizon Europe grant agreement 101135876). Views and opinions expressed are however those of the authors only and do not necessarily reflect those of the European Union. Neither the European Union nor the granting authority can be held responsible for them. We thank the contributors to the open-source quantum computing ecosystem, particularly the developers of Qiskit, Perceval, OpenFermion, and PySCF. We would like to thank Bruno Senjean, Jean-Sébastien Filhol and Francesco Malaspina for their valuable insight and the Github users @Kitsunp and @Qubit1718 for their code contributions.
 
 # References
