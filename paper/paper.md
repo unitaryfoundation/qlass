@@ -9,6 +9,7 @@ tags:
   - linear optics
 authors:
   - name: Farrokh Labib
+    orcid: 0009-0005-3729-9602
     affiliation: "1, 2"
   - name: Nathan Shammah
     orcid: 0000-0002-8775-3667
