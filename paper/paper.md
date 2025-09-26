@@ -109,26 +109,6 @@ The package is structured into four main modules:
 3. **`vqe`**: Implements variational algorithms and ansätze.
 4. **`utils`**: Contains utility functions for measurement processing and expectation value calculations.
 
-The structure can be seen below in the diagram, highlighting the relevant folders and files:
-
-qlass/
-* docs/
-* examples/
-* notebooks/
-*  qlass/
-    * compiler/
-      * compiler.py
-      * hardware_config.py
-    * quantum_chemistry/
-      * classical_solution.py
-      * hamiltonians.py
-    * tests/
-    * utils/
-      * utils.py
-    * vqe/
-      * ansatz.py
-      * vqe.py
-
 The implementation leverages several design patterns to ensure extensibility. It allows integration with different quantum backends and enables easy addition of new variational forms. We also support multiple output formats from different simulator backends.
 
 # Performance and Validation
