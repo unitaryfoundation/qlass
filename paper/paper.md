@@ -121,6 +121,7 @@ The package includes comprehensive test coverage validating:
 - Compatibility with both Perceval and Qiskit simulation backends.
 
 Performance optimizations include:
+
 - Efficient Pauli string grouping algorithms to minimize measurement overhead
 - Transpilation optimization for reduced circuit depth
 - Numba-accelerated classical computations for large Hamiltonians
