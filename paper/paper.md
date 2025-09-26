@@ -30,7 +30,7 @@ bibliography: paper.bib
 
 # Statement of need
 
-Photonic quantum computing represents a powerful approach to building scalable quantum computers, offering advantages such as avoiding the need for dilution fridges, reconfigurable chips, and natural connectivity to quantum communication networks [@kok2007linear; @o2009photonic]. However, the translation of quantum algorithms from the abstract circuit model to photonic implementations presents unique challenges. Existing quantum software frameworks like Qiskit [@aleksandrowicz2019qiskit] and Cirq [@cirq2021] primarily target gate-based quantum computers with qubit architectures, while photonic platforms operate on fundamentally different principles using linear optical elements, photons, and modes. 
+Photonic quantum computing represents a powerful approach to building scalable quantum computers, offering advantages such as avoiding the need for dilution fridges, providing natural connectivity to quantum communication networks [@kok2007linear; @o2009photonic] and, as in the case of QLASS devices, allowing for reconfigurable chips. However, the translation of quantum algorithms from the abstract circuit model to photonic implementations presents unique challenges. Existing quantum software frameworks like Qiskit [@aleksandrowicz2019qiskit] and Cirq [@cirq2021] primarily target gate-based quantum computers with qubit architectures, while photonic platforms operate on fundamentally different principles using linear optical elements, photons, and modes. 
 
 There are only a few open source software projects that focus on the simulation or compilation of photonic quantum computers. These include Perceval [@heurtel2023perceval], Strawberry  Fields [@killoran2019strawberry], Piquasso [@kolarovszki2025piquasso] and Graphix [@sunami2022graphix], all Python packages. These tools are primarily focussed on photonic circuit compilation and simulation. We are however interested in specific applications of photonic quantum computing. In particular in applications related to quantum chemistry. As far as we know, there is no software platform that can run VQE simulations on photonic quantum computing platforms starting with an ansatz defined in the qubit architecture all the way to running the VQE on a photonic quantum computer to obtain ground state energies for molecular hamiltonians.
 
@@ -121,9 +121,16 @@ The package includes comprehensive test coverage validating:
 - Compatibility with both Perceval and Qiskit simulation backends.
 
 Performance optimizations include:
+
 - Efficient Pauli string grouping algorithms to minimize measurement overhead
 - Transpilation optimization for reduced circuit depth
 - Numba-accelerated classical computations for large Hamiltonians
+
+# Distribution and Development
+`qlass` source code is hosted on Unitary Fund's Github repository. It is released there and via the Python Package Index (PyPI). The documentation can be found on [https://qlass.readthedocs.org/](https://qlass.readthedocs.org/) and consists of a user guide, an API-doc and tutorials. Milestones are used to guide development sprints and coordinate with contributors. It is licensed under permissive OSI licence Apache 2.0 to facilitate its adoption and integration in the developing quantum software stack. 
+
+# Usage, Contributions and Community 
+Users can open issues on the Github repository to receive assistance from maintainers or use a dedicated Discord channel on the Unitary Fund Discord server for broader support and engagement. `qlass` is already used to support theoretical and experimental work in academia and in the quantum industry, such as in the QLASS project, where it is used to model experiments with the glass-based processors by the startup Ephos and to test quantum chemistry solutions in Lithium ion battery modeling by CNRS and the University of Montpellier. `qlass` participated in unitaryHACK, the largest hackathon in quantum open-source software; it was the first project, out of over 50 participating ones, to have all bounties awarded, gaining two new contributors, a student from the University of Boston and a developer from Mexico. `qlass` has been used as training material for the Collaborative Innovative Network by the European Space Agency's Phi Lab. 
 
 # Conclusions and Future Work
 
