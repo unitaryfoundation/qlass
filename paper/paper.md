@@ -30,7 +30,7 @@ bibliography: paper.bib
 
 # Statement of need
 
-Photonic quantum computing represents a powerful approach to building scalable quantum computers, offering advantages such as avoiding the need for dilution fridges, reconfigurable chips, and natural connectivity to quantum communication networks [@kok2007linear; @obrien2009photonic]. However, the translation of quantum algorithms from the abstract circuit model to photonic implementations presents unique challenges. Existing quantum software frameworks like Qiskit [@aleksandrowicz2019qiskit] and Cirq [@cirq2021] primarily target gate-based quantum computers with qubit architectures, while photonic platforms operate on fundamentally different principles using linear optical elements, photons, and modes. 
+Photonic quantum computing represents a powerful approach to building scalable quantum computers, offering advantages such as avoiding the need for dilution fridges, reconfigurable chips, and natural connectivity to quantum communication networks [@kok2007linear; @o2009photonic]. However, the translation of quantum algorithms from the abstract circuit model to photonic implementations presents unique challenges. Existing quantum software frameworks like Qiskit [@aleksandrowicz2019qiskit] and Cirq [@cirq2021] primarily target gate-based quantum computers with qubit architectures, while photonic platforms operate on fundamentally different principles using linear optical elements, photons, and modes. 
 
 There are only a few open source software projects that focus on the simulation or compilation of photonic quantum computers. These include Perceval [@heurtel2023perceval], Strawberry  Fields [@killoran2019strawberry], Piquasso [@kolarovszki2025piquasso] and Graphix [@sunami2022graphix], all Python packages. These tools are primarily focussed on photonic circuit compilation and simulation. We are however interested in specific applications of photonic quantum computing. In particular in applications related to quantum chemistry. As far as we know, there is no software platform that can run VQE simulations on photonic quantum computing platforms starting with an ansatz defined in the qubit architecture all the way to running the VQE on a photonic quantum computer to obtain ground state energies for molecular hamiltonians.
 
@@ -109,26 +109,6 @@ The package is structured into four main modules:
 3. **`vqe`**: Implements variational algorithms and ansätze.
 4. **`utils`**: Contains utility functions for measurement processing and expectation value calculations.
 
-The structure can be seen below in the diagram, highlighting the relevant folders and files:
-
-qlass/
-* docs/
-* examples/
-* notebooks/
-*  qlass/
-    * compiler/
-      * compiler.py
-      * hardware_config.py
-    * quantum_chemistry/
-      * classical_solution.py
-      * hamiltonians.py
-    * tests/
-    * utils/
-      * utils.py
-    * vqe/
-      * ansatz.py
-      * vqe.py
-
 The implementation leverages several design patterns to ensure extensibility. It allows integration with different quantum backends and enables easy addition of new variational forms. We also support multiple output formats from different simulator backends.
 
 # Performance and Validation
@@ -158,6 +138,6 @@ The package is actively maintained by the Unitary Foundation as part of the QLAS
 
 # Acknowledgements
 
-We acknowledge support from the European Union through the QLASS project (EU Horizon Europe grant agreement 101135876). Views and opinions expressed are however those of the authors only and do not necessarily reflect those of the European Union. Neither the European Union nor the granting authority can be held responsible for them. We thank the contributors to the open-source quantum computing ecosystem, particularly the developers of Qiskit, Perceval, OpenFermion, and PySCF. We would like to thank Bruno Senjean, Jean-Sébastien Filhol and Francesco Malaspina for their valuable insight and the Github users @Kitsunp and @Qubit1718 for their code contributions.
+We acknowledge support from the European Union through the QLASS project (EU Horizon Europe grant agreement 101135876). Views and opinions expressed are however those of the authors only and do not necessarily reflect those of the European Union. Neither the European Union nor the granting authority can be held responsible for them. We thank the contributors to the open-source quantum computing ecosystem, particularly the developers of Qiskit, Perceval, OpenFermion, and PySCF. We would like to thank Bruno Senjean, Jean-Sébastien Filhol and Francesco Malaspina for their valuable insight and the Github users Kitsunp and Qubit1718 for their code contributions.
 
 # References
