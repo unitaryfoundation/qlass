@@ -8,6 +8,9 @@ from .utils import (
     is_qubit_state,
     normalize_samples,
     linear_circuit_to_unitary,
+    compute_expectation_value_from_unitary,
+    loss_function_matrix,
+
     
 )
 
@@ -20,4 +23,7 @@ __all__ = [
     "rotate_qubits",
     "normalize_samples",
     "linear_circuit_to_unitary",
+    "compute_expectation_value_from_unitary",
+    "loss_function_matrix",
+
 ]
