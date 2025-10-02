@@ -9,10 +9,22 @@ Before installing ``qlass``, ensure you have the following:
 - Python 3.9 or newer
 - pip (Python package manager)
 
+
+Stable install from PyPI
+-----------------------
+
+To install the latest stable release of ``qlass`` from PyPI:
+
+.. code-block:: bash
+
+   pip install qlass
+
+This will install ``qlass`` and all its dependencies from the Python Package Index.
+
 Installing from Source
 ---------------------
 
-The recommended way to install ``qlass`` is directly from the GitHub repository:
+To install the development version from source:
 
 .. code-block:: bash
 

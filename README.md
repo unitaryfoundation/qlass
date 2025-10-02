@@ -9,13 +9,30 @@
 [![License](https://img.shields.io/github/license/unitaryfoundation/qlass)](https://github.com/unitaryfoundation/qlass/blob/main/LICENSE)
 [![Discord Chat](https://img.shields.io/badge/dynamic/json?color=blue&label=Discord&query=approximate_presence_count&suffix=%20online.&url=https%3A%2F%2Fdiscord.com%2Fapi%2Finvites%2FJqVGmpkP96%3Fwith_counts%3Dtrue)](http://discord.unitary.fund)
 
-
 # qlass
 `qlass` is a package to compile quantum algorithms on photonic devices. Part of the Quantum Glass-based Photonic Integrated Circuits ([QLASS](https://www.qlass-project.eu/))
 project funded by the European Union. 
 
+
 ## Installing `qlass`
-The development install of `qlass` requirements can be done by setting the working directory to the top level of the repository and running `pip install -e .`. 
+
+### Stable release (PyPI)
+
+
+To install the latest stable release of `qlass` from [PyPI](https://pypi.org/project/qlass/):
+
+```bash
+pip install qlass
+```
+
+### Development install
+
+To install the development version, set the working directory to the top level of the repository and run:
+
+```bash
+pip install -e .
+```
+
 `qlass` builds upon open-source scientific software packages in Python: `scipy` for numerical optimization, `pyscf` and `openfermion` for quantum chemistry, `qiskit` for quantum computing, and `perceval` for quantum photonics compilation.
 
 ## Getting started
