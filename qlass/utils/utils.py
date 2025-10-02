@@ -2,9 +2,8 @@ import numpy as np
 import perceval as pcvl
 import qiskit
 import exqalibur
-from typing import List, Tuple, Dict, Union
+from typing import List, Tuple, Dict, Union, Callable
 
-import qiskit.circuit
 
 H_matrix = (1/np.sqrt(2)) * pcvl.Matrix([[1.0, 1.0], [1.0, -1.0]])
 M_matrix = (1/np.sqrt(2)) * pcvl.Matrix([[1.0, 1.0], [1.0j, -1.0j]])
@@ -357,3 +356,70 @@ def linear_circuit_to_unitary(circuit: pcvl.Circuit) -> np.ndarray:
     unitary_matrix = np.array(circuit.compute_unitary())
 
     return unitary_matrix
+
+def compute_expectation_value_from_unitary(
+    unitary: np.ndarray, 
+    pauli_matrix: np.ndarray,
+    initial_state: np.ndarray = None
+) -> float:
+    """
+    Compute expectation value <ψ|H|ψ> where |ψ> = U|0>.
+    
+    Args:
+        unitary (np.ndarray): Unitary matrix representing the circuit
+        pauli_matrix (np.ndarray): Matrix representation of Pauli operator
+        initial_state (np.ndarray): Initial state vector (default: |0...0>)
+    
+    Returns:
+        float: Expectation value
+    """
+    n_qubits = int(np.log2(unitary.shape[0]))
+    
+    if initial_state is None:
+        # Default to |0...0> state
+        initial_state = np.zeros(2**n_qubits, dtype=complex)
+        initial_state[0] = 1.0
+    
+    # Compute |ψ> = U|0>
+    state = unitary @ initial_state
+    
+    # Compute <ψ|H|ψ>
+    expectation = np.real(state.conj() @ pauli_matrix @ state)
+    
+    return expectation
+
+def loss_function_matrix(
+    params: np.ndarray,
+    H: Dict[str, float],
+    unitary_executor: Callable
+) -> float:
+    """
+    Compute loss function using unitary matrices directly.
+    
+    Args:
+        params (np.ndarray): Variational parameters
+        H (Dict[str, float]): Hamiltonian dictionary
+        unitary_executor: Function that returns unitary matrix given params
+        
+    Returns:
+        float: Energy expectation value
+    """
+    from qlass.quantum_chemistry import pauli_string_to_matrix
+    
+    # Get the unitary from the executor (no pauli_string needed)
+    unitary = unitary_executor(params)
+    
+    loss = 0.0
+    for pauli_string, coefficient in H.items():
+        # Convert Pauli string to matrix
+        pauli_matrix = pauli_string_to_matrix(pauli_string)
+        
+        # Compute expectation value
+        expectation = compute_expectation_value_from_unitary(
+            unitary, 
+            pauli_matrix
+        )
+        
+        loss += coefficient * expectation
+    
+    return loss
