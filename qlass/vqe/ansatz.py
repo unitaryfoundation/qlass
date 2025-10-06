@@ -1,7 +1,7 @@
 from perceval.converters import QiskitConverter
 from perceval.utils import NoiseModel
 from qiskit import transpile, QuantumCircuit
-from qiskit.circuit.library import TwoLocal
+from qiskit.circuit.library import n_local
 
 import perceval as pcvl
 import numpy as np
@@ -24,7 +24,7 @@ def le_ansatz(lp: np.ndarray, pauli_string: str, noise_model: NoiseModel = None)
         Processor: The quantum circuit as a Perceval processor
     """
     num_qubits = len(pauli_string)
-    ansatz = TwoLocal(num_qubits, 'ry', 'cx', reps=1)
+    ansatz = n_local(num_qubits, 'ry', 'cx', reps=1, entanglement='linear')
 
     ansatz_assigned = ansatz.assign_parameters(lp)
     ansatz_transpiled = transpile(ansatz_assigned, basis_gates=['u3', 'cx'], optimization_level=3)

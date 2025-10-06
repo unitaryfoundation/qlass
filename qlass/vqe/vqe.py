@@ -19,6 +19,7 @@ class VQE:
         executor: Callable,
         num_params: int,
         optimizer: str = "COBYLA",
+        executor_type: str = 'sampling',
     ):
         """
         Initialize the VQE solver.
@@ -26,8 +27,10 @@ class VQE:
         Args:
             hamiltonian (Dict[str, float]): Hamiltonian dictionary with Pauli string keys 
                                            and coefficient values
-            optimizer (str): Optimization method to use. Any method supported by scipy.optimize.minimize
             executor (Callable): Custom executor function, if None, a default one will be created
+            num_params (int): number of parameters that the executor accepts
+            optimizer (str): Optimization method to use. Any method supported by scipy.optimize.minimize
+            executor_type (str): Type of executor - "sampling", "unitary"
         """
         self.hamiltonian = hamiltonian
         self.executor = executor
@@ -37,6 +40,13 @@ class VQE:
         # Extract number of qubits from the Hamiltonian
         self.num_qubits = len(next(iter(hamiltonian.keys())))
         
+        # Executor type for loss function computation
+        if executor_type in ["sampling", "unitary"]:
+            self.executor_type = executor_type
+        else:
+            raise ValueError(f"Invalid executor_type: {executor_type}. Must be either sampling or unitary.")
+        
+
         # Results storage
         self.optimization_result = None
         self.energy_history = []
@@ -44,7 +54,13 @@ class VQE:
     
     def _callback(self, params):
         """Callback function to record optimization progress."""
-        energy = loss_function(params, self.hamiltonian, self.executor)
+        if self.executor_type == "unitary":
+            from qlass.utils import loss_function_matrix
+            energy = loss_function_matrix(params, self.hamiltonian, self.executor)
+        else:
+            from qlass.utils import loss_function
+            energy = loss_function(params, self.hamiltonian, self.executor)
+        
         self.energy_history.append(energy)
         self.parameter_history.append(params.copy())
         
@@ -73,10 +89,19 @@ class VQE:
             print(f"Starting VQE optimization using {self.optimizer} optimizer")
             print(f"Number of qubits: {self.num_qubits}")
             print(f"Number of parameters: {len(initial_params)}")
+            print(f"Executor type: {self.executor_type}")
             
+        # Choose the appropriate loss function
+        if self.executor_type == "unitary":
+            from qlass.utils import loss_function_matrix
+            loss_fn = loss_function_matrix
+        elif self.executor_type == "sampling":
+            from qlass.utils import loss_function
+            loss_fn = loss_function
+
         # Run the optimization
         self.optimization_result = minimize(
-            loss_function,
+            loss_fn,
             initial_params,
             args=(self.hamiltonian, self.executor),
             method=self.optimizer,

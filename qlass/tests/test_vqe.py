@@ -44,7 +44,7 @@ def test_vqe_init(simple_vqe):
 def test_vqe_run(simple_vqe):
     """Tests the main `run` method to ensure optimization completes."""
     # Run with a small number of iterations for speed
-    final_energy = simple_vqe.run(max_iterations=3, verbose=False)
+    final_energy = simple_vqe.run(max_iterations=10, verbose=False)
     
     assert isinstance(final_energy, float)
     assert simple_vqe.optimization_result is not None
@@ -64,7 +64,7 @@ def test_get_optimal_parameters(simple_vqe):
         simple_vqe.get_optimal_parameters()
 
     # After running
-    simple_vqe.run(max_iterations=3, verbose=False)
+    simple_vqe.run(max_iterations=10, verbose=False)
     optimal_params = simple_vqe.get_optimal_parameters()
     
     assert isinstance(optimal_params, np.ndarray)
@@ -79,7 +79,7 @@ def test_compare_with_exact(simple_vqe):
     with pytest.raises(ValueError, match="VQE optimization has not been run yet."):
         simple_vqe.compare_with_exact(0.0)
     
-    simple_vqe.run(max_iterations=3, verbose=False)
+    simple_vqe.run(max_iterations=10, verbose=False)
     vqe_energy = simple_vqe.optimization_result.fun
     exact_energy = 0.5
     
@@ -181,7 +181,7 @@ def test_plot_convergence(simple_vqe, mocker):
     mock_show = mocker.patch('matplotlib.pyplot.show')
 
     # 3. Run VQE to populate history and call the plot function
-    simple_vqe.run(max_iterations=3, verbose=False)
+    simple_vqe.run(max_iterations=10, verbose=False)
     exact_energy_val = -1.0
     simple_vqe.plot_convergence(exact_energy=exact_energy_val)
 
@@ -195,3 +195,115 @@ def test_plot_convergence(simple_vqe, mocker):
     mock_legend.assert_called_once()
     mock_grid.assert_called_once()
     mock_show.assert_called_once()
+
+def identity_unitary_executor(params):
+    """Simple unitary executor that returns identity matrix."""
+    return np.eye(4, dtype=complex)
+
+
+def parametrized_unitary_executor(params):
+    """Unitary executor with actual parameters."""
+    # Create a simple 2-qubit unitary using RY rotations
+    theta1, theta2 = params[0], params[1]
+    
+    ry1 = np.array([
+        [np.cos(theta1/2), -np.sin(theta1/2)],
+        [np.sin(theta1/2), np.cos(theta1/2)]
+    ], dtype=complex)
+    
+    ry2 = np.array([
+        [np.cos(theta2/2), -np.sin(theta2/2)],
+        [np.sin(theta2/2), np.cos(theta2/2)]
+    ], dtype=complex)
+    
+    return np.kron(ry1, ry2)
+
+
+def test_vqe_init_with_unitary_executor():
+    """Test VQE initialization with unitary executor type."""
+    hamiltonian = {"II": -0.5, "ZZ": 1.0}
+    
+    vqe = VQE(
+        hamiltonian=hamiltonian,
+        executor=identity_unitary_executor,
+        num_params=2,
+        executor_type="unitary"
+    )
+    
+    assert vqe.executor_type == "unitary"
+    assert vqe.num_qubits == 2
+    assert vqe.num_params == 2
+
+
+def test_vqe_init_with_sampling_executor():
+    """Test VQE initialization with sampling executor type."""
+    hamiltonian = {"II": -0.5, "ZZ": 1.0}
+    
+    def sampling_exec(params, pauli_string):
+        return {'results': [(0, 0)] * 100}
+    
+    vqe = VQE(
+        hamiltonian=hamiltonian,
+        executor=sampling_exec,
+        num_params=2,
+        executor_type="sampling"
+    )
+    
+    assert vqe.executor_type == "sampling"
+
+def test_vqe_invalid_executor_type():
+    """Test that invalid executor_type raises error."""
+    hamiltonian = {"ZZ": 1.0}
+    
+    with pytest.raises(ValueError, match="Invalid executor_type"):
+        VQE(
+            hamiltonian=hamiltonian,
+            executor=identity_unitary_executor,
+            num_params=2,
+            executor_type="invalid_type"
+        )
+
+def test_vqe_compare_unitary_vs_sampling():
+    """
+    Test that unitary and sampling executors give consistent results
+    for the same problem (within statistical error).
+    """
+    hamiltonian = {"II": 0.5, "ZZ": 1.0}
+    
+    # Unitary executor
+    def unitary_exec(params):
+        return np.eye(4, dtype=complex)
+    
+    # Sampling executor (deterministic - always returns |00>)
+    def sampling_exec(params, pauli_string):
+        return {'results': [(0, 0)] * 10000}
+    
+    vqe_unitary = VQE(
+        hamiltonian=hamiltonian,
+        executor=unitary_exec,
+        num_params=2,
+        executor_type="unitary"
+    )
+    
+    vqe_sampling = VQE(
+        hamiltonian=hamiltonian,
+        executor=sampling_exec,
+        num_params=2,
+        executor_type="sampling"
+    )
+    
+    # Both should give same energy for identity circuit
+    energy_unitary = vqe_unitary.run(
+        initial_params=np.zeros(2),
+        max_iterations=10,
+        verbose=False
+    )
+    energy_sampling = vqe_sampling.run(
+        initial_params=np.zeros(2),
+        max_iterations=10,
+        verbose=False
+    )
+    
+    # Expected: 0.5 * 1 + 1.0 * 1 = 1.5
+    assert np.isclose(energy_unitary, 1.5)
+    assert np.isclose(energy_sampling, 1.5, atol=0.01)

@@ -386,7 +386,7 @@ def compute_expectation_value_from_unitary(
     # Compute <ψ|H|ψ>
     expectation = np.real(state.conj() @ pauli_matrix @ state)
     
-    return expectation
+    return float(expectation.real)
 
 def loss_function_matrix(
     params: np.ndarray,
@@ -405,8 +405,8 @@ def loss_function_matrix(
         float: Energy expectation value
     """
     from qlass.quantum_chemistry import pauli_string_to_matrix
-    
-    # Get the unitary from the executor (no pauli_string needed)
+
+    # Get the unitary from the executor
     unitary = unitary_executor(params)
     
     loss = 0.0
@@ -422,4 +422,4 @@ def loss_function_matrix(
         
         loss += coefficient * expectation
     
-    return loss
+    return float(np.real(loss))
