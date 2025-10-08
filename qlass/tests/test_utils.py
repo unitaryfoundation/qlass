@@ -1,10 +1,14 @@
-from qlass.utils.utils import (
+from qlass.utils import (
     compute_energy, 
     get_probabilities, 
     qubit_state_marginal, 
     is_qubit_state, 
     loss_function,
+    compute_expectation_value_from_unitary,
+    loss_function_matrix,
 )
+from qlass.quantum_chemistry import pauli_string_to_matrix
+
 import perceval as pcvl
 import numpy as np
 import pytest
@@ -264,3 +268,80 @@ def test_loss_function_fallback_without_grouping(mocker):
     calculated_loss = loss_function(params, hamiltonian, mock_executor)
 
     assert np.isclose(calculated_loss, expected_loss)
+
+def test_compute_expectation_value_from_unitary_identity():
+    """Test expectation value computation with identity unitary and Pauli Z."""
+    # For U = I and H = Z, <0|Z|0> = 1
+    unitary = np.eye(2, dtype=complex)
+    pauli_z = pauli_string_to_matrix("Z")
+    
+    expectation = compute_expectation_value_from_unitary(unitary, pauli_z)
+    assert np.isclose(expectation, 1.0)
+
+def test_compute_expectation_value_from_unitary_hadamard():
+    """Test expectation value with Hadamard gate."""
+    # H|0> = |+>, and <+|Z|+> = 0
+    H = (1/np.sqrt(2)) * np.array([[1, 1], [1, -1]], dtype=complex)
+    pauli_z = pauli_string_to_matrix("Z")
+    
+    expectation = compute_expectation_value_from_unitary(H, pauli_z)
+    assert np.isclose(expectation, 0.0, atol=1e-10)
+
+def test_loss_function_matrix_multi_term_hamiltonian():
+    """Test matrix-based loss function with multiple terms."""
+    def identity_executor(params):
+        return np.eye(2, dtype=complex)
+    
+    hamiltonian = {
+        "I": 0.5,   # Identity term
+        "Z": 1.0,   # <0|Z|0> = 1
+        "X": -0.5   # <0|X|0> = 0
+    }
+    params = np.array([0.1])
+    
+    loss = loss_function_matrix(params, hamiltonian, identity_executor)
+    # Expected: 0.5 * 1 + 1.0 * 1 + (-0.5) * 0 = 1.5
+    assert np.isclose(loss, 1.5)
+
+def test_loss_function_matrix_two_qubit():
+    """Test matrix-based loss function for 2-qubit system."""
+    def identity_executor(params):
+        return np.eye(4, dtype=complex)
+    
+    hamiltonian = {
+        "II": 1.0,
+        "ZZ": 0.5,
+        "XX": -0.3
+    }
+    params = np.array([0.1, 0.2])
+    
+    loss = loss_function_matrix(params, hamiltonian, identity_executor)
+    # |00> state: II=1, ZZ=1, XX=0
+    # Expected: 1.0 * 1 + 0.5 * 1 + (-0.3) * 0 = 1.5
+    assert np.isclose(loss, 1.5)
+
+def test_loss_function_matrix_parameterized_unitary():
+    """Test with parameterized unitary (rotation)."""
+    def rotation_executor(params):
+        # Rotation around Y axis: Ry(theta)
+        theta = params[0]
+        return np.array([
+            [np.cos(theta/2), -np.sin(theta/2)],
+            [np.sin(theta/2), np.cos(theta/2)]
+        ], dtype=complex)
+    
+    hamiltonian = {"Z": 1.0}
+    
+    # At theta=0, should get <0|Z|0> = 1
+    loss_0 = loss_function_matrix(np.array([0.0]), hamiltonian, rotation_executor)
+    assert np.isclose(loss_0, 1.0)
+    
+    # At theta=pi, should get <1|Z|1> = -1
+    loss_pi = loss_function_matrix(np.array([np.pi]), hamiltonian, rotation_executor)
+    assert np.isclose(loss_pi, -1.0)
+    
+    # At theta=pi/2, should get 0
+    loss_half = loss_function_matrix(
+        np.array([np.pi/2]), hamiltonian, rotation_executor
+    )
+    assert np.isclose(loss_half, 0.0, atol=1e-10)
