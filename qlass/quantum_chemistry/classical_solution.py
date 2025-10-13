@@ -61,7 +61,7 @@ def brute_force_minimize(H: Dict[str, float]) -> float:
         H (Dict[str, float]): Hamiltonian dictionary
 
     Returns:
-        float: Minimum eigenvalue of the Hamiltonian
+        list[float]: eigenvalues of the Hamiltonian
 
     '''
 
@@ -69,7 +69,7 @@ def brute_force_minimize(H: Dict[str, float]) -> float:
     l0 = np.linalg.eigvals(H_matrix)
     l0.sort()
 
-    return l0[0]
+    return l0
 
 
 @njit

@@ -3,8 +3,10 @@ import perceval as pcvl
 import qiskit
 import exqalibur
 from typing import List, Tuple, Dict, Union
-
+import csv
 import qiskit.circuit
+import qlass.vqe
+
 
 H_matrix = (1/np.sqrt(2)) * pcvl.Matrix([[1.0, 1.0], [1.0, -1.0]])
 M_matrix = (1/np.sqrt(2)) * pcvl.Matrix([[1.0, 1.0], [1.0j, -1.0j]])
@@ -219,7 +221,7 @@ def normalize_samples(samples) -> List[Union[exqalibur.FockState, Tuple[int, ...
     return normalized
 
 
-def loss_function(lp: np.ndarray, H: Dict[str, float], executor) -> float:
+def vqe_loss_function(lp: np.ndarray, H: Dict[str, float], executor) -> float:
     """
     Compute the loss function for the VQE algorithm with automatic Pauli grouping.
     
@@ -256,6 +258,7 @@ def loss_function(lp: np.ndarray, H: Dict[str, float], executor) -> float:
     
     loss = 0.0
     
+
     if use_grouping:
         # Use automatic grouping for optimized measurements
         grouped_hamiltonians = group_commuting_pauli_terms(H)
@@ -265,13 +268,15 @@ def loss_function(lp: np.ndarray, H: Dict[str, float], executor) -> float:
             # In the future, this could be optimized to measure entire groups simultaneously
             # For now, we process each term individually but with the grouping organization
             for pauli_string, coefficient in group.items():
+                
                 samples = executor(lp, pauli_string)
+
                 
                 # Handle different executor return formats
-                sample_list = _extract_samples_from_executor_result(samples)
+                sample_lists = _extract_samples_from_executor_result(samples)
                 
                 # Normalize samples to consistent format
-                normalized_samples = normalize_samples(sample_list)
+                normalized_samples = normalize_samples(sample_lists)
                 
                 prob_dist = get_probabilities(normalized_samples)
                 pauli_bin = pauli_string_bin(pauli_string)
@@ -279,6 +284,8 @@ def loss_function(lp: np.ndarray, H: Dict[str, float], executor) -> float:
                 qubit_state_marg = qubit_state_marginal(prob_dist)
                 expectation = compute_energy(pauli_bin, qubit_state_marg)
                 loss += coefficient * expectation
+
+
     else:
         # Fallback to original implementation without grouping
         for pauli_string, coefficient in H.items():
@@ -296,7 +303,117 @@ def loss_function(lp: np.ndarray, H: Dict[str, float], executor) -> float:
             qubit_state_marg = qubit_state_marginal(prob_dist)
             expectation = compute_energy(pauli_bin, qubit_state_marg)
             loss += coefficient * expectation
+
+    # with open('loss.csv', mode='a', newline='') as file:
+    #     writer = csv.writer(file)
+    #     writer.writerow([loss])
     
+    return loss
+
+
+def loss_function(lp: np.ndarray, H: Dict[str, float], executor, energy_collector, weight_option: str= "weighted") -> float:
+    """
+    Compute the loss function for the VQE algorithm with automatic Pauli grouping.
+
+    This function automatically groups commuting Pauli terms to reduce the number
+    of measurements required. The grouping is applied transparently without
+    changing the function interface, providing automatic optimization for enseble VQE
+    algorithms.
+
+    The function works with executors that return either:
+    1. Fock states (from linear optical circuits) - exqalibur.FockState objects
+    2. Bitstring tuples (from regular qubit-based circuits)
+    3. Bitstring strings (from Qiskit Sampler)
+
+    The executor should return samples in one of these formats:
+    - Dict with 'results' key: {'results': [samples]}
+    - Direct list of samples: [samples]
+    - Qiskit-style format with bitstrings or counts
+
+    Args:
+        lp (np.ndarray): Array of parameter values
+        H (Dict[str, float]): Hamiltonian dictionary
+        executor: A callable function that executes the quantum circuit.
+        weight_option: choices of weights for ensemble VQE
+
+    Returns:
+        float: The computed loss value
+    """
+    # Import here to avoid circular imports
+    try:
+        from qlass.quantum_chemistry.hamiltonians import group_commuting_pauli_terms
+        use_grouping = True
+    except ImportError:
+        # Fallback to individual processing if grouping not available
+        use_grouping = False
+
+    loss = 0.0
+    lst_energies = None
+
+    if use_grouping:
+        # Use automatic grouping for optimized measurements
+        grouped_hamiltonians = group_commuting_pauli_terms(H)
+
+        for group in grouped_hamiltonians:
+            # Each group contains mutually commuting terms
+            # In the future, this could be optimized to measure entire groups simultaneously
+            # For now, we process each term individually but with the grouping organization
+            for pauli_string, coefficient in group.items():
+
+                samples = executor(lp, pauli_string)
+
+                # Handle different executor return formats
+                sample_lists = [_extract_samples_from_executor_result(s) for s in samples]
+
+                # Normalize samples to consistent format
+                normalized_samples = [normalize_samples(sample_list) for sample_list in sample_lists]
+
+                prob_dist = [get_probabilities(normalized_sample) for normalized_sample in normalized_samples]
+                pauli_bin = pauli_string_bin(pauli_string)
+
+                qubit_state_marg = [qubit_state_marginal(pd) for pd in prob_dist]
+                expectation = [compute_energy(pauli_bin, qsm) for qsm in qubit_state_marg]
+                energies = [coefficient * expect for expect in expectation]
+                # Initialize accumulator on first iteration
+                if lst_energies is None:
+                    lst_energies = [0.0] * len(energies)
+
+                # Accumulate energies dynamically
+                for i, energy in enumerate(energies):
+                    lst_energies[i] += energy
+
+
+
+
+    else:
+        # Fallback to original implementation without grouping
+        for pauli_string, coefficient in H.items():
+            samples = executor(lp, pauli_string)
+
+            # Handle different executor return formats
+            sample_lists = [_extract_samples_from_executor_result(s) for s in samples]
+
+            # Normalize samples to consistent format
+            normalized_samples = [normalize_samples(sample_list) for sample_list in sample_lists]
+
+            prob_dist = [get_probabilities(normalized_sample) for normalized_sample in normalized_samples]
+            pauli_bin = pauli_string_bin(pauli_string)
+
+            qubit_state_marg = [qubit_state_marginal(pd) for pd in prob_dist]
+            expectation = [compute_energy(pauli_bin, qsm) for qsm in qubit_state_marg]
+            energies = [coefficient * expect for expect in expectation]
+            # Initialize accumulator on first iteration
+            if lst_energies is None:
+                lst_energies = [0.0] * len(energies)
+
+            # Accumulate energies dynamically
+            for i, energy in enumerate(energies):
+                lst_energies[i] += energy
+
+    weights = ensemble_weights(weight_option, len(energies))
+    for i in range(len(lst_energies)): loss += lst_energies[i] * weights[i]
+    energy_collector.enegies_convergence(lst_energies, len(lst_energies), loss)
+
     return loss
 
 
@@ -357,3 +474,52 @@ def linear_circuit_to_unitary(circuit: pcvl.Circuit) -> np.ndarray:
     unitary_matrix = np.array(circuit.compute_unitary())
 
     return unitary_matrix
+
+
+def ensemble_weights(weights_choice, n_occ):
+    """
+    provide weights for ensemble VQE
+    See the article for the choice of weights: https://doi.org/10.48550/arXiv.2509.17982
+    Args:
+        weights_choice (str): "weighted" (w_i < w_j) , "equi" (w_i = w_j), "ground_state_only" (1., 0., ..., 0.)
+        n_occ (int): number of occupied orbitals
+
+    Returns:
+        np.ndarray
+
+    """
+    if weights_choice == "equi":
+        weights = [1. / n_occ for i in range(n_occ)]  # should be n_occ of them
+    elif weights_choice == "weighted":
+        weights = []
+        for i in range(n_occ):
+            weights.append(1/(n_occ**2) * (2 * n_occ - 1 - 2 * i))
+    elif weights_choice == "ground_state_only":
+        weights = [1.] + [0.0]*(n_occ - 1)
+
+    return weights
+
+
+class DataCollector:
+    """
+    This class collects the loss function and energies each time the loss function is called by scipy minimize. The number of iteration
+    is not same as the loss_history taken from the default scipy minimize function.
+    """
+    def __init__(self):
+        self.energy_data = {}
+        self.loss_data = []
+
+    def enegies_convergence(self, energy_values, eign_index, loss_values):
+        """
+        Args:
+            energy_values list[float]:
+            eign_index (int): index for library
+            loss_values (float):
+
+        """
+        for i in range(eign_index):
+            if i not in self.energy_data:
+                self.energy_data[i] = []  # initialize a list if key is new
+            self.energy_data[i].append(energy_values[i])  # append instead of replacing
+
+        self.loss_data.append(loss_values)

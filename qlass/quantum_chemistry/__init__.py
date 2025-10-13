@@ -1,7 +1,8 @@
 
 from .classical_solution import hamiltonian_matrix, brute_force_minimize
 from .hamiltonians import (
-    LiH_hamiltonian, 
+    LiH_hamiltonian,
+    Hchain_geometry,
     generate_random_hamiltonian, 
     LiH_hamiltonian_tapered,
     pauli_commute,
