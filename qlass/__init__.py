@@ -12,7 +12,7 @@ from .quantum_chemistry.hamiltonians import (
 )
 
 # export from vqe module
-from .vqe.ansatz import le_ansatz, custom_unitary_ansatz
+from .vqe.ansatz import le_ansatz, custom_unitary_ansatz, hf_ansatz
 
 # export from utils module 
 from .utils.utils import loss_function, rotate_qubits
@@ -28,6 +28,7 @@ __all__ = [
     "sparsepauliop_dictionary",
     "le_ansatz",
     "custom_unitary_ansatz",
+    "hf_ansatz",
     "loss_function",
     "rotate_qubits",
     "ResourceAwareCompiler",

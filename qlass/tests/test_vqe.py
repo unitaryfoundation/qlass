@@ -7,6 +7,7 @@ from qlass.vqe import (
     VQE,
     le_ansatz,
     custom_unitary_ansatz,
+    hf_ansatz
 )
 
 from qlass.quantum_chemistry import (
@@ -157,6 +158,37 @@ def test_custom_unitary_ansatz():
 
     assert 0.45 <= prob_0 <= 0.55, f"Unexpected probability for |0⟩: {prob_0}"
     assert 0.45 <= prob_1 <= 0.55, f"Unexpected probability for |1⟩: {prob_1}"
+
+def test_hf_ansatz_vqe():
+    proc = hf_ansatz(
+        layers=1,
+        n_orbs=1,
+        lp=np.array([0.45674329, 0.91022972, 0.94590395, 0.58386885]),
+        pauli_string="II",
+        method="WFT",
+        cost="VQE",
+        noise_model=None
+    )
+    # Check that the returned object is not None
+    assert proc is not None
+    # Basic attribute check for Perceval processor
+    assert isinstance(proc, pcvl.Processor)
+
+def test_hf_ansatz_e_vqe():
+    procs = hf_ansatz(
+        layers=1,
+        n_orbs=1,
+        lp=np.array([0.45674329, 0.91022972, 0.94590395, 0.58386885]),
+        pauli_string="II",
+        method="WFT",
+        cost="e-VQE",
+        noise_model=None
+    )
+    assert isinstance(procs, list)
+    assert len(procs) > 0
+    # Each element should look like a processor
+    for p in procs:
+        assert isinstance(p, pcvl.Processor)
 
 def test_plot_convergence(simple_vqe, mocker):
     """
