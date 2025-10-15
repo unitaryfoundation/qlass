@@ -15,9 +15,9 @@ authors:
     orcid: 0000-0002-8775-3667
     affiliation: "1, 2"
 affiliations:
- - name: Unitary Fund France, 1 Impasse du Palais, 37000 Tours, France
+ - name: Unitary Fund France, Tours, France
    index: 1
- - name: Unitary Fund, 505 Montgomery St, 94111 San Francisco, USA
+ - name: Unitary Fund, San Francisco, USA
    index: 2
 
 date: 24 September 2025
