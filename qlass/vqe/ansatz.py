@@ -148,8 +148,6 @@ def hf_ansatz(layers: int, n_orbs: int, lp: np.ndarray, pauli_string: str, metho
         """
 
     '''Circuit implementation'''
-
-
     num_qubits = len(pauli_string)
     if method == "WFT":
         n_occ = n_orbs * 2 # number of spin orbitals
