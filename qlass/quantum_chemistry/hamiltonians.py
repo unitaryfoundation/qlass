@@ -224,7 +224,7 @@ def LiH_hamiltonian(R=1.5, charge=0, spin=0, num_electrons=2, num_orbitals=2) ->
     Returns:
         Dict[str, float]: Hamiltonian dictionary with Pauli string keys
     """
-    
+
     # Create geometry in OpenFermion format
     geometry = [('Li', (0.0, 0.0, 0.0)), ('H', (0.0, 0.0, R))]
     
@@ -356,3 +356,152 @@ def LiH_hamiltonian_tapered(R: float) -> Dict[str, float]:
     qubit_op = symmetry_conserving_bravyi_kitaev(fermionic_op, active_spin_orbitals, active_n_elec)
 
     return sparsepauliop_dictionary(qubit_op)
+
+def Hchain_KS_hamiltonian(n_hydrogens=2, R=1.2):
+    """
+        Generate the one-body Hamiltonian for a linear chain of hydrogen atoms at a given bond length.
+
+        This function constructs a non-interacting one-body Hamiltonian for a chain of hydrogen atoms
+        using Density Functional Theory (DFT) with a closed-shell Hartree-Fock (RHF) method.
+        The hydrogen atoms are placed linearly along the z-axis with a uniform bond length ``R``.
+        The resulting molecular orbitals are transformed into a qubit Hamiltonian representation.
+
+        Parameters
+        ----------
+        n_hydrogens : int, optional
+            Number of hydrogen atoms in the linear chain. Must be an even integer.
+            Default is 2.
+        R : float, optional
+            Bond length between adjacent hydrogen atoms in angstroms. Default is 1.2.
+
+        Returns
+        -------
+        H_qubit_dic : dict
+            Dictionary representation of the qubit Hamiltonian in terms of Pauli operators.
+            The keys correspond to Pauli strings and the values are their coefficients.
+        mo_energy : list of float
+            Molecular orbital energies computed from PySCF.
+        n_occupied : int
+            Number of occupied orbitals in the closed-shell configuration.
+
+        Notes
+        -----
+        - The electronic structure is calculated using the minimal ``sto-3g`` basis set.
+        - The function internally performs the following steps:
+            1. Builds the molecular geometry.
+            2. Runs RHF self-consistent field (SCF) calculation via PySCF.
+            3. Constructs the Fock and overlap matrices in the atomic orbital (AO) basis.
+            4. Transforms to an orthogonalized atomic orbital (OAO) basis.
+            5. Maps the resulting Hamiltonian to a qubit representation.
+        - The transformation to the qubit Hamiltonian uses a helper function
+          ``transformation_Hmatrix_Hqubit`` and a dictionary builder ``sparsepauliop_dictionary``.
+
+        """
+    from pyscf import gto, scf
+    geometry = []
+    numberof_qubits = int(np.log2(n_hydrogens))
+
+    for d in range(n_hydrogens // 2):
+        geometry.append(('H', (0.0, 0.0, - (R / 2. + d * R))))
+        geometry.append(('H', (0.0, 0.0, + (R / 2. + d * R))))
+
+    molecule = gto.M(atom=geometry, basis='sto-3g')
+    mf = scf.RHF(molecule)
+    mf.scf()
+    dm = mf.make_rdm1()
+    h1e = mf.get_hcore()
+    veff = mf.get_veff()
+    F_AO = mf.get_fock()
+    S_AO = mf.get_ovlp()
+    # Compute the inverse square root of the overlap matrix S
+    S_eigval, S_eigvec = np.linalg.eigh(S_AO)
+    S_sqrt_inv = S_eigvec @ np.diag((S_eigval) ** (-1. / 2.)) @ S_eigvec.T
+    F_OAO = S_sqrt_inv @ F_AO @ S_sqrt_inv
+    H_qubit = transformation_Hmatrix_Hqubit(F_OAO, numberof_qubits)
+    H_qubit_dic = sparsepauliop_dictionary(H_qubit)
+    mo_energy = mf.mo_energy
+
+    return H_qubit_dic, mo_energy, int(len(mo_energy))
+
+
+def transformation_Hmatrix_Hqubit(Hmatrix, nqubits):
+    """
+        Transform a Hamiltonian matrix into an OpenFermion ``QubitOperator`` representation.
+
+        This function converts a Hermitian matrix, expressed in the computational basis,
+        into an equivalent Hamiltonian written as a sum of tensor products of Pauli
+        operators (I, X, Y, Z). The result is an OpenFermion ``QubitOperator`` that can
+        be used in quantum simulation frameworks.
+
+        Parameters
+        ----------
+        Hmatrix : np.ndarray
+            A complex Hermitian matrix of shape ``(2**nqubits, 2**nqubits)`` representing
+            the Hamiltonian in the computational basis.
+        nqubits : int
+            Number of qubits in the system. Determines the dimension of ``Hmatrix``.
+
+        Returns
+        -------
+        H_qubit : openfermion.QubitOperator
+            The Hamiltonian expressed as a sum of Pauli operators with complex coefficients.
+
+        Notes
+        -----
+        - Each matrix element ``Hmatrix[i, j]`` is decomposed into a sum of tensor products
+          of single-qubit projectors expressed in the Pauli basis.
+        - The transformation uses the following single-qubit projector identities:
+
+            .. math::
+            |0⟩⟨0| = (I + Z) / 2, \\
+            |1⟩⟨1| = (I - Z) / 2, \\
+            |0⟩⟨1| = (X + iY) / 2, \\
+            |1⟩⟨0| = (X - iY) / 2
+        - Terms with negligible coefficients (magnitude < 1e-12) are ignored to improve
+          numerical stability.
+
+        """
+    H_qubit = QubitOperator()
+
+    # Basis projectors |i><j| expressed in Pauli basis
+    def single_qubit_projector(bi, bj):
+        # |0><0| = (I+Z)/2, |1><1| = (I−Z)/2
+        # |0><1| = (X+iY)/2, |1><0| = (X−iY)/2
+        if bi == '0' and bj == '0':
+            return [('I', 0.5), ('Z', 0.5)]
+        elif bi == '1' and bj == '1':
+            return [('I', 0.5), ('Z', -0.5)]
+        elif bi == '0' and bj == '1':
+            return [('X', 0.5), ('Y', 0.5j)]
+        elif bi == '1' and bj == '0':
+            return [('X', 0.5), ('Y', -0.5j)]
+        else:
+            raise ValueError
+
+    # Loop through all matrix elements
+    dim = 2**nqubits
+    for i in range(dim):
+        for j in range(dim):
+            if abs(Hmatrix[i,j]) < 1e-12:
+                continue
+            bit_i = format(i, f'0{nqubits}b')
+            bit_j = format(j, f'0{nqubits}b')
+
+            # Build the tensor product operator for |i><j|
+            # We do this by expanding all combinations from single-qubit projectors
+            term_ops = [('', 1.0)]  # (pauli_string, coeff)
+            for q in range(nqubits):
+                proj = single_qubit_projector(bit_i[q], bit_j[q])
+                new_terms = []
+                for ps, pc in term_ops:
+                    for p, coeff in proj:
+                        new_terms.append((ps + p, pc * coeff))
+                term_ops = new_terms
+
+            # Add contributions to the Hamiltonian
+            for ps, coeff in term_ops:
+                # compress consecutive 'I's, drop them
+                pauli_term = tuple((q, p) for q, p in enumerate(ps) if p != 'I')
+                H_qubit += QubitOperator(pauli_term, Hmatrix[i,j] * coeff)
+
+    return H_qubit
