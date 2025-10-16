@@ -28,7 +28,7 @@ __all__ = [
     "LiH_hamiltonian",
     "generate_random_hamiltonian", 
     "LiH_hamiltonian_tapered",
-    "Hchain_KS_hamiltonian"
+    "Hchain_KS_hamiltonian",
     "transformation_Hmatrix_Hqubit",
     "pauli_commute",
     "group_commuting_pauli_terms",

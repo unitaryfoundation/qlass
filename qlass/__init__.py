@@ -25,7 +25,7 @@ __all__ = [
     "hamiltonian_matrix",
     "brute_force_minimize",
     "LiH_hamiltonian",
-    "Hchain_KS_hamiltonian"
+    "Hchain_KS_hamiltonian",
     "transformation_Hmatrix_Hqubit",
     "pauli_commute",
     "group_commuting_pauli_terms",
