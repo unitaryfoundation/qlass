@@ -381,8 +381,8 @@ def Hchain_KS_hamiltonian(n_hydrogens=2, R=1.2):
             The keys correspond to Pauli strings and the values are their coefficients.
         mo_energy : list of float
             Molecular orbital energies computed from PySCF.
-        n_occupied : int
-            Number of occupied orbitals in the closed-shell configuration.
+        n_molecular_orbital : int
+            Number of molecular orbitals.
 
         Notes
         -----
