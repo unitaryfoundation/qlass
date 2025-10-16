@@ -482,7 +482,7 @@ def transformation_Hmatrix_Hqubit(Hmatrix, nqubits):
     dim = 2**nqubits
     for i in range(dim):
         for j in range(dim):
-            if abs(Hmatrix[i,j]) < 1e-12:
+            if np.abs(Hmatrix[i,j]) < 1e-12:
                 continue
             bit_i = format(i, f'0{nqubits}b')
             bit_j = format(j, f'0{nqubits}b')
