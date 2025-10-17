@@ -441,6 +441,7 @@ def permanent(matrix: np.ndarray) -> complex:
     complex
         The permanent of the matrix
     """
+    n = matrix.shape[0]
     if matrix.shape[0] != matrix.shape[1]:
         raise ValueError("Permanent is only defined for square matrices.")
     if n == 0:
