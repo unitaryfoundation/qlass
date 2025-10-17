@@ -20,7 +20,7 @@ class VQE:
         num_params: int,
         optimizer: str = "COBYLA",
         executor_type: str = 'sampling',
-        initial_state: np.ndarray = None, # For now only relevant for photonic_unitary
+        initial_state: np.ndarray = None, # For now only relevant for photonic_unitary,
     ):
         """
         Initialize the VQE solver.
