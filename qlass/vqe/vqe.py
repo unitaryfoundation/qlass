@@ -97,13 +97,13 @@ class VQE:
         weight_option : {'weighted', 'equi', 'ground_state_only'}, optional
             Weighting scheme for ensemble-VQE:
             - ``'weighted'`` : linearly decreasing weights (w_i < w_j for i > j)
-            - ``'equi'`` : equal weights for all occupied orbitals (w_i = w_j)
+            - ``'equi'`` : equal weights for all occupied orbitals (w_i = w_j).
             - ``'ground_state_only'`` : only the ground state contributes (w_0 = 1)
             Default is ``'weighted'``.
         cost : {'VQE', 'e-VQE'}, optional
             Choice of optimization algorithm:
             - ``'VQE'`` : standard single-state VQE optimization.
-            - ``'e-VQE'`` : ensemble-VQE using multiple states and the specified weighting.
+            - ``'e-VQE'`` : ensemble-VQE using multiple states and the specified weights.
             Default is ``'VQE'``.
 
         Returns
