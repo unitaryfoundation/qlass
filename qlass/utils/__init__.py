@@ -10,6 +10,11 @@ from .utils import (
     linear_circuit_to_unitary,
     compute_expectation_value_from_unitary,
     loss_function_matrix,
+    permanent,
+    logical_state_to_modes,
+    photon_to_qubit_unitary,
+    compute_energy_postselected,
+    loss_function_photonic_unitary,
 
     
 )
@@ -25,5 +30,10 @@ __all__ = [
     "linear_circuit_to_unitary",
     "compute_expectation_value_from_unitary",
     "loss_function_matrix",
+    "permanent",
+    "logical_state_to_modes",
+    "photon_to_qubit_unitary",
+    "compute_energy_postselected",
+    "loss_function_photonic_unitary",
 
 ]

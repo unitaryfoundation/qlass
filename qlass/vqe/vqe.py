@@ -20,6 +20,7 @@ class VQE:
         num_params: int,
         optimizer: str = "COBYLA",
         executor_type: str = 'sampling',
+        initial_state: np.ndarray = None, # For now only relevant for photonic_unitary,
     ):
         """
         Initialize the VQE solver.
@@ -36,15 +37,16 @@ class VQE:
         self.executor = executor
         self.num_params = num_params
         self.optimizer = optimizer
+        self.initial_state = initial_state
         
         # Extract number of qubits from the Hamiltonian
         self.num_qubits = len(next(iter(hamiltonian.keys())))
         
         # Executor type for loss function computation
-        if executor_type in ["sampling", "unitary"]:
+        if executor_type in ["sampling", "qubit_unitary", "photonic_unitary"]:
             self.executor_type = executor_type
         else:
-            raise ValueError(f"Invalid executor_type: {executor_type}. Must be either sampling or unitary.")
+            raise ValueError(f"Invalid executor_type: {executor_type}. Must be either sampling, qubit_unitary or photonic_unitary.")
         
 
         # Results storage
@@ -54,9 +56,13 @@ class VQE:
     
     def _callback(self, params):
         """Callback function to record optimization progress."""
-        if self.executor_type == "unitary":
+        if self.executor_type == "qubit_unitary":
             from qlass.utils import loss_function_matrix
             energy = loss_function_matrix(params, self.hamiltonian, self.executor)
+        elif self.executor_type == "photonic_unitary":
+            from qlass.utils import loss_function_photonic_unitary
+            energy = loss_function_photonic_unitary(
+                params, self.hamiltonian, self.executor, self.initial_state)
         else:
             from qlass.utils import loss_function
             energy = loss_function(params, self.hamiltonian, self.executor)
@@ -92,18 +98,24 @@ class VQE:
             print(f"Executor type: {self.executor_type}")
             
         # Choose the appropriate loss function
-        if self.executor_type == "unitary":
+        if self.executor_type == "qubit_unitary":
             from qlass.utils import loss_function_matrix
             loss_fn = loss_function_matrix
+            args = (self.hamiltonian, self.executor)
+        elif self.executor_type == "photonic_unitary":
+            from qlass.utils import loss_function_photonic_unitary
+            loss_fn = loss_function_photonic_unitary
+            args = (self.hamiltonian, self.executor, self.initial_state)
         elif self.executor_type == "sampling":
             from qlass.utils import loss_function
             loss_fn = loss_function
+            args = (self.hamiltonian, self.executor)
 
         # Run the optimization
         self.optimization_result = minimize(
             loss_fn,
             initial_params,
-            args=(self.hamiltonian, self.executor),
+            args=args,
             method=self.optimizer,
             callback=self._callback,
             options={'maxiter': max_iterations}
