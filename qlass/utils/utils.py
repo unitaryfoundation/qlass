@@ -423,3 +423,225 @@ def loss_function_matrix(
         loss += coefficient * expectation
     
     return float(np.real(loss))
+
+def e_vqe_loss_function(lp: np.ndarray, H: Dict[str, float], executor, energy_collector, weight_option: str= "weighted") -> float:
+    """
+    Compute the loss function for the ensemble Variational Quantum Eigensolver (VQE)
+    with automatic Pauli grouping for measurement optimization.
+
+    This function automatically groups commuting Pauli terms to reduce the number
+    of measurements required. The grouping is applied transparently without
+    changing the function interface, providing automatic optimization for ensemble VQE
+    algorithms.
+
+    The function works with executors that return either:
+    1. Fock states (from linear optical circuits) - exqalibur.FockState objects
+    2. Bitstring tuples (from regular qubit-based circuits)
+    3. Bitstring strings (from Qiskit Sampler)
+
+    The executor should return samples in one of these formats:
+    - Dict with 'results' key: {'results': [samples]}
+    - Direct list of samples: [samples]
+    - Qiskit-style format with bitstrings or counts
+
+    Parameters
+    ----------
+    lp : np.ndarray
+        Array of variational circuit parameters. Typically optimized to minimize
+        the expectation value of the Hamiltonian.
+    H : dict of {str: float}
+        Hamiltonian represented as a dictionary mapping Pauli strings
+        (e.g., ``'X0 Z1'``) to their coefficients.
+    executor : callable
+        Function or callable object that executes the quantum circuit and returns
+        measurement samples. Must accept arguments ``(lp, pauli_string)`` and return
+        samples in one of the accepted formats.
+    energy_collector : object
+        Object responsible for tracking or logging the energy convergence history.
+        Must implement a method ``energies_convergence(energies, n_ensembles, total_loss)``.
+    weight_option : {'weighted', 'uniform'}
+        Scheme for assigning ensemble weights:
+        - ``'weighted'`` (default): Linearly decreasing weights with index, i.e., w_i < w_j for i > j.
+        - ``'equi'`` : Equal weights for all occupied orbitals, w_i = w_j.
+        - ``'ground_state_only'`` : Only the ground state contributes, w_0 = 1, others 0.
+
+    Returns
+    -------
+    loss : float
+        The computed ensemble VQE loss value, equal to the weighted sum of ensemble
+        energies.
+    """
+    # Import here to avoid circular imports
+    try:
+        from qlass.quantum_chemistry.hamiltonians import group_commuting_pauli_terms
+        use_grouping = True
+    except ImportError:
+        # Fallback to individual processing if grouping not available
+        use_grouping = False
+
+    loss = 0.0
+    lst_energies = None
+
+    if use_grouping:
+        # Use automatic grouping for optimized measurements
+        grouped_hamiltonians = group_commuting_pauli_terms(H)
+
+        for group in grouped_hamiltonians:
+            # Each group contains mutually commuting terms
+            # In the future, this could be optimized to measure entire groups simultaneously
+            # For now, we process each term individually but with the grouping organization
+            for pauli_string, coefficient in group.items():
+
+                samples = executor(lp, pauli_string)
+
+                # Handle different executor return formats
+                sample_lists = [_extract_samples_from_executor_result(s) for s in samples]
+
+                # Normalize samples to consistent format
+                normalized_samples = [normalize_samples(sample_list) for sample_list in sample_lists]
+
+                prob_dist = [get_probabilities(normalized_sample) for normalized_sample in normalized_samples]
+                pauli_bin = pauli_string_bin(pauli_string)
+
+                qubit_state_marg = [qubit_state_marginal(pd) for pd in prob_dist]
+                expectation = [compute_energy(pauli_bin, qsm) for qsm in qubit_state_marg]
+                energies = [coefficient * expect for expect in expectation]
+                # Initialize accumulator on first iteration
+                if lst_energies is None:
+                    lst_energies = [0.0] * len(energies)
+
+                # Accumulate energies dynamically
+                for i, energy in enumerate(energies):
+                    lst_energies[i] += energy
+    else:
+        # Fallback to original implementation without grouping
+        for pauli_string, coefficient in H.items():
+            samples = executor(lp, pauli_string)
+
+            # Handle different executor return formats
+            sample_lists = [_extract_samples_from_executor_result(s) for s in samples]
+
+            # Normalize samples to consistent format
+            normalized_samples = [normalize_samples(sample_list) for sample_list in sample_lists]
+
+            prob_dist = [get_probabilities(normalized_sample) for normalized_sample in normalized_samples]
+            pauli_bin = pauli_string_bin(pauli_string)
+
+            qubit_state_marg = [qubit_state_marginal(pd) for pd in prob_dist]
+            expectation = [compute_energy(pauli_bin, qsm) for qsm in qubit_state_marg]
+            energies = [coefficient * expect for expect in expectation]
+            # Initialize accumulator on first iteration
+            if lst_energies is None:
+                lst_energies = [0.0] * len(energies)
+
+            # Accumulate energies dynamically
+            for i, energy in enumerate(energies):
+                lst_energies[i] += energy
+
+    weights = ensemble_weights(weight_option, len(energies))
+    for i in range(len(lst_energies)): loss += lst_energies[i] * weights[i]
+    energy_collector.enegies_convergence(lst_energies, len(lst_energies), loss)
+
+    return loss
+
+def ensemble_weights(weights_choice, n_occ):
+    """
+     Generate ensemble weights for the ensemble Variational Quantum Eigensolver (VQE).
+
+     Ensemble VQE uses weighted contributions from multiple eigenstates when
+     computing the loss function. This function provides a choice of weighting
+     schemes for the occupied orbitals.
+
+     Parameters
+     ----------
+     weights_choice : {'weighted', 'equi', 'ground_state_only'}
+         Scheme for assigning ensemble weights:
+         - ``'weighted'`` : Linearly decreasing weights with index, i.e., w_i < w_j for i > j.
+         - ``'equi'`` : Equal weights for all occupied orbitals, w_i = w_j.
+         - ``'ground_state_only'`` : Only the ground state contributes, w_0 = 1, others 0.
+     n_occ : int
+         Number of occupied orbitals in the system. Determines the length of the weight vector.
+
+     Returns
+     -------
+     weights : np.ndarray
+         Array of length ``n_occ`` containing the ensemble weights corresponding
+         to the chosen weighting scheme.
+
+     Notes
+     -----
+     - See the original article for the derivation of ensemble weights:
+       `arXiv:2509.17982 <https://doi.org/10.48550/arXiv.2509.17982>`_.
+
+     Examples
+     --------
+     >>> ensemble_weights("equi", 4)
+     array([0.25, 0.25, 0.25, 0.25])
+     >>> ensemble_weights("weighted", 4)
+     array([0.375, 0.25 , 0.125, 0.   ])
+     >>> ensemble_weights("ground_state_only", 4)
+     array([1., 0., 0., 0.])
+     """
+    if weights_choice == "equi":
+        weights = [1. / n_occ for i in range(n_occ)]  # should be n_occ of them
+    elif weights_choice == "weighted":
+        weights = []
+        for i in range(n_occ):
+            weights.append(1/(n_occ**2) * (2 * n_occ - 1 - 2 * i))
+    elif weights_choice == "ground_state_only":
+        weights = [1.] + [0.0]*(n_occ - 1)
+
+    return weights
+
+
+class DataCollector:
+    """
+    Collects and stores energies and loss values during ensemble VQE optimization.
+
+    This class is intended to track the evolution of the loss function and
+    corresponding energies each time the loss function is evaluated. Unlike
+    the default ``loss_history`` from SciPy's ``minimize``, the number of
+    iterations recorded here may differ, because it logs every call to the
+    loss function, not just accepted steps in the optimizer.
+
+    Attributes
+    ----------
+    energy_data : dict of {int: list of float}
+        Dictionary mapping the index of an orbital/eigenstate to a list of its
+        observed energies over successive loss function evaluations.
+    loss_data : list of float
+        List of loss values recorded at each evaluation of the loss function.
+    """
+    def __init__(self):
+        """
+        Initialize the DataCollector with empty data structures.
+        """
+        self.energy_data = {}
+        self.loss_data = []
+
+    def enegies_convergence(self, energy_values, eign_index, loss_values):
+        """
+               Record energies and loss values for the current evaluation.
+
+               Each entry in ``energy_values`` is appended to the corresponding orbital
+               index in ``energy_data``. The total loss for this evaluation is appended
+               to ``loss_data``.
+
+               Parameters
+               ----------
+               energy_values : list of float
+                   List of energies for each occupied orbital or eigenstate at the current
+                   loss function evaluation.
+               eign_index : int
+                   Number of energies in ``energy_values`` to record (typically equal to the
+                   number of occupied orbitals in the ensemble).
+               loss_values : float
+                   Scalar value of the loss function at the current evaluation.
+
+               """
+        for i in range(eign_index):
+            if i not in self.energy_data:
+                self.energy_data[i] = []  # initialize a list if key is new
+            self.energy_data[i].append(energy_values[i])  # append instead of replacing
+
+        self.loss_data.append(loss_values)

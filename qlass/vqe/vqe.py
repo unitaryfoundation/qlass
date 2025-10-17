@@ -3,7 +3,8 @@ import numpy as np
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 
-from qlass.utils import loss_function
+from qlass.utils import loss_function, e_vqe_loss_function
+from qlass.utils.utils import DataCollector
 
 class VQE:
     """
@@ -51,8 +52,10 @@ class VQE:
         self.optimization_result = None
         self.energy_history = []
         self.parameter_history = []
+        self.loss_history = []
+        self.energy_collector = DataCollector()
     
-    def _callback(self, params):
+    def _callback_vqe(self, params):
         """Callback function to record optimization progress."""
         if self.executor_type == "unitary":
             from qlass.utils import loss_function_matrix
@@ -63,19 +66,60 @@ class VQE:
         
         self.energy_history.append(energy)
         self.parameter_history.append(params.copy())
+
+    def _callback_evqe(self, params):
+        """Callback function to record optimization progress."""
+        cost = e_vqe_loss_function(params, self.hamiltonian, self.executor, self.energy_collector)
+        self.loss_history.append(cost)
+        self.parameter_history.append(params.copy())
         
-    def run(self, initial_params=None, max_iterations=100, verbose=True):
+    def run(self, initial_params=None, max_iterations=100, verbose=True, weight_option: str = "weighted",
+            cost: str = "VQE"):
         """
-        Run the VQE optimization to find the ground state energy.
-        
-        Args:
-            initial_params (np.ndarray): Initial parameters for the variational circuit.
-                                        If None, random parameters will be used.
-            max_iterations (int): Maximum number of iterations for the optimization
-            verbose (bool): Whether to print progress updates
-            
-        Returns:
-            float: The minimum energy found
+        Run a Variational Quantum Eigensolver (VQE) or ensemble-VQE optimization to find
+        the ground state energy of a given Hamiltonian.
+
+        This method executes the classical optimization loop using SciPy's ``minimize``
+        function, updating the variational parameters of a quantum circuit. It supports
+        both standard VQE and ensemble-VQE (e-VQE) algorithms, with customizable weighting
+        schemes for the ensemble. Progress can be logged at each step if ``verbose=True``.
+
+        Parameters
+        ----------
+        initial_params : np.ndarray, optional
+            Initial parameters for the variational quantum circuit. If ``None``, random
+            parameters will be generated uniformly in [0,1). Default is ``None``.
+        max_iterations : int, optional
+            Maximum number of iterations for the optimizer. Default is 100.
+        verbose : bool, optional
+            If ``True``, prints progress information including number of qubits, parameters,
+            and final energies. Default is ``True``.
+        weight_option : {'weighted', 'equi', 'ground_state_only'}, optional
+            Weighting scheme for ensemble-VQE:
+            - ``'weighted'`` : linearly decreasing weights (w_i < w_j for i > j)
+            - ``'equi'`` : equal weights for all occupied orbitals (w_i = w_j)
+            - ``'ground_state_only'`` : only the ground state contributes (w_0 = 1)
+            Default is ``'weighted'``.
+        cost : {'VQE', 'e-VQE'}, optional
+            Choice of optimization algorithm:
+            - ``'VQE'`` : standard single-state VQE optimization.
+            - ``'e-VQE'`` : ensemble-VQE using multiple states and the specified weighting.
+            Default is ``'VQE'``.
+
+        Returns
+        -------
+        float
+            Minimum cost (energy) found by the optimizer.
+
+        Notes
+        -----
+        - The method resets the loss and parameter history at the start of each run.
+        - For ensemble-VQE, the ``weight_option`` determines how individual state energies
+          are combined into the total loss.
+        - Exact energies for the Hamiltonian are computed at the end using a brute-force
+          diagonalization routine for reference.
+        - Verbose mode prints information about optimizer progress, final energies, and
+          number of function evaluations.
         """
         # Initialize parameters if not provided
         if initial_params is None:
@@ -91,23 +135,42 @@ class VQE:
             print(f"Number of parameters: {len(initial_params)}")
             print(f"Executor type: {self.executor_type}")
             
-        # Choose the appropriate loss function
-        if self.executor_type == "unitary":
-            from qlass.utils import loss_function_matrix
-            loss_fn = loss_function_matrix
-        elif self.executor_type == "sampling":
-            from qlass.utils import loss_function
-            loss_fn = loss_function
+        if cost == "VQE":
+            if self.executor_type == "unitary":
+                from qlass.utils import loss_function_matrix
+                self.optimization_result = minimize(
+                    loss_function_matrix,
+                    initial_params,
+                    args=(self.hamiltonian, self.executor),
+                    method=self.optimizer,
+                    callback=self._callback_vqe,
+                    options={'maxiter': max_iterations}
+                )
+            elif self.executor_type == "sampling":
 
-        # Run the optimization
-        self.optimization_result = minimize(
-            loss_fn,
-            initial_params,
-            args=(self.hamiltonian, self.executor),
-            method=self.optimizer,
-            callback=self._callback,
-            options={'maxiter': max_iterations}
-        )
+                self.optimization_result = minimize(
+                    loss_function,
+                    initial_params,
+                    args=(self.hamiltonian, self.executor),
+                    method=self.optimizer,
+                    callback=self._callback_vqe,
+                    options={'maxiter': max_iterations}
+                )
+
+        elif cost == "e-VQE":
+            if self.executor_type == "sampling":
+                self.optimization_result = minimize(
+                    e_vqe_loss_function,
+                    initial_params,
+                    args=(self.hamiltonian, self.executor, self.energy_collector, weight_option),
+                    method=self.optimizer,
+                    callback=self._callback_evqe,
+                    options={'maxiter': max_iterations}
+                )
+            elif self.executor_type == "unitary":
+                raise ValueError("option: e-VQE takes only executor_type: sampling")
+        else:
+            raise ValueError("Invalid cost option. Use 'VQE' or 'e-VQE'.")
         
         if verbose:
             print(f"Optimization complete!")
