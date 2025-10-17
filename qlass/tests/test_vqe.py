@@ -227,10 +227,10 @@ def test_vqe_init_with_unitary_executor():
         hamiltonian=hamiltonian,
         executor=identity_unitary_executor,
         num_params=2,
-        executor_type="unitary"
+        executor_type="qubit_unitary"
     )
     
-    assert vqe.executor_type == "unitary"
+    assert vqe.executor_type == "qubit_unitary"
     assert vqe.num_qubits == 2
     assert vqe.num_params == 2
 
@@ -282,7 +282,7 @@ def test_vqe_compare_unitary_vs_sampling():
         hamiltonian=hamiltonian,
         executor=unitary_exec,
         num_params=2,
-        executor_type="unitary"
+        executor_type="qubit_unitary"
     )
     
     vqe_sampling = VQE(
@@ -307,3 +307,169 @@ def test_vqe_compare_unitary_vs_sampling():
     # Expected: 0.5 * 1 + 1.0 * 1 = 1.5
     assert np.isclose(energy_unitary, 1.5)
     assert np.isclose(energy_sampling, 1.5, atol=0.01)
+
+def photonic_identity_executor(params):
+    """Photonic unitary executor that returns identity."""
+    return np.eye(4, dtype=complex)  # 2 qubits, 4 modes
+
+
+def photonic_parametrized_executor(params):
+    """Photonic unitary executor with actual parameters."""
+    # Create a simple 4×4 unitary using rotation-like structure
+    theta = params[0]
+    phi = params[1] if len(params) > 1 else 0
+    
+    # Simple parameterized unitary for 2 qubits (4 modes)
+    U = np.eye(4, dtype=complex)
+    
+    # Apply rotation-like transformation
+    c, s = np.cos(theta), np.sin(theta)
+    U[0, 0] = c * np.exp(1j * phi)
+    U[0, 1] = -s
+    U[1, 0] = s
+    U[1, 1] = c * np.exp(-1j * phi)
+    
+    return U
+
+
+def test_vqe_init_with_photonic_unitary_executor():
+    """Test VQE initialization with photonic_unitary executor type."""
+    hamiltonian = {"II": -0.5, "ZZ": 1.0}
+    
+    vqe = VQE(
+        hamiltonian=hamiltonian,
+        executor=photonic_identity_executor,
+        num_params=2,
+        executor_type="photonic_unitary"
+    )
+    
+    assert vqe.executor_type == "photonic_unitary"
+    assert vqe.num_qubits == 2
+    assert vqe.num_params == 2
+
+
+def test_vqe_run_with_photonic_unitary():
+    """Test VQE run with photonic unitary executor."""
+    hamiltonian = {"II": 0.5, "ZZ": 1.0}
+    
+    vqe = VQE(
+        hamiltonian=hamiltonian,
+        executor=photonic_identity_executor,
+        num_params=2,
+        executor_type="photonic_unitary"
+    )
+    
+    energy = vqe.run(
+        initial_params=np.zeros(2),
+        max_iterations=5,
+        verbose=False
+    )
+    
+    # With identity executor and |00⟩ initial state: II=1, ZZ=1
+    # Expected: 0.5*1 + 1.0*1 = 1.5
+    assert np.isclose(energy, 1.5)
+    assert len(vqe.energy_history) > 0
+
+
+def test_vqe_photonic_unitary_with_custom_initial_state():
+    """Test VQE with custom initial state."""
+    hamiltonian = {"ZZ": 1.0}
+    
+    # Initial state |11⟩
+    initial_state = np.array([0, 0, 0, 1], dtype=complex)
+    
+    vqe = VQE(
+        hamiltonian=hamiltonian,
+        executor=photonic_identity_executor,
+        num_params=2,
+        executor_type="photonic_unitary",
+        initial_state=initial_state
+    )
+    
+    energy = vqe.run(
+        initial_params=np.zeros(2),
+        max_iterations=5,
+        verbose=False
+    )
+    
+    # <11|ZZ|11> = 1
+    assert np.isclose(energy, 1.0)
+
+
+def test_vqe_photonic_unitary_optimization():
+    """Test that VQE optimization works with photonic unitary executor."""
+    hamiltonian = {"II": 0.5, "ZZ": 1.0, "XX": -0.5}
+    
+    vqe = VQE(
+        hamiltonian=hamiltonian,
+        executor=photonic_parametrized_executor,
+        num_params=2,
+        executor_type="photonic_unitary"
+    )
+    
+    energy = vqe.run(max_iterations=10, verbose=False)
+    
+    assert isinstance(energy, float)
+    assert vqe.optimization_result is not None
+    assert len(vqe.energy_history) > 0
+    
+    # Get optimal parameters
+    optimal_params = vqe.get_optimal_parameters()
+    assert len(optimal_params) == 2
+
+
+def test_vqe_compare_executor_types():
+    """Test that different executor types work correctly."""
+    hamiltonian = {"ZZ": 1.0}
+    
+    # Sampling executor
+    def sampling_exec(params, pauli_string):
+        return {'results': [(0, 0)] * 100}
+    
+    # Unitary executor
+    def unitary_exec(params):
+        return np.eye(4, dtype=complex)
+    
+    # Photonic unitary executor
+    def photonic_exec(params):
+        return np.eye(4, dtype=complex)
+    
+    vqe_sampling = VQE(
+        hamiltonian=hamiltonian,
+        executor=sampling_exec,
+        num_params=2,
+        executor_type="sampling"
+    )
+    
+    vqe_unitary = VQE(
+        hamiltonian=hamiltonian,
+        executor=unitary_exec,
+        num_params=2,
+        executor_type="qubit_unitary"
+    )
+    
+    vqe_photonic = VQE(
+        hamiltonian=hamiltonian,
+        executor=photonic_exec,
+        num_params=2,
+        executor_type="photonic_unitary"
+    )
+    
+    # All should initialize successfully
+    assert vqe_sampling.executor_type == "sampling"
+    assert vqe_unitary.executor_type == "qubit_unitary"
+    assert vqe_photonic.executor_type == "photonic_unitary"
+    
+    # Run short optimizations
+    energy_sampling = vqe_sampling.run(
+        initial_params=np.zeros(2), max_iterations=3, verbose=False
+    )
+    energy_unitary = vqe_unitary.run(
+        initial_params=np.zeros(2), max_iterations=3, verbose=False
+    )
+    energy_photonic = vqe_photonic.run(
+        initial_params=np.zeros(2), max_iterations=3, verbose=False
+    )
+    
+    # For identity operators and |00⟩ state, all should give similar results
+    assert np.isclose(energy_unitary, energy_photonic, atol=0.1)

@@ -53,7 +53,7 @@ def main():
         hamiltonian=hamiltonian,
         executor=unitary_executor,
         num_params=4,
-        executor_type="unitary"  # Explicitly specify type
+        executor_type="qubit_unitary"  # Explicitly specify type
     )
     
     # Run optimization

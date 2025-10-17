@@ -345,3 +345,105 @@ def test_loss_function_matrix_parameterized_unitary():
         np.array([np.pi/2]), hamiltonian, rotation_executor
     )
     assert np.isclose(loss_half, 0.0, atol=1e-10)
+
+def test_permanent():
+    """Test permanent calculation for key cases."""
+    from qlass.utils import permanent
+    
+    # Identity matrix
+    I = np.eye(2, dtype=complex)
+    assert np.isclose(permanent(I), 1.0)
+    
+    # Simple 2×2 matrix: permanent = 1*4 + 2*3 = 10
+    A = np.array([[1, 2], [3, 4]], dtype=complex)
+    assert np.isclose(permanent(A), 10.0)
+    
+    # Empty matrix
+    E = np.zeros((0, 0), dtype=complex)
+    assert np.isclose(permanent(E), 1.0)
+
+
+def test_logical_state_to_modes():
+    """Test logical state to modes conversion."""
+    from qlass.utils import logical_state_to_modes
+    
+    # Single qubit
+    assert logical_state_to_modes(0, 1) == [0]  # |0⟩ → mode 0
+    assert logical_state_to_modes(1, 1) == [1]  # |1⟩ → mode 1
+    
+    # Two qubits
+    assert logical_state_to_modes(0, 2) == [0, 2]  # |00⟩ → modes [0, 2]
+    assert logical_state_to_modes(3, 2) == [1, 3]  # |11⟩ → modes [1, 3]
+
+
+def test_photon_to_qubit_unitary():
+    """Test photon to qubit unitary conversion."""
+    from qlass.utils import photon_to_qubit_unitary
+    
+    # Identity photonic unitary should give identity qubit unitary
+    U_photon = np.eye(4, dtype=complex)  # 2 qubits, 4 modes
+    U_qubit = photon_to_qubit_unitary(U_photon)
+    assert np.allclose(U_qubit, np.eye(4))
+    
+    # Mode swap for 1 qubit should give X gate
+    U_photon_swap = np.array([[0, 1], [1, 0]], dtype=complex)
+    U_qubit_swap = photon_to_qubit_unitary(U_photon_swap)
+    expected_X = np.array([[0, 1], [1, 0]], dtype=complex)
+    assert np.allclose(U_qubit_swap, expected_X)
+    
+    # Invalid dimension should raise error
+    with pytest.raises(ValueError, match="even dimension"):
+        photon_to_qubit_unitary(np.eye(3))
+
+
+def test_compute_energy_postselected():
+    """Test energy computation with post-selection."""
+    from qlass.utils import compute_energy_postselected
+    
+    # Identity unitary, initial state |00⟩, Hamiltonian H = ZZ
+    U_photon = np.eye(4, dtype=complex)
+    initial_state = np.array([1, 0, 0, 0], dtype=complex)
+    hamiltonian_terms = [(1.0, "ZZ")]
+    
+    energy, success_prob, final_state = compute_energy_postselected(
+        U_photon, initial_state, hamiltonian_terms
+    )
+    
+    # <00|ZZ|00> = 1
+    assert np.isclose(energy, 1.0)
+    assert np.isclose(success_prob, 1.0)
+    assert np.allclose(final_state, initial_state)
+    
+    # Multi-term Hamiltonian
+    hamiltonian_terms_multi = [(0.5, "II"), (1.0, "ZZ"), (-0.3, "XX")]
+    energy_multi, _, _ = compute_energy_postselected(
+        U_photon, initial_state, hamiltonian_terms_multi
+    )
+    # Energy = 0.5*1 + 1.0*1 + (-0.3)*0 = 1.5
+    assert np.isclose(energy_multi, 1.5)
+
+
+def test_loss_function_photonic_unitary():
+    """Test photonic unitary loss function."""
+    from qlass.utils import loss_function_photonic_unitary
+    
+    def identity_executor(params):
+        return np.eye(4, dtype=complex)  # 2 qubits, 4 modes
+    
+    hamiltonian = {"II": 0.5, "ZZ": 1.0}
+    params = np.array([0.1, 0.2])
+    
+    loss = loss_function_photonic_unitary(params, hamiltonian, identity_executor)
+    
+    # Initial state |00⟩: II=1, ZZ=1
+    # Expected: 0.5*1 + 1.0*1 = 1.5
+    assert np.isclose(loss, 1.5)
+    
+    # Test with custom initial state |11⟩
+    initial_state = np.array([0, 0, 0, 1], dtype=complex)
+    hamiltonian_z = {"ZZ": 1.0}
+    loss_11 = loss_function_photonic_unitary(
+        params, hamiltonian_z, identity_executor, initial_state
+    )
+    # <11|ZZ|11> = 1
+    assert np.isclose(loss_11, 1.0)

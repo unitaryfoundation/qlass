@@ -20,6 +20,7 @@ class VQE:
         num_params: int,
         optimizer: str = "COBYLA",
         executor_type: str = 'sampling',
+        initial_state: np.ndarray = None, # For now only relevant for photonic_unitary
     ):
         """
         Initialize the VQE solver.
@@ -36,12 +37,13 @@ class VQE:
         self.executor = executor
         self.num_params = num_params
         self.optimizer = optimizer
+        self.initial_state = initial_state
         
         # Extract number of qubits from the Hamiltonian
         self.num_qubits = len(next(iter(hamiltonian.keys())))
         
         # Executor type for loss function computation
-        if executor_type in ["sampling", "qubit_unitary, photonic_unitart"]:
+        if executor_type in ["sampling", "qubit_unitary", "photonic_unitary"]:
             self.executor_type = executor_type
         else:
             raise ValueError(f"Invalid executor_type: {executor_type}. Must be either sampling, qubit_unitary or photonic_unitary.")
@@ -60,8 +62,7 @@ class VQE:
         elif self.executor_type == "photonic_unitary":
             from qlass.utils import loss_function_photonic_unitary
             energy = loss_function_photonic_unitary(
-                params, self.hamiltonian, self.executor, self.initial_state
-            )
+                params, self.hamiltonian, self.executor, self.initial_state)
         else:
             from qlass.utils import loss_function
             energy = loss_function(params, self.hamiltonian, self.executor)
