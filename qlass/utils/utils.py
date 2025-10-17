@@ -441,20 +441,25 @@ def permanent(matrix: np.ndarray) -> complex:
     complex
         The permanent of the matrix
     """
-    from itertools import permutations
-    
-    n = matrix.shape[0]
+    if matrix.shape[0] != matrix.shape[1]:
+        raise ValueError("Permanent is only defined for square matrices.")
     if n == 0:
         return 1
-    
-    perm = 0
-    for sigma in permutations(range(n)):
-        product = 1
-        for i in range(n):
-            product *= matrix[i, sigma[i]]
-        perm += product
-    
-    return perm
+    # Ryser's formula for the permanent
+    rows = np.arange(n)
+    result = 0
+    for subset in range(1, 1 << n):
+        S = [(subset >> j) & 1 for j in range(n)]
+        parity = (-1) ** (n - sum(S))
+        prod = 1
+        for i in rows:
+            s = 0
+            for j in range(n):
+                if S[j]:
+                    s += matrix[i, j]
+            prod *= s
+        result += parity * prod
+    return result
 
 
 def logical_state_to_modes(logical_state: int, m: int) -> List[int]:
