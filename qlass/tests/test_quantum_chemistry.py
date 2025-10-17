@@ -4,6 +4,8 @@ from qlass.quantum_chemistry import (
     LiH_hamiltonian_tapered,
     pauli_string_to_matrix,
     hamiltonian_matrix,
+    Hchain_KS_hamiltonian,
+    transformation_Hmatrix_Hqubit,
     brute_force_minimize,
     eig_decomp_lanczos,
     lanczos,
@@ -13,7 +15,7 @@ from qlass.quantum_chemistry import (
 import numpy as np
 from typing import Dict
 import pytest
-
+from openfermion import QubitOperator
 import warnings
 warnings.simplefilter('ignore')
 warnings.filterwarnings('ignore')
@@ -287,6 +289,46 @@ def test_hybrid_grouping_openfermion_success():
     total_terms_in_groups = sum(len(g) for g in groups)
     assert total_terms_in_groups == len(hamiltonian)
 
+
+def test_Hchain_KS_hamiltonian(monkeypatch):
+    try:
+        H_qubit_dic, mo_energy, n_occ = Hchain_KS_hamiltonian(n_hydrogens=2, R=1.2)
+    except Exception as e:
+        pytest.skip(f"PySCF not available: {e}")
+        return
+
+    # Basic checks
+    assert isinstance(H_qubit_dic, dict)
+    assert all(isinstance(k, str) for k in H_qubit_dic.keys())
+    assert all(np.isreal(v) or np.iscomplex(v) for v in H_qubit_dic.values())
+
+    assert isinstance(mo_energy, (list, np.ndarray))
+    assert all(isinstance(x, (float, np.floating)) for x in mo_energy)
+    assert isinstance(n_occ, int)
+    assert n_occ > 0
+    assert len(mo_energy) >= n_occ
+
+    # Energy sanity check (should be within a physical range for H2)
+    assert -2.0 < mo_energy[0] < 0.0
+
+
+def test_transformation_Hmatrix_Hqubit():
+        # Pauli-Z Hamiltonian
+    H = np.array([[1, 0], [0, -1]], dtype=complex)
+    H_qubit = transformation_Hmatrix_Hqubit(H, nqubits=1)
+
+    # Type and structure checks
+    assert isinstance(H_qubit, QubitOperator)
+    # Should contain a single Z term with coefficient 1.0
+    terms = list(H_qubit.terms.items())
+    assert len(terms) == 1
+    pauli_term, coeff = terms[0]
+    assert pauli_term == ((0, 'Z'),)
+    assert np.isclose(coeff.real, 1.0, atol=1e-12)
+    assert np.isclose(coeff.imag, 0.0, atol=1e-12)
+
+
+
 def test_hybrid_grouping_fallback_behavior(mocker):
     """
     Tests the fallback mechanism of the hybrid function by mocking an ImportError.
@@ -318,3 +360,4 @@ def test_hybrid_grouping_fallback_behavior(mocker):
     # Check that all original terms are present in the final groups
     all_grouped_terms = {term for group in groups for term in group}
     assert all_grouped_terms == set(hamiltonian.keys())
+

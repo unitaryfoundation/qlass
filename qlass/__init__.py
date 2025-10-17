@@ -5,7 +5,9 @@ from .compiler.hardware_config import HardwareConfig
 # export from problems module
 from .quantum_chemistry.classical_solution import hamiltonian_matrix, brute_force_minimize
 from .quantum_chemistry.hamiltonians import (
-    LiH_hamiltonian, 
+    LiH_hamiltonian,
+    Hchain_KS_hamiltonian,
+    transformation_Hmatrix_Hqubit,
     pauli_commute, 
     group_commuting_pauli_terms,
     sparsepauliop_dictionary
@@ -23,6 +25,8 @@ __all__ = [
     "hamiltonian_matrix",
     "brute_force_minimize",
     "LiH_hamiltonian",
+    "Hchain_KS_hamiltonian",
+    "transformation_Hmatrix_Hqubit",
     "pauli_commute",
     "group_commuting_pauli_terms",
     "sparsepauliop_dictionary",
