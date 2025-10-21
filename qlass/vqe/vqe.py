@@ -73,9 +73,9 @@ class VQE:
         self.energy_history.append(energy)
         self.parameter_history.append(params.copy())
 
-    def _callback_evqe(self, params):
+    def _callback_evqe(self, params, weight_option="weighted"):
         """Callback function to record optimization progress."""
-        cost = e_vqe_loss_function(params, self.hamiltonian, self.executor, self.energy_collector)
+        cost = e_vqe_loss_function(params, self.hamiltonian, self.executor, self.energy_collector, weight_option=weight_option)
         self.loss_history.append(cost)
         self.parameter_history.append(params.copy())
 
