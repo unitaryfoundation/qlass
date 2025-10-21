@@ -815,6 +815,8 @@ def ensemble_weights(weights_choice, n_occ):
             weights.append(1/(n_occ**2) * (2 * n_occ - 1 - 2 * i))
     elif weights_choice == "ground_state_only":
         weights = [1.] + [0.0]*(n_occ - 1)
+    else:
+        raise ValueError(f"Invalid weights_choice '{weights_choice}'. Must be one of 'equi', 'weighted', or 'ground_state_only'.")
 
     return weights
 
