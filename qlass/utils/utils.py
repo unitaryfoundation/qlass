@@ -844,7 +844,7 @@ class DataCollector:
         self.energy_data = {}
         self.loss_data = []
 
-    def enegies_convergence(self, energy_values, eign_index, loss_values):
+    def energies_convergence(self, energy_values, eign_index, loss_values):
         """
                Record energies and loss values for the current evaluation.
 
