@@ -765,7 +765,7 @@ def e_vqe_loss_function(lp: np.ndarray, H: Dict[str, float], executor, energy_co
 
     weights = ensemble_weights(weight_option, len(energies))
     for i in range(len(lst_energies)): loss += lst_energies[i] * weights[i]
-    energy_collector.enegies_convergence(lst_energies, len(lst_energies), loss)
+    energy_collector.energies_convergence(lst_energies, len(lst_energies), loss)
 
     return loss
 
