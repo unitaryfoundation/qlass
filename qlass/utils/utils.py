@@ -870,5 +870,3 @@ class DataCollector:
             self.energy_data[i].append(energy_values[i])  # append instead of replacing
 
         self.loss_data.append(loss_values)
-    
-    return float(np.real(energy))
