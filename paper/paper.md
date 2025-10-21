@@ -15,9 +15,9 @@ authors:
     orcid: 0000-0002-8775-3667
     affiliation: "1, 2"
 affiliations:
- - name: Unitary Fund France, 1 Impasse du Palais, 37000 Tours, France
+ - name: Unitary Fund France, Tours, France
    index: 1
- - name: Unitary Fund, 505 Montgomery St, 94111 San Francisco, USA
+ - name: Unitary Fund, San Francisco, USA
    index: 2
 
 date: 24 September 2025
@@ -26,7 +26,7 @@ bibliography: paper.bib
 
 # Summary
 
-`qlass` is a Python package designed to enable the execution of variational quantum algorithms on photonic quantum computing devices. As part of the Quantum Glass-based Photonic Integrated Circuits (QLASS) project funded by the European Union, this package bridges the gap between quantum algorithm development in popular frameworks like Qiskit and their implementation on photonic hardware using Perceval. The package provides tools for circuit compilation, resource estimation, and specialized implementations of the Variational Quantum Eigensolver (VQE) algorithm optimized for linear optical quantum computing platforms.
+`qlass` is a Python package designed to enable the execution of variational quantum algorithms on photonic quantum computing devices. Part of the Quantum Glass-based Photonic Integrated Circuits (QLASS) project funded by the European Union, this package bridges the gap between quantum algorithm development in popular frameworks like Qiskit and their implementation on photonic hardware using Perceval.
 
 # Statement of need
 
@@ -44,17 +44,7 @@ The package is particularly valuable for researchers working at the intersection
 
 # Package Architecture and Features
 
-## Complete Quantum Chemistry Pipeline
-
-The core functionality of `qlass` provides an end-to-end pipeline for quantum chemistry simulations on photonic quantum computers. Rather than focusing on individual components, `qlass` integrates existing tools (Qiskit, Perceval, OpenFermion, PySCF) into a cohesive workflow that takes molecular systems as input and produces ground state energies using photonic hardware simulations.
-
-The complete pipeline encompasses:
-
-1. **Molecular hamiltonian generation**: Using OpenFermion and PySCF for electronic structure calculations
-2. **Circuit compilation**: Translation from Qiskit circuits to Perceval photonic processors (leveraging existing tools).
-3. **Variational algorithm execution**: Complete VQE implementation focussed on running on photonic architectures.
-4. **Measurement processing**: Handling of photonic measurement results and expectation value computation.
-
+`qlass` provides an end-to-end pipeline for quantum chemistry simulations on photonic quantum computers:
 ```python
 from qlass.quantum_chemistry import LiH_hamiltonian
 from qlass.vqe import VQE, le_ansatz
@@ -72,33 +62,7 @@ vqe = VQE(hamiltonian=hamiltonian, executor=executor, num_params=4)
 energy = vqe.run(max_iterations=10)
 ```
 
-While `qlass` includes a `compile()` function that wraps Perceval's QiskitConverter for convenience, the primary contribution is the integrated workflow that seamlessly connects quantum chemistry problem formulation to photonic quantum simulation for enhanced user experience.
-
-As part of this pipeline, our package provides a complete VQE framework optimized for photonic quantum computing. The implementation includes:
-
-- **Linear entangled ansatz**: A simple ansatz with low resource requirements.
-- **Custom unitary ansatz**: Support for arbitrary unitary transformations.
-- **Automatic pauli grouping**: Optimization of measurement strategies by grouping commuting Pauli terms.
-- **Flexible executor interface**: Support for different simulation backends and measurement formats.
-
-## Resource-Aware Analysis
-
-A distinguishing feature of `qlass` is its resource-aware compiler, which provides detailed analysis of quantum circuits in the context of specific hardware configurations. The `ResourceAwareCompiler` class models realistic photonic chip parameters:
-
-```python
-from qlass.compiler import ResourceAwareCompiler, HardwareConfig
-
-config = HardwareConfig(
-    photon_loss_component_db=0.05,
-    fusion_success_prob=0.11,
-    hom_visibility=0.95
-)
-
-compiler = ResourceAwareCompiler(config=config)
-processor = compiler.compile(qc)
-```
-
-The analysis includes component counts, estimated photon loss, and overall success probability calculations that account for source efficiency, detector efficiency, and gate fidelities. This enables researchers to make informed decisions about algorithm design and hardware requirements.
+Key features include resource-aware compilation with realistic hardware modeling, multiple VQE executor types (sampling, qubit unitary, photonic unitary), automatic Pauli term grouping for measurement optimization, and specialized ansätze.
 
 # Implementation Details
 
@@ -110,21 +74,6 @@ The package is structured into four main modules:
 4. **`utils`**: Contains utility functions for measurement processing and expectation value calculations.
 
 The implementation leverages several design patterns to ensure extensibility. It allows integration with different quantum backends and enables easy addition of new variational forms. We also support multiple output formats from different simulator backends.
-
-# Performance and Validation
-
-The package includes comprehensive test coverage validating:
-
-- Correct compilation of standard quantum gates to photonic implementations.
-- Accuracy of resource estimation.
-- VQE pipeline tests for small molecular systems.
-- Compatibility with both Perceval and Qiskit simulation backends.
-
-Performance optimizations include:
-
-- Efficient Pauli string grouping algorithms to minimize measurement overhead
-- Transpilation optimization for reduced circuit depth
-- Numba-accelerated classical computations for large Hamiltonians
 
 # Distribution and Development
 `qlass` source code is hosted on Unitary Fund's Github repository. It is released there and via the Python Package Index (PyPI). The documentation can be found on [https://qlass.readthedocs.org/](https://qlass.readthedocs.org/) and consists of a user guide, an API-doc and tutorials. Milestones are used to guide development sprints and coordinate with contributors. It is licensed under permissive OSI licence Apache 2.0 to facilitate its adoption and integration in the developing quantum software stack. 

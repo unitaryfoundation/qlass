@@ -421,21 +421,21 @@ def loss_function_matrix(
         )
 
         loss += coefficient * expectation
-
+    
     return float(np.real(loss))
 
 def permanent(matrix: np.ndarray) -> complex:
     """
     Calculate the permanent of a matrix.
-
+    
     The permanent is like a determinant but without alternating signs:
     Perm(A) = Σ_{σ∈Sₘ} Π_{i=1 to m} A_{i,σ(i)}
-
+    
     Parameters:
     -----------
     matrix : np.ndarray
         Square matrix to calculate permanent of
-
+        
     Returns:
     --------
     complex
@@ -466,14 +466,14 @@ def permanent(matrix: np.ndarray) -> complex:
 def logical_state_to_modes(logical_state: int, m: int) -> List[int]:
     """
     Convert a logical qubit state to the set of occupied photon modes.
-
+    
     Parameters:
     -----------
     logical_state : int
         Integer representing the logical state (0 to 2^m - 1)
     m : int
         Number of qubits
-
+        
     Returns:
     --------
     List[int]
@@ -481,26 +481,26 @@ def logical_state_to_modes(logical_state: int, m: int) -> List[int]:
     """
     # Convert integer to bit list
     bits = [(logical_state >> (m - 1 - k)) & 1 for k in range(m)]
-
+    
     # For qubit k (0-indexed), the modes are 2k and 2k+1
     # |0⟩ₖ → mode 2k, |1⟩ₖ → mode 2k+1
     modes = []
     for k in range(m):
         mode = 2 * k + bits[k]
         modes.append(mode)
-
+    
     return modes
 
 
 def photon_to_qubit_unitary(U_photon: np.ndarray) -> np.ndarray:
     """
     Convert a photon unitary to the effective qubit unitary via post-selection.
-
+    
     Parameters:
     -----------
     U_photon : np.ndarray
         The 2m × 2m unitary matrix acting on photon modes
-
+        
     Returns:
     --------
     np.ndarray
@@ -510,27 +510,27 @@ def photon_to_qubit_unitary(U_photon: np.ndarray) -> np.ndarray:
     modes_2m = U_photon.shape[0]
     if modes_2m % 2 != 0:
         raise ValueError("Photon unitary must have even dimension (2m × 2m)")
-
+    
     m = modes_2m // 2
     num_logical_states = 2 ** m
-
+    
     # Initialize the qubit unitary
     U_qubit = np.zeros((num_logical_states, num_logical_states), dtype=complex)
-
+    
     # For each pair of input and output logical states
     for r in range(num_logical_states):
         for s in range(num_logical_states):
             # Get the mode sets for input state |r⟩ and output state |s⟩
             R = logical_state_to_modes(r, m)
             S = logical_state_to_modes(s, m)
-
+            
             # Extract the submatrix U(S,R)
             # Rows indexed by S, columns indexed by R
             submatrix = U_photon[np.ix_(S, R)]
-
+            
             # The matrix element is the permanent of this submatrix
             U_qubit[s, r] = permanent(submatrix)
-
+    
     return U_qubit
 
 
@@ -541,14 +541,14 @@ def compute_energy_postselected(
 ) -> Tuple[float, float, np.ndarray]:
     """
     Compute the energy of a post-selected state after photonic evolution.
-
+    
     The process is:
     1. Start with initial logical qubit state |ψ_in⟩
     2. Encode to photonic state
     3. Apply photonic unitary U_photon
     4. Post-select on valid dual-rail states
     5. Compute energy ⟨ψ_out|H|ψ_out⟩ / ⟨ψ_out|ψ_out⟩
-
+    
     Parameters:
     -----------
     U_photon : np.ndarray
@@ -557,43 +557,43 @@ def compute_energy_postselected(
         Initial qubit state as a 2^m dimensional vector
     hamiltonian_terms : List[Tuple[float, str]]
         Hamiltonian as list of (coefficient, pauli_string) tuples
-
+        
     Returns:
     --------
     Tuple[float, float, np.ndarray]
         (energy, success_probability, final_state_normalized)
     """
     from qlass.quantum_chemistry import pauli_string_to_matrix
-
+    
     # Get number of qubits
     modes_2m = U_photon.shape[0]
     m = modes_2m // 2
     dim_logical = 2 ** m
-
+    
     # Compute the effective qubit unitary
     U_qubit = photon_to_qubit_unitary(U_photon)
-
+    
     # Apply the effective unitary to the initial state
     # Note: This is NOT a unitary evolution! The state is unnormalized after post-selection
     psi_out_unnormalized = U_qubit @ initial_state_logical
-
+    
     # Compute the success probability (norm squared)
     success_prob = np.sum(np.abs(psi_out_unnormalized)**2)
-
+    
     # Normalize the output state
     if success_prob < 1e-15:
         raise ValueError("Post-selection failed: success probability is essentially zero")
-
+    
     psi_out = psi_out_unnormalized / np.sqrt(success_prob)
-
+    
     # Construct the Hamiltonian matrix
     H = np.zeros((dim_logical, dim_logical), dtype=complex)
     for coeff, pauli_string in hamiltonian_terms:
         H += coeff * pauli_string_to_matrix(pauli_string)
-
+    
     # Compute the energy expectation value
     energy = np.real(psi_out.conj() @ H @ psi_out)
-
+    
     return energy, success_prob, psi_out
 
 
@@ -605,7 +605,7 @@ def loss_function_photonic_unitary(
 ) -> float:
     """
     Compute loss function for photonic unitary executor with post-selection.
-
+    
     Parameters:
     -----------
     params : np.ndarray
@@ -616,7 +616,7 @@ def loss_function_photonic_unitary(
         Function that returns a photonic unitary matrix (2m × 2m) given params
     initial_state : np.ndarray
         Initial qubit state vector (default: |0...0⟩)
-
+        
     Returns:
     --------
     float
@@ -624,22 +624,22 @@ def loss_function_photonic_unitary(
     """
     # Get the photonic unitary from the executor
     U_photon = photonic_unitary_executor(params)
-
+    
     # Determine number of qubits
     modes_2m = U_photon.shape[0]
     if modes_2m % 2 != 0:
         raise ValueError("Photon unitary must have even dimension (2m × 2m)")
     m = modes_2m // 2
     dim_logical = 2 ** m
-
+    
     # Set default initial state if not provided
     if initial_state is None:
         initial_state = np.zeros(dim_logical, dtype=complex)
         initial_state[0] = 1.0  # |0...0⟩
-
+    
     # Convert Hamiltonian dict to list of tuples
     hamiltonian_terms = [(coeff, pauli_str) for pauli_str, coeff in H.items()]
-
+    
     # Compute energy with post-selection
     energy, success_prob, _ = compute_energy_postselected(
         U_photon,
@@ -870,3 +870,5 @@ class DataCollector:
             self.energy_data[i].append(energy_values[i])  # append instead of replacing
 
         self.loss_data.append(loss_values)
+    
+    return float(np.real(energy))
