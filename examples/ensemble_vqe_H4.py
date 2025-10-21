@@ -46,7 +46,7 @@ plt.plot(vqe.energy_collector.energy_data[1], ls=":", color="green", label='E_B'
 plt.axhline(y=exact_energy[0], color='b', linestyle='--', label='E_0')
 plt.axhline(y=exact_energy[1], color='g', linestyle='--', label='E_1')
 plt.xlabel('Iteration')
-plt.ylabel('Energy (Hartee)')
+plt.ylabel('Energy (Hartree)')
 plt.title('ensemble VQE Convergence')
 plt.legend()
 plt.tight_layout()
