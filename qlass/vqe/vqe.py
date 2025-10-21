@@ -59,7 +59,6 @@ class VQE:
 
     def _callback_vqe(self, params):
         """Callback function to record optimization progress."""
-        """Callback function to record optimization progress."""
         if self.executor_type == "qubit_unitary":
             from qlass.utils import loss_function_matrix
             energy = loss_function_matrix(params, self.hamiltonian, self.executor)
