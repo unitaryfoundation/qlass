@@ -17,7 +17,7 @@ from .quantum_chemistry.hamiltonians import (
 from .vqe.ansatz import le_ansatz, custom_unitary_ansatz, hf_ansatz
 
 # export from utils module 
-from .utils.utils import loss_function, rotate_qubits
+from .utils.utils import loss_function, rotate_qubits, e_vqe_loss_function
 
 # Define the public API exposed directly under 'qlass'
 __all__ = [
@@ -34,6 +34,7 @@ __all__ = [
     "custom_unitary_ansatz",
     "hf_ansatz",
     "loss_function",
+    "e_vqe_loss_function",
     "rotate_qubits",
     "ResourceAwareCompiler",
     "HardwareConfig",
