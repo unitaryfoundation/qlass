@@ -684,7 +684,7 @@ def e_vqe_loss_function(lp: np.ndarray, H: Dict[str, float], executor, energy_co
     energy_collector : object
         Object responsible for tracking or logging the energy convergence history.
         Must implement a method ``energies_convergence(energies, n_ensembles, total_loss)``.
-    weight_option : {'weighted', 'uniform'}
+    weight_option : {'weighted', 'equi', 'ground_state_only'}
         Scheme for assigning ensemble weights:
         - ``'weighted'`` (default): Linearly decreasing weights with index, i.e., w_i < w_j for i > j.
         - ``'equi'`` : Equal weights for all occupied orbitals, w_i = w_j.
