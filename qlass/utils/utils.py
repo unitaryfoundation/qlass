@@ -612,8 +612,8 @@ def loss_function_photonic_unitary(
         # Get the matrix for the current Pauli term
         pauli_matrix = pauli_string_to_matrix(pauli_string)
         
-        # Calculate <v|P|v>
-        term_expectation = np.dot(psi_out_unnormalized.conj(), pauli_matrix @ psi_out_unnormalized)
+        # Calculate <v|P|v> efficiently
+        term_expectation = np.vdot(psi_out_unnormalized, pauli_matrix @ psi_out_unnormalized)
         numerator_energy += coeff * term_expectation
 
     # Final energy is numerator / denominator (success_prob)
