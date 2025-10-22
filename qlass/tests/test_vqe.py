@@ -408,7 +408,7 @@ def test_vqe_photonic_unitary_with_custom_initial_state():
     hamiltonian = {"ZZ": 1.0}
     
     # Initial state |11⟩
-    initial_state = 4
+    initial_state = np.array([0, 0, 0, 1], dtype=complex)
     
     vqe = VQE(
         hamiltonian=hamiltonian,

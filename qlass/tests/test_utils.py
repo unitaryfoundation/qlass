@@ -413,7 +413,7 @@ def test_loss_function_photonic_unitary():
     assert np.isclose(loss, 1.5)
     
     # Test with custom initial state |11⟩
-    initial_state = 4
+    initial_state = np.array([0, 0, 0, 1], dtype=complex)
     hamiltonian_z = {"ZZ": 1.0}
     loss_11 = loss_function_photonic_unitary(
         params, hamiltonian_z, identity_executor, initial_state

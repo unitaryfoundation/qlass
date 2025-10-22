@@ -538,28 +538,26 @@ def loss_function_photonic_unitary(
     params: np.ndarray,
     H: Dict[str, float],
     photonic_unitary_executor: Callable,
-    initial_state_logical_idx: int = 0
+    initial_state: np.ndarray = None
 ) -> float:
     """
     Computes the loss function for a photonic VQE using the efficient, matrix-free
     state vector approach for post-selection.
 
+    This version accepts a full state vector for the initial state, allowing for
+    superposition states.
+
     Args:
         params: Variational parameters for the ansatz.
         H: Hamiltonian dictionary.
-        photonic_unitary_executor: A function that takes `params` and returns the 
+        photonic_unitary_executor: A function that takes `params` and returns the
                                    2m x 2m photonic unitary `U`.
-        initial_state_logical_idx: The integer index of the initial computational basis
-                                   state (e.g., 0 for |00...0>).
+        initial_state: The initial qubit state as a 2^m dimensional numpy vector.
+                       If None, defaults to the |00...0> state.
 
     Returns:
         The computed energy expectation value.
     """
-    # Robustly handle the case where the initial state index might be passed as None
-    # from a higher-level class, defaulting to the ground state |0...0>.
-    if initial_state_logical_idx is None:
-        initial_state_logical_idx = 0
-
     from qlass.quantum_chemistry import pauli_string_to_matrix
 
     # Step 1: Get the physical unitary from the executor
@@ -567,24 +565,33 @@ def loss_function_photonic_unitary(
     m = U_photon.shape[0] // 2
     dim_logical = 2**m
 
+    # Handle the default initial state if None is provided
+    if initial_state is None:
+        initial_state = np.zeros(dim_logical, dtype=complex)
+        initial_state[0] = 1.0  # Default to |0...0>
+
     # Step 2: Compute the unnormalized post-selected state vector U'|ψ_in>
-    
-    # Get the input modes for the initial state |r>
-    R_modes = logical_state_to_modes(initial_state_logical_idx, m)
-    
-    # Initialize the output vector
+    # Since |ψ_in> = Σ_r c_r |r>, the output is U'|ψ_in> = Σ_r c_r (U'|r>)
     psi_out_unnormalized = np.zeros(dim_logical, dtype=complex)
-    
-    # Iterate through all 2^m possible output logical states |s>
-    for s_idx in range(dim_logical):
-        # Get the output modes for the state |s>
-        S_modes = logical_state_to_modes(s_idx, m)
+
+    # Iterate through each basis state |r> in the initial superposition
+    for r_idx, c_r in enumerate(initial_state):
+        # Skip basis states with negligible amplitude
+        if abs(c_r) < 1e-15:
+            continue
+
+        # Get the input modes for the current basis state |r>
+        R_modes = logical_state_to_modes(r_idx, m)
         
-        # Construct the submatrix U(S, R)
-        submatrix = U_photon[np.ix_(S_modes, R_modes)]
-        
-        # The component <s|U'|r> is the permanent of the submatrix
-        psi_out_unnormalized[s_idx] = permanent(submatrix)
+        # Calculate the contribution vector v_r = U'|r> and add its effect
+        # The j-th component of v_r is <j|U'|r> = permanent(U(S_j, R))
+        for s_idx in range(dim_logical):
+            S_modes = logical_state_to_modes(s_idx, m)
+            submatrix = U_photon[np.ix_(S_modes, R_modes)]
+            permanent_val = permanent(submatrix)
+            
+            # Add the weighted contribution to the final state vector
+            psi_out_unnormalized[s_idx] += c_r * permanent_val
 
     # Step 3: Calculate success probability
     success_prob = np.linalg.norm(psi_out_unnormalized)**2
