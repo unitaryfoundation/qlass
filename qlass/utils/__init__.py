@@ -13,7 +13,6 @@ from .utils import (
     permanent,
     logical_state_to_modes,
     photon_to_qubit_unitary,
-    compute_energy_postselected,
     loss_function_photonic_unitary,
 
     
@@ -33,7 +32,6 @@ __all__ = [
     "permanent",
     "logical_state_to_modes",
     "photon_to_qubit_unitary",
-    "compute_energy_postselected",
     "loss_function_photonic_unitary",
 
 ]

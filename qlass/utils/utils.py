@@ -534,117 +534,82 @@ def photon_to_qubit_unitary(U_photon: np.ndarray) -> np.ndarray:
     return U_qubit
 
 
-def compute_energy_postselected(
-    U_photon: np.ndarray,
-    initial_state_logical: np.ndarray,
-    hamiltonian_terms: List[Tuple[float, str]]
-) -> Tuple[float, float, np.ndarray]:
-    """
-    Compute the energy of a post-selected state after photonic evolution.
-    
-    The process is:
-    1. Start with initial logical qubit state |ψ_in⟩
-    2. Encode to photonic state
-    3. Apply photonic unitary U_photon
-    4. Post-select on valid dual-rail states
-    5. Compute energy ⟨ψ_out|H|ψ_out⟩ / ⟨ψ_out|ψ_out⟩
-    
-    Parameters:
-    -----------
-    U_photon : np.ndarray
-        The 2m × 2m photonic unitary
-    initial_state_logical : np.ndarray
-        Initial qubit state as a 2^m dimensional vector
-    hamiltonian_terms : List[Tuple[float, str]]
-        Hamiltonian as list of (coefficient, pauli_string) tuples
-        
-    Returns:
-    --------
-    Tuple[float, float, np.ndarray]
-        (energy, success_probability, final_state_normalized)
-    """
-    from qlass.quantum_chemistry import pauli_string_to_matrix
-    
-    # Get number of qubits
-    modes_2m = U_photon.shape[0]
-    m = modes_2m // 2
-    dim_logical = 2 ** m
-    
-    # Compute the effective qubit unitary
-    U_qubit = photon_to_qubit_unitary(U_photon)
-    
-    # Apply the effective unitary to the initial state
-    # Note: This is NOT a unitary evolution! The state is unnormalized after post-selection
-    psi_out_unnormalized = U_qubit @ initial_state_logical
-    
-    # Compute the success probability (norm squared)
-    success_prob = np.sum(np.abs(psi_out_unnormalized)**2)
-    
-    # Normalize the output state
-    if success_prob < 1e-15:
-        raise ValueError("Post-selection failed: success probability is essentially zero")
-    
-    psi_out = psi_out_unnormalized / np.sqrt(success_prob)
-    
-    # Construct the Hamiltonian matrix
-    H = np.zeros((dim_logical, dim_logical), dtype=complex)
-    for coeff, pauli_string in hamiltonian_terms:
-        H += coeff * pauli_string_to_matrix(pauli_string)
-    
-    # Compute the energy expectation value
-    energy = np.real(psi_out.conj() @ H @ psi_out)
-    
-    return energy, success_prob, psi_out
-
-
 def loss_function_photonic_unitary(
     params: np.ndarray,
     H: Dict[str, float],
     photonic_unitary_executor: Callable,
-    initial_state: np.ndarray = None
+    initial_state_logical_idx: int = 0
 ) -> float:
     """
-    Compute loss function for photonic unitary executor with post-selection.
-    
-    Parameters:
-    -----------
-    params : np.ndarray
-        Variational parameters
-    H : Dict[str, float]
-        Hamiltonian dictionary with Pauli string keys
-    photonic_unitary_executor : Callable
-        Function that returns a photonic unitary matrix (2m × 2m) given params
-    initial_state : np.ndarray
-        Initial qubit state vector (default: |0...0⟩)
-        
+    Computes the loss function for a photonic VQE using the efficient, matrix-free
+    state vector approach for post-selection.
+
+    Args:
+        params: Variational parameters for the ansatz.
+        H: Hamiltonian dictionary.
+        photonic_unitary_executor: A function that takes `params` and returns the 
+                                   2m x 2m photonic unitary `U`.
+        initial_state_logical_idx: The integer index of the initial computational basis
+                                   state (e.g., 0 for |00...0>).
+
     Returns:
-    --------
-    float
-        Energy expectation value after post-selection
+        The computed energy expectation value.
     """
-    # Get the photonic unitary from the executor
+    # Robustly handle the case where the initial state index might be passed as None
+    # from a higher-level class, defaulting to the ground state |0...0>.
+    if initial_state_logical_idx is None:
+        initial_state_logical_idx = 0
+
+    from qlass.quantum_chemistry import pauli_string_to_matrix
+
+    # Step 1: Get the physical unitary from the executor
     U_photon = photonic_unitary_executor(params)
+    m = U_photon.shape[0] // 2
+    dim_logical = 2**m
+
+    # Step 2: Compute the unnormalized post-selected state vector U'|ψ_in>
     
-    # Determine number of qubits
-    modes_2m = U_photon.shape[0]
-    if modes_2m % 2 != 0:
-        raise ValueError("Photon unitary must have even dimension (2m × 2m)")
-    m = modes_2m // 2
-    dim_logical = 2 ** m
+    # Get the input modes for the initial state |r>
+    R_modes = logical_state_to_modes(initial_state_logical_idx, m)
     
-    # Set default initial state if not provided
-    if initial_state is None:
-        initial_state = np.zeros(dim_logical, dtype=complex)
-        initial_state[0] = 1.0  # |0...0⟩
+    # Initialize the output vector
+    psi_out_unnormalized = np.zeros(dim_logical, dtype=complex)
     
-    # Convert Hamiltonian dict to list of tuples
-    hamiltonian_terms = [(coeff, pauli_str) for pauli_str, coeff in H.items()]
+    # Iterate through all 2^m possible output logical states |s>
+    for s_idx in range(dim_logical):
+        # Get the output modes for the state |s>
+        S_modes = logical_state_to_modes(s_idx, m)
+        
+        # Construct the submatrix U(S, R)
+        submatrix = U_photon[np.ix_(S_modes, R_modes)]
+        
+        # The component <s|U'|r> is the permanent of the submatrix
+        psi_out_unnormalized[s_idx] = permanent(submatrix)
+
+    # Step 3: Calculate success probability
+    success_prob = np.linalg.norm(psi_out_unnormalized)**2
+
+    if success_prob < 1e-15:
+        # Return a large penalty value if the state is unreachable
+        # to guide the optimizer away from this parameter region.
+        return 1e6
+
+    # Step 4: Compute the energy expectation <v|H|v> / <v|v>
+    # where |v> = psi_out_unnormalized
     
-    # Compute energy with post-selection
-    energy, success_prob, _ = compute_energy_postselected(
-        U_photon,
-        initial_state,
-        hamiltonian_terms
-    )
-    
-    return float(np.real(energy))
+    # Calculate the numerator term <v|H|v>
+    numerator_energy = 0.0
+    for pauli_string, coeff in H.items():
+        if abs(coeff) < 1e-15:
+            continue
+        # Get the matrix for the current Pauli term
+        pauli_matrix = pauli_string_to_matrix(pauli_string)
+        
+        # Calculate <v|P|v>
+        term_expectation = np.dot(psi_out_unnormalized.conj(), pauli_matrix @ psi_out_unnormalized)
+        numerator_energy += coeff * term_expectation
+
+    # Final energy is numerator / denominator (success_prob)
+    final_energy = numerator_energy / success_prob
+
+    return float(np.real(final_energy))
