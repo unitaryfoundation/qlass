@@ -594,7 +594,7 @@ def loss_function_photonic_unitary(
             psi_out_unnormalized[s_idx] += c_r * permanent_val
 
     # Step 3: Calculate success probability
-    success_prob = np.linalg.norm(psi_out_unnormalized)**2
+    success_prob = np.vdot(psi_out_unnormalized, psi_out_unnormalized).real
 
     if success_prob < 1e-15:
         # Return a large penalty value if the state is unreachable
