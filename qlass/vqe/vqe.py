@@ -57,27 +57,36 @@ class VQE:
         self.loss_history = []
         self.energy_collector = DataCollector()
 
-    def _callback_vqe(self, params):
+    def _callback(self, params, cost_type="VQE", weight_option="weighted"):
         """Callback function to record optimization progress."""
-        if self.executor_type == "qubit_unitary":
-            from qlass.utils import loss_function_matrix
-            energy = loss_function_matrix(params, self.hamiltonian, self.executor)
-        elif self.executor_type == "photonic_unitary":
-            from qlass.utils import loss_function_photonic_unitary
-            energy = loss_function_photonic_unitary(
-                params, self.hamiltonian, self.executor, self.initial_state)
+        if cost_type == "e-VQE":
+            # Ensemble-VQE mode
+            cost = e_vqe_loss_function(
+                params,
+                self.hamiltonian,
+                self.executor,
+                self.energy_collector,
+                weight_option=weight_option
+            )
+            self.loss_history.append(cost)
         else:
-            from qlass.utils import loss_function
-            energy = loss_function(params, self.hamiltonian, self.executor)
+            # Standard VQE mode
+            if self.executor_type == "qubit_unitary":
+                from qlass.utils import loss_function_matrix
+                energy = loss_function_matrix(params, self.hamiltonian, self.executor)
+            elif self.executor_type == "photonic_unitary":
+                from qlass.utils import loss_function_photonic_unitary
+                energy = loss_function_photonic_unitary(
+                    params, self.hamiltonian, self.executor, self.initial_state
+                )
+            else:
+                energy = loss_function(params, self.hamiltonian, self.executor)
 
-        self.energy_history.append(energy)
+            self.energy_history.append(energy)
+
+            # Always record parameters
         self.parameter_history.append(params.copy())
 
-    def _callback_evqe(self, params, weight_option="weighted"):
-        """Callback function to record optimization progress."""
-        cost = e_vqe_loss_function(params, self.hamiltonian, self.executor, self.energy_collector, weight_option=weight_option)
-        self.loss_history.append(cost)
-        self.parameter_history.append(params.copy())
 
     def run(self, initial_params=None, max_iterations=100, verbose=True, weight_option: str = "weighted",
             cost: str = "VQE"):
@@ -149,7 +158,7 @@ class VQE:
                     initial_params,
                     args=(self.hamiltonian, self.executor),
                     method=self.optimizer,
-                    callback=self._callback_vqe,
+                    callback=lambda p: self._callback(p, cost_type="VQE"),
                     options={'maxiter': max_iterations}
                 )
             elif self.executor_type == "photonic_unitary":
@@ -159,7 +168,7 @@ class VQE:
                     initial_params,
                     args=(self.hamiltonian, self.executor, self.initial_state),
                     method=self.optimizer,
-                    callback=self._callback_vqe,
+                    callback=lambda p: self._callback(p, cost_type="VQE"),
                     options={'maxiter': max_iterations}
                 )
 
@@ -170,7 +179,7 @@ class VQE:
                     initial_params,
                     args=(self.hamiltonian, self.executor),
                     method=self.optimizer,
-                    callback=self._callback_vqe,
+                    callback=lambda p: self._callback(p, cost_type="VQE"),
                     options={'maxiter': max_iterations}
                 )
 
@@ -181,7 +190,7 @@ class VQE:
                     initial_params,
                     args=(self.hamiltonian, self.executor, self.energy_collector, weight_option),
                     method=self.optimizer,
-                    callback=self._callback_evqe,
+                    callback=lambda p: self._callback(p, cost_type="e-VQE", weight_option=weight_option),
                     options={'maxiter': max_iterations}
                 )
             else:
