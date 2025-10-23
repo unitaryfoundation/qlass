@@ -1,3 +1,5 @@
+import sys
+
 import numpy as np
 import perceval as pcvl
 import qiskit
@@ -669,50 +671,20 @@ def e_vqe_loss_function(lp: np.ndarray, H: Dict[str, float], executor, energy_co
         energies.
     """
     # Import here to avoid circular imports
-    try:
-        from qlass.quantum_chemistry.hamiltonians import group_commuting_pauli_terms
-        use_grouping = True
-    except ImportError:
-        # Fallback to individual processing if grouping not available
-        use_grouping = False
 
+    from qlass.quantum_chemistry.hamiltonians import group_commuting_pauli_terms
     loss = 0.0
     lst_energies = None
 
-    if use_grouping:
-        # Use automatic grouping for optimized measurements
-        grouped_hamiltonians = group_commuting_pauli_terms(H)
+    # Use automatic grouping for optimized measurements
+    grouped_hamiltonians = group_commuting_pauli_terms(H)
 
-        for group in grouped_hamiltonians:
-            # Each group contains mutually commuting terms
-            # In the future, this could be optimized to measure entire groups simultaneously
-            # For now, we process each term individually but with the grouping organization
-            for pauli_string, coefficient in group.items():
+    for group in grouped_hamiltonians:
+        # Each group contains mutually commuting terms
+        # In the future, this could be optimized to measure entire groups simultaneously
+        # For now, we process each term individually but with the grouping organization
+        for pauli_string, coefficient in group.items():
 
-                samples = executor(lp, pauli_string)
-
-                # Handle different executor return formats
-                sample_lists = [_extract_samples_from_executor_result(s) for s in samples]
-
-                # Normalize samples to consistent format
-                normalized_samples = [normalize_samples(sample_list) for sample_list in sample_lists]
-
-                prob_dist = [get_probabilities(normalized_sample) for normalized_sample in normalized_samples]
-                pauli_bin = pauli_string_bin(pauli_string)
-
-                qubit_state_marg = [qubit_state_marginal(pd) for pd in prob_dist]
-                expectation = [compute_energy(pauli_bin, qsm) for qsm in qubit_state_marg]
-                energies = [coefficient * expect for expect in expectation]
-                # Initialize accumulator on first iteration
-                if lst_energies is None:
-                    lst_energies = [0.0] * len(energies)
-
-                # Accumulate energies dynamically
-                for i, energy in enumerate(energies):
-                    lst_energies[i] += energy
-    else:
-        # Fallback to original implementation without grouping
-        for pauli_string, coefficient in H.items():
             samples = executor(lp, pauli_string)
 
             # Handle different executor return formats
@@ -734,6 +706,7 @@ def e_vqe_loss_function(lp: np.ndarray, H: Dict[str, float], executor, energy_co
             # Accumulate energies dynamically
             for i, energy in enumerate(energies):
                 lst_energies[i] += energy
+
 
     weights = ensemble_weights(weight_option, len(energies))
     for i in range(len(lst_energies)): loss += lst_energies[i] * weights[i]
