@@ -396,33 +396,6 @@ def test_photon_to_qubit_unitary():
         photon_to_qubit_unitary(np.eye(3))
 
 
-def test_compute_energy_postselected():
-    """Test energy computation with post-selection."""
-    from qlass.utils import compute_energy_postselected
-    
-    # Identity unitary, initial state |00⟩, Hamiltonian H = ZZ
-    U_photon = np.eye(4, dtype=complex)
-    initial_state = np.array([1, 0, 0, 0], dtype=complex)
-    hamiltonian_terms = [(1.0, "ZZ")]
-    
-    energy, success_prob, final_state = compute_energy_postselected(
-        U_photon, initial_state, hamiltonian_terms
-    )
-    
-    # <00|ZZ|00> = 1
-    assert np.isclose(energy, 1.0)
-    assert np.isclose(success_prob, 1.0)
-    assert np.allclose(final_state, initial_state)
-    
-    # Multi-term Hamiltonian
-    hamiltonian_terms_multi = [(0.5, "II"), (1.0, "ZZ"), (-0.3, "XX")]
-    energy_multi, _, _ = compute_energy_postselected(
-        U_photon, initial_state, hamiltonian_terms_multi
-    )
-    # Energy = 0.5*1 + 1.0*1 + (-0.3)*0 = 1.5
-    assert np.isclose(energy_multi, 1.5)
-
-
 def test_loss_function_photonic_unitary():
     """Test photonic unitary loss function."""
     from qlass.utils import loss_function_photonic_unitary

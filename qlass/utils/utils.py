@@ -534,69 +534,6 @@ def photon_to_qubit_unitary(U_photon: np.ndarray) -> np.ndarray:
     return U_qubit
 
 
-def compute_energy_postselected(
-    U_photon: np.ndarray,
-    initial_state_logical: np.ndarray,
-    hamiltonian_terms: List[Tuple[float, str]]
-) -> Tuple[float, float, np.ndarray]:
-    """
-    Compute the energy of a post-selected state after photonic evolution.
-    
-    The process is:
-    1. Start with initial logical qubit state |ψ_in⟩
-    2. Encode to photonic state
-    3. Apply photonic unitary U_photon
-    4. Post-select on valid dual-rail states
-    5. Compute energy ⟨ψ_out|H|ψ_out⟩ / ⟨ψ_out|ψ_out⟩
-    
-    Parameters:
-    -----------
-    U_photon : np.ndarray
-        The 2m × 2m photonic unitary
-    initial_state_logical : np.ndarray
-        Initial qubit state as a 2^m dimensional vector
-    hamiltonian_terms : List[Tuple[float, str]]
-        Hamiltonian as list of (coefficient, pauli_string) tuples
-        
-    Returns:
-    --------
-    Tuple[float, float, np.ndarray]
-        (energy, success_probability, final_state_normalized)
-    """
-    from qlass.quantum_chemistry import pauli_string_to_matrix
-    
-    # Get number of qubits
-    modes_2m = U_photon.shape[0]
-    m = modes_2m // 2
-    dim_logical = 2 ** m
-    
-    # Compute the effective qubit unitary
-    U_qubit = photon_to_qubit_unitary(U_photon)
-    
-    # Apply the effective unitary to the initial state
-    # Note: This is NOT a unitary evolution! The state is unnormalized after post-selection
-    psi_out_unnormalized = U_qubit @ initial_state_logical
-    
-    # Compute the success probability (norm squared)
-    success_prob = np.sum(np.abs(psi_out_unnormalized)**2)
-    
-    # Normalize the output state
-    if success_prob < 1e-15:
-        raise ValueError("Post-selection failed: success probability is essentially zero")
-    
-    psi_out = psi_out_unnormalized / np.sqrt(success_prob)
-    
-    # Construct the Hamiltonian matrix
-    H = np.zeros((dim_logical, dim_logical), dtype=complex)
-    for coeff, pauli_string in hamiltonian_terms:
-        H += coeff * pauli_string_to_matrix(pauli_string)
-    
-    # Compute the energy expectation value
-    energy = np.real(psi_out.conj() @ H @ psi_out)
-    
-    return energy, success_prob, psi_out
-
-
 def loss_function_photonic_unitary(
     params: np.ndarray,
     H: Dict[str, float],
@@ -604,35 +541,31 @@ def loss_function_photonic_unitary(
     initial_state: np.ndarray = None
 ) -> float:
     """
-    Compute loss function for photonic unitary executor with post-selection.
-    
-    Parameters:
-    -----------
-    params : np.ndarray
-        Variational parameters
-    H : Dict[str, float]
-        Hamiltonian dictionary with Pauli string keys
-    photonic_unitary_executor : Callable
-        Function that returns a photonic unitary matrix (2m × 2m) given params
-    initial_state : np.ndarray
-        Initial qubit state vector (default: |0...0⟩)
-        
+    Computes the loss function for a photonic VQE using the efficient, matrix-free
+    state vector approach for post-selection.
+
+    This version accepts a full state vector for the initial state, allowing for
+    superposition states.
+
+    Args:
+        params: Variational parameters for the ansatz.
+        H: Hamiltonian dictionary.
+        photonic_unitary_executor: A function that takes `params` and returns the
+                                   2m x 2m photonic unitary `U`.
+        initial_state: The initial qubit state as a 2^m dimensional numpy vector.
+                       If None, defaults to the |00...0> state.
+
     Returns:
-    --------
-    float
-        Energy expectation value after post-selection
+        The computed energy expectation value.
     """
-    # Get the photonic unitary from the executor
+    from qlass.quantum_chemistry import pauli_string_to_matrix
+
+    # Step 1: Get the physical unitary from the executor
     U_photon = photonic_unitary_executor(params)
-    
-    # Determine number of qubits
-    modes_2m = U_photon.shape[0]
-    if modes_2m % 2 != 0:
-        raise ValueError("Photon unitary must have even dimension (2m × 2m)")
-    m = modes_2m // 2
-    dim_logical = 2 ** m
-    
-    # Set default initial state if not provided
+    m = U_photon.shape[0] // 2
+    dim_logical = 2**m
+
+    # Handle the default initial state if None is provided
     if initial_state is None:
         initial_state = np.zeros(dim_logical, dtype=complex)
         initial_state[0] = 1.0  # |0...0⟩
