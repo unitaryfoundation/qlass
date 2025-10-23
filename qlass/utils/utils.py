@@ -568,19 +568,58 @@ def loss_function_photonic_unitary(
     # Handle the default initial state if None is provided
     if initial_state is None:
         initial_state = np.zeros(dim_logical, dtype=complex)
-        initial_state[0] = 1.0  # |0...0⟩
-    
-    # Convert Hamiltonian dict to list of tuples
-    hamiltonian_terms = [(coeff, pauli_str) for pauli_str, coeff in H.items()]
-    
-    # Compute energy with post-selection
-    energy, success_prob, _ = compute_energy_postselected(
-        U_photon,
-        initial_state,
-        hamiltonian_terms
-    )
+        initial_state[0] = 1.0  # Default to |0...0>
 
-    return float(np.real(energy))
+    # Step 2: Compute the unnormalized post-selected state vector U'|ψ_in>
+    # Since |ψ_in> = Σ_r c_r |r>, the output is U'|ψ_in> = Σ_r c_r (U'|r>)
+    psi_out_unnormalized = np.zeros(dim_logical, dtype=complex)
+
+    # Iterate through each basis state |r> in the initial superposition
+    for r_idx, c_r in enumerate(initial_state):
+        # Skip basis states with negligible amplitude
+        if abs(c_r) < 1e-15:
+            continue
+
+        # Get the input modes for the current basis state |r>
+        R_modes = logical_state_to_modes(r_idx, m)
+
+        # Calculate the contribution vector v_r = U'|r> and add its effect
+        # The j-th component of v_r is <j|U'|r> = permanent(U(S_j, R))
+        for s_idx in range(dim_logical):
+            S_modes = logical_state_to_modes(s_idx, m)
+            submatrix = U_photon[np.ix_(S_modes, R_modes)]
+            permanent_val = permanent(submatrix)
+
+            # Add the weighted contribution to the final state vector
+            psi_out_unnormalized[s_idx] += c_r * permanent_val
+
+    # Step 3: Calculate success probability
+    success_prob = np.vdot(psi_out_unnormalized, psi_out_unnormalized).real
+
+    if success_prob < 1e-15:
+        # Return a large penalty value if the state is unreachable
+        # to guide the optimizer away from this parameter region.
+        return 1e6
+
+    # Step 4: Compute the energy expectation <v|H|v> / <v|v>
+    # where |v> = psi_out_unnormalized
+
+    # Calculate the numerator term <v|H|v>
+    numerator_energy = 0.0
+    for pauli_string, coeff in H.items():
+        if abs(coeff) < 1e-15:
+            continue
+        # Get the matrix for the current Pauli term
+        pauli_matrix = pauli_string_to_matrix(pauli_string)
+
+        # Calculate <v|P|v> efficiently
+        term_expectation = np.vdot(psi_out_unnormalized, pauli_matrix @ psi_out_unnormalized)
+        numerator_energy += coeff * term_expectation
+
+    # Final energy is numerator / denominator (success_prob)
+    final_energy = numerator_energy / success_prob
+
+    return float(np.real(final_energy))
 
 def e_vqe_loss_function(lp: np.ndarray, H: Dict[str, float], executor, energy_collector, weight_option: str= "weighted") -> float:
     """
@@ -749,7 +788,7 @@ def ensemble_weights(weights_choice, n_occ):
     elif weights_choice == "ground_state_only":
         weights = [1.] + [0.0]*(n_occ - 1)
     else:
-        raise ValueError(f"Invalid weights_choice '{weights_choice}'. Must be one of 'equi', 'weighted', or 'ground_state_only'.")
+        raise ValueError(f"Invalid weights_choice. Must be one of 'equi', 'weighted', or 'ground_state_only'.")
 
     return weights
 

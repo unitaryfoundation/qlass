@@ -160,6 +160,61 @@ def test_evqe_pipeline():
     if not isinstance(vqe_energy, float):
         raise ValueError("Optimization result is not a valid float")
 
+def test_invalid_cost_type():
+    """Test that invalid cost error."""
+
+    # Define an executor function that uses the linear entangled ansatz
+    def executor(params, pauli_string):
+
+        processors = hf_ansatz(1, n_orbs, params, pauli_string, method="DFT", cost="e-VQE")
+        samplers = [Sampler(p) for p in processors]
+        samples = [sampler.samples(5) for sampler in samplers]
+
+        return samples
+
+    # Number of qubits
+    num_qubits = 2
+
+    ham, scf_mo_energy, n_orbs = Hchain_KS_hamiltonian(4, 1.2)
+
+    vqe = VQE(
+        hamiltonian=ham,
+        executor=executor,
+        num_params=4,  # Number of parameters in the linear entangled ansatz
+    )
+
+    with pytest.raises(ValueError, match="Invalid cost option. Use 'VQE' or 'e-VQE'."):
+        vqe_energy = vqe.run(
+            max_iterations=5,
+            verbose=True,
+            weight_option="weighted",
+            cost="Invalid_cost"
+        )
+
+def test_invalid_evqe_executor_type():
+    """Test that invalid executor error."""
+    def unitary_exec():
+        return np.eye(4, dtype=complex)
+
+    # Number of qubits
+    num_qubits = 2
+
+    ham, scf_mo_energy, n_orbs = Hchain_KS_hamiltonian(4, 1.2)
+
+    vqe = VQE(
+        hamiltonian=ham,
+        executor=unitary_exec(),
+        executor_type="qubit_unitary",
+        num_params=4,  # Number of parameters in the linear entangled ansatz
+    )
+
+    with pytest.raises(ValueError, match="option: e-VQE takes only executor_type: sampling"):
+        vqe_energy = vqe.run(
+            max_iterations=5,
+            verbose=True,
+            weight_option="weighted",
+            cost="e-VQE"
+        )
 
 def test_custom_unitary_ansatz():
     """

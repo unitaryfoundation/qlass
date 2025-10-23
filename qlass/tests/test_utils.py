@@ -420,3 +420,61 @@ def test_loss_function_photonic_unitary():
     )
     # <11|ZZ|11> = 1
     assert np.isclose(loss_11, 1.0)
+
+def test_ensemble_weights():
+    from qlass.utils.utils import ensemble_weights
+
+    equal_weights = ensemble_weights('equi', 2)
+    assert isinstance(equal_weights, list)
+    dec_weights = ensemble_weights('weighted', 2)
+    assert isinstance(dec_weights, list)
+    ground_state = ensemble_weights('ground_state_only', 2)
+    assert isinstance(ground_state, list)
+
+    with pytest.raises(ValueError, match=f"Invalid weights_choice. Must be one of 'equi', 'weighted', or 'ground_state_only'."):
+        invalid_weight_string = ensemble_weights('Invalid_weight', 2)
+
+def test_evqe_loss_function_fallback_without_grouping(mocker):
+    """
+    Tests the loss_function's fallback to individual term processing
+    when the grouping utility is not available.
+    """
+    # 1. Mock the grouping function to trigger an ImportError
+    mocker.patch(
+        'qlass.quantum_chemistry.group_commuting_pauli_terms',
+        side_effect=ImportError("Simulating grouping utility not found")
+    )
+    from qlass.vqe.ansatz import hf_ansatz
+    from qlass.quantum_chemistry.hamiltonians import Hchain_KS_hamiltonian
+    from qlass.vqe import VQE
+    from perceval.algorithm import Sampler
+    # 2. Define a simple mock executor that returns a consistent result
+    # Define an executor function that uses the linear entangled ansatz
+    def executor(params, pauli_string):
+
+        processors = hf_ansatz(1, n_orbs, params, pauli_string, method="DFT", cost="e-VQE")
+        samplers = [Sampler(p) for p in processors]
+        samples = [sampler.samples(5) for sampler in samplers]
+
+        return samples
+
+    # Number of qubits
+    num_qubits = 2
+
+    ham, scf_mo_energy, n_orbs = Hchain_KS_hamiltonian(4, 1.2)
+
+    vqe = VQE(
+        hamiltonian=ham,
+        executor=executor,
+        num_params=4,  # Number of parameters in the linear entangled ansatz
+    )
+
+    # Run the VQE optimization
+    vqe_loss = vqe.run(
+        max_iterations=5,
+        verbose=True,
+        weight_option="weighted",
+        cost="e-VQE"
+    )
+
+    assert isinstance(vqe_loss, float)
