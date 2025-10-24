@@ -420,3 +420,17 @@ def test_loss_function_photonic_unitary():
     )
     # <11|ZZ|11> = 1
     assert np.isclose(loss_11, 1.0)
+
+def test_ensemble_weights():
+    from qlass.utils.utils import ensemble_weights
+
+    equal_weights = ensemble_weights('equi', 2)
+    assert isinstance(equal_weights, list)
+    dec_weights = ensemble_weights('weighted', 2)
+    assert isinstance(dec_weights, list)
+    ground_state = ensemble_weights('ground_state_only', 2)
+    assert isinstance(ground_state, list)
+
+    with pytest.raises(ValueError, match=f"Invalid weights_choice. Must be one of 'equi', 'weighted', or 'ground_state_only'."):
+        invalid_weight_string = ensemble_weights('Invalid_weight', 2)
+

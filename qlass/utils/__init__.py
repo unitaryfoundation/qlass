@@ -1,6 +1,7 @@
 
 from .utils import (
     loss_function,
+    e_vqe_loss_function,
     rotate_qubits,
     compute_energy,
     get_probabilities,
@@ -24,6 +25,7 @@ __all__ = [
     "qubit_state_marginal",
     "is_qubit_state",
     "loss_function",
+    "e_vqe_loss_function",
     "rotate_qubits",
     "normalize_samples",
     "linear_circuit_to_unitary",

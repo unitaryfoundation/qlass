@@ -1,3 +1,4 @@
+
 import numpy as np
 import perceval as pcvl
 from perceval.algorithm import Sampler
@@ -12,6 +13,7 @@ from qlass.vqe import (
 
 from qlass.quantum_chemistry import (
     LiH_hamiltonian,
+    Hchain_KS_hamiltonian
 )
 
 import warnings
@@ -46,7 +48,7 @@ def test_vqe_run(simple_vqe):
     """Tests the main `run` method to ensure optimization completes."""
     # Run with a small number of iterations for speed
     final_energy = simple_vqe.run(max_iterations=10, verbose=False)
-    
+
     assert isinstance(final_energy, float)
     assert simple_vqe.optimization_result is not None
     # The callback should populate the history
@@ -67,7 +69,7 @@ def test_get_optimal_parameters(simple_vqe):
     # After running
     simple_vqe.run(max_iterations=10, verbose=False)
     optimal_params = simple_vqe.get_optimal_parameters()
-    
+
     assert isinstance(optimal_params, np.ndarray)
     assert len(optimal_params) == simple_vqe.num_params
     assert np.allclose(optimal_params, simple_vqe.optimization_result.x)
@@ -79,16 +81,16 @@ def test_compare_with_exact(simple_vqe):
     # Should raise error before running
     with pytest.raises(ValueError, match="VQE optimization has not been run yet."):
         simple_vqe.compare_with_exact(0.0)
-    
+
     simple_vqe.run(max_iterations=10, verbose=False)
     vqe_energy = simple_vqe.optimization_result.fun
     exact_energy = 0.5
-    
+
     comparison = simple_vqe.compare_with_exact(exact_energy)
-    
+
     expected_abs_error = abs(vqe_energy - exact_energy)
     expected_rel_error = expected_abs_error / abs(exact_energy)
-    
+
     assert comparison['vqe_energy'] == vqe_energy
     assert comparison['exact_energy'] == exact_energy
     assert np.isclose(comparison['absolute_error'], expected_abs_error)
@@ -102,10 +104,10 @@ def test_vqe_pipeline():
         sampler = Sampler(processor)
         samples = sampler.samples(10_000)
         return samples
-    
+
     # Number of qubits
     num_qubits = 2
-    
+
     # Generate a 2-qubit Hamiltonian
     hamiltonian = LiH_hamiltonian(num_electrons=2, num_orbitals=1)
 
@@ -115,7 +117,7 @@ def test_vqe_pipeline():
         executor=executor,
         num_params=2*num_qubits, # Number of parameters in the linear entangled ansatz
     )
-    
+
     # Run the VQE optimization
     vqe_energy = vqe.run(
         max_iterations=10,
@@ -124,6 +126,95 @@ def test_vqe_pipeline():
 
     if not isinstance(vqe_energy, float):
         raise ValueError("Optimization result is not a valid float")
+
+def test_evqe_pipeline():
+
+    # Define an executor function that uses the linear entangled ansatz
+    def executor(params, pauli_string):
+
+        processors = hf_ansatz(1, n_orbs, params, pauli_string, method="DFT", cost="e-VQE")
+        samplers = [Sampler(p) for p in processors]
+        samples = [sampler.samples(5) for sampler in samplers]
+
+        return samples
+
+    # Number of qubits
+    num_qubits = 2
+
+    ham, scf_mo_energy, n_orbs = Hchain_KS_hamiltonian(4, 1.2)
+
+    vqe = VQE(
+        hamiltonian=ham,
+        executor=executor,
+        num_params=4,  # Number of parameters in the linear entangled ansatz
+    )
+
+    # Run the VQE optimization
+    vqe_energy = vqe.run(
+        max_iterations=5,
+        verbose=True,
+        weight_option="weighted",
+        cost="e-VQE"
+    )
+
+    if not isinstance(vqe_energy, float):
+        raise ValueError("Optimization result is not a valid float")
+
+def test_invalid_cost_type():
+    """Test that invalid cost error."""
+
+    # Define an executor function that uses the linear entangled ansatz
+    def executor(params, pauli_string):
+
+        processors = hf_ansatz(1, n_orbs, params, pauli_string, method="DFT", cost="e-VQE")
+        samplers = [Sampler(p) for p in processors]
+        samples = [sampler.samples(5) for sampler in samplers]
+
+        return samples
+
+    # Number of qubits
+    num_qubits = 2
+
+    ham, scf_mo_energy, n_orbs = Hchain_KS_hamiltonian(4, 1.2)
+
+    vqe = VQE(
+        hamiltonian=ham,
+        executor=executor,
+        num_params=4,  # Number of parameters in the linear entangled ansatz
+    )
+
+    with pytest.raises(ValueError, match="Invalid cost option. Use 'VQE' or 'e-VQE'."):
+        vqe_energy = vqe.run(
+            max_iterations=5,
+            verbose=True,
+            weight_option="weighted",
+            cost="Invalid_cost"
+        )
+
+def test_invalid_evqe_executor_type():
+    """Test that invalid executor error."""
+    def unitary_exec():
+        return np.eye(4, dtype=complex)
+
+    # Number of qubits
+    num_qubits = 2
+
+    ham, scf_mo_energy, n_orbs = Hchain_KS_hamiltonian(4, 1.2)
+
+    vqe = VQE(
+        hamiltonian=ham,
+        executor=unitary_exec(),
+        executor_type="qubit_unitary",
+        num_params=4,  # Number of parameters in the linear entangled ansatz
+    )
+
+    with pytest.raises(ValueError, match="option: e-VQE takes only executor_type: sampling"):
+        vqe_energy = vqe.run(
+            max_iterations=5,
+            verbose=True,
+            weight_option="weighted",
+            cost="e-VQE"
+        )
 
 def test_custom_unitary_ansatz():
     """
@@ -237,24 +328,24 @@ def parametrized_unitary_executor(params):
     """Unitary executor with actual parameters."""
     # Create a simple 2-qubit unitary using RY rotations
     theta1, theta2 = params[0], params[1]
-    
+
     ry1 = np.array([
         [np.cos(theta1/2), -np.sin(theta1/2)],
         [np.sin(theta1/2), np.cos(theta1/2)]
     ], dtype=complex)
-    
+
     ry2 = np.array([
         [np.cos(theta2/2), -np.sin(theta2/2)],
         [np.sin(theta2/2), np.cos(theta2/2)]
     ], dtype=complex)
-    
+
     return np.kron(ry1, ry2)
 
 
 def test_vqe_init_with_unitary_executor():
     """Test VQE initialization with unitary executor type."""
     hamiltonian = {"II": -0.5, "ZZ": 1.0}
-    
+
     vqe = VQE(
         hamiltonian=hamiltonian,
         executor=identity_unitary_executor,
@@ -270,23 +361,23 @@ def test_vqe_init_with_unitary_executor():
 def test_vqe_init_with_sampling_executor():
     """Test VQE initialization with sampling executor type."""
     hamiltonian = {"II": -0.5, "ZZ": 1.0}
-    
+
     def sampling_exec(params, pauli_string):
         return {'results': [(0, 0)] * 100}
-    
+
     vqe = VQE(
         hamiltonian=hamiltonian,
         executor=sampling_exec,
         num_params=2,
         executor_type="sampling"
     )
-    
+
     assert vqe.executor_type == "sampling"
 
 def test_vqe_invalid_executor_type():
     """Test that invalid executor_type raises error."""
     hamiltonian = {"ZZ": 1.0}
-    
+
     with pytest.raises(ValueError, match="Invalid executor_type"):
         VQE(
             hamiltonian=hamiltonian,
@@ -301,29 +392,29 @@ def test_vqe_compare_unitary_vs_sampling():
     for the same problem (within statistical error).
     """
     hamiltonian = {"II": 0.5, "ZZ": 1.0}
-    
+
     # Unitary executor
     def unitary_exec(params):
         return np.eye(4, dtype=complex)
-    
+
     # Sampling executor (deterministic - always returns |00>)
     def sampling_exec(params, pauli_string):
         return {'results': [(0, 0)] * 10000}
-    
+
     vqe_unitary = VQE(
         hamiltonian=hamiltonian,
         executor=unitary_exec,
         num_params=2,
         executor_type="qubit_unitary"
     )
-    
+
     vqe_sampling = VQE(
         hamiltonian=hamiltonian,
         executor=sampling_exec,
         num_params=2,
         executor_type="sampling"
     )
-    
+
     # Both should give same energy for identity circuit
     energy_unitary = vqe_unitary.run(
         initial_params=np.zeros(2),
@@ -335,7 +426,7 @@ def test_vqe_compare_unitary_vs_sampling():
         max_iterations=10,
         verbose=False
     )
-    
+
     # Expected: 0.5 * 1 + 1.0 * 1 = 1.5
     assert np.isclose(energy_unitary, 1.5)
     assert np.isclose(energy_sampling, 1.5, atol=0.01)
