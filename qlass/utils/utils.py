@@ -541,7 +541,7 @@ def loss_function_photonic_unitary(
     H: Dict[str, float],
     photonic_unitary_executor: Callable,
     initial_state: np.ndarray = None,
-    ancillary_modes: List[int] = None  # <-- New argument
+    ancillary_modes: List[int] = None 
 ) -> float:
     """
     Computes the loss function for a photonic VQE using the efficient, matrix-free
@@ -597,7 +597,7 @@ def loss_function_photonic_unitary(
     # m is the number of logical qubits
     m = len(logical_modes_list) // 2
     dim_logical = 2**m
-    # --- End Logic ---
+    # --- End Ancilla Logic ---
 
     # Handle the default initial state if None is provided
     if initial_state is None:

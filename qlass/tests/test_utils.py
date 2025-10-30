@@ -397,29 +397,97 @@ def test_photon_to_qubit_unitary():
 
 
 def test_loss_function_photonic_unitary():
-    """Test photonic unitary loss function."""
+    """Test photonic unitary loss function, including ancillary post-selection."""
     from qlass.utils import loss_function_photonic_unitary
-    
-    def identity_executor(params):
+
+    # --- (No Ancillas) ---
+    def identity_executor_4x4(params):
         return np.eye(4, dtype=complex)  # 2 qubits, 4 modes
     
     hamiltonian = {"II": 0.5, "ZZ": 1.0}
     params = np.array([0.1, 0.2])
     
-    loss = loss_function_photonic_unitary(params, hamiltonian, identity_executor)
+    loss = loss_function_photonic_unitary(params, hamiltonian, identity_executor_4x4)
     
     # Initial state |00⟩: II=1, ZZ=1
     # Expected: 0.5*1 + 1.0*1 = 1.5
-    assert np.isclose(loss, 1.5)
+    assert np.isclose(loss, 1.5), "Test failed for default state, no ancillas"
     
-    # Test with custom initial state |11⟩
-    initial_state = np.array([0, 0, 0, 1], dtype=complex)
+    # --- (Custom Initial State, No Ancillas) ---
+    initial_state_11 = np.array([0, 0, 0, 1], dtype=complex) # Logical |11⟩
     hamiltonian_z = {"ZZ": 1.0}
     loss_11 = loss_function_photonic_unitary(
-        params, hamiltonian_z, identity_executor, initial_state
+        params, hamiltonian_z, identity_executor_4x4, initial_state_11
     )
     # <11|ZZ|11> = 1
-    assert np.isclose(loss_11, 1.0)
+    assert np.isclose(loss_11, 1.0), "Test failed for |11⟩ state, no ancillas"
+
+    # --- With Ancillas, Identity logical sub-matrix ---
+    # 6 total modes: 2 logical qubits (4 modes) + 2 ancillary modes
+    def identity_executor_6x6(params):
+        return np.eye(6, dtype=complex)
+        
+    # Ancillary modes are [0, 5]. Logical modes are [1, 2, 3, 4]
+    # Logical Q0 -> physical modes [1, 2]
+    # Logical Q1 -> physical modes [3, 4]
+    anc_modes = [0, 5]
+    
+    # Use the same 2-qubit Hamiltonian
+    # With a 6x6 identity matrix, the logical evolution is also identity.
+    # <00|H|00> should be 1.5
+    loss_ancilla = loss_function_photonic_unitary(
+        params, hamiltonian, identity_executor_6x6, ancillary_modes=anc_modes
+    )
+    assert np.isclose(loss_ancilla, 1.5), "Test failed for default state with ancillas"
+
+    # --- With Ancillas, Custom Initial State ---
+    # Use the same 2-qubit |11⟩ initial state
+    loss_ancilla_11 = loss_function_photonic_unitary(
+        params, hamiltonian_z, identity_executor_6x6, initial_state_11, anc_modes
+    )
+    # <11|ZZ|11> = 1
+    assert np.isclose(loss_ancilla_11, 1.0), "Test failed for |11⟩ state with ancillas"
+    
+    # --- Post-selection failure (leakage to ancilla) ---
+    # Unitary swaps a logical mode (1) with an ancillary mode (5)
+    def swap_1_5_executor(params):
+        U = np.eye(6, dtype=complex)
+        U[1, 1] = 0
+        U[5, 5] = 0
+        U[1, 5] = 1
+        U[5, 1] = 1
+        return U
+        
+    # Logical |00⟩ (physical modes [1, 3]) evolves to a state
+    # where the photon from mode 1 goes to mode 5 (ancillary).
+    # This should fail post-selection.
+    # Success probability should be 0, loss should be penalty (1e6)
+    loss_fail = loss_function_photonic_unitary(
+        params, hamiltonian, swap_1_5_executor, ancillary_modes=anc_modes
+    )
+    assert np.isclose(loss_fail, 1e6), "Test failed to return penalty for post-selection failure"
+    
+    # --- Error - Invalid Ancilla Index ---
+    with pytest.raises(ValueError, match="contain indices outside"):
+        loss_function_photonic_unitary(
+            params, hamiltonian, identity_executor_4x4, ancillary_modes=[0, 10]
+        )
+        
+    # --- Error - Odd Logical Modes ---
+    with pytest.raises(ValueError, match="must be even"):
+        loss_function_photonic_unitary(
+            params, hamiltonian, identity_executor_4x4, ancillary_modes=[0]
+        )
+        
+    # --- Error - Mismatched Initial State Dim ---
+    with pytest.raises(ValueError, match="Initial state dimension"):
+        # 6 modes, 2 ancillas -> 4 logical modes -> 2 qubits -> dim 4
+        # Pass a 1-qubit (dim 2) initial state
+        initial_state_1q = np.array([0, 1], dtype=complex)
+        loss_function_photonic_unitary(
+            params, hamiltonian, identity_executor_6x6, initial_state_1q, anc_modes
+        )
+
 
 def test_ensemble_weights():
     from qlass.utils.utils import ensemble_weights
