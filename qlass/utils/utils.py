@@ -540,22 +540,27 @@ def loss_function_photonic_unitary(
     params: np.ndarray,
     H: Dict[str, float],
     photonic_unitary_executor: Callable,
-    initial_state: np.ndarray = None
+    initial_state: np.ndarray = None,
+    ancillary_modes: List[int] = None 
 ) -> float:
     """
     Computes the loss function for a photonic VQE using the efficient, matrix-free
     state vector approach for post-selection.
 
     This version accepts a full state vector for the initial state, allowing for
-    superposition states.
+    superposition states, and allows for post-selection on ancillary modes.
 
     Args:
         params: Variational parameters for the ansatz.
         H: Hamiltonian dictionary.
         photonic_unitary_executor: A function that takes `params` and returns the
-                                   2m x 2m photonic unitary `U`.
+                                   M x M photonic unitary `U`, where M is the
+                                   total number of modes (logical + ancillary).
         initial_state: The initial qubit state as a 2^m dimensional numpy vector.
                        If None, defaults to the |00...0> state.
+        ancillary_modes: A list of mode indices to be treated as ancillary.
+                         Post-selection is performed by assuming these modes
+                         are 0 (vacuum) for both input and output.
 
     Returns:
         The computed energy expectation value.
@@ -564,31 +569,83 @@ def loss_function_photonic_unitary(
 
     # Step 1: Get the physical unitary from the executor
     U_photon = photonic_unitary_executor(params)
-    m = U_photon.shape[0] // 2
+    total_modes = U_photon.shape[0]
+
+    # --- Logic for Ancillary Modes ---
+    if ancillary_modes is None:
+        ancillary_modes = []
+
+    anc_modes_set = set(ancillary_modes)
+    all_modes_set = set(range(total_modes))
+
+    # Validate ancillary modes
+    if not anc_modes_set.issubset(all_modes_set):
+        raise ValueError(
+            f"Ancillary modes {ancillary_modes} contain indices outside "
+            f"the total mode range [0, {total_modes-1}]"
+        )
+
+    # Determine logical modes (those not ancillary)
+    logical_modes_list = sorted(list(all_modes_set - anc_modes_set))
+
+    if len(logical_modes_list) % 2 != 0:
+        raise ValueError(
+            f"The number of non-ancillary (logical) modes "
+            f"({len(logical_modes_list)}) must be even for dual-rail encoding."
+        )
+
+    # m is the number of logical qubits
+    m = len(logical_modes_list) // 2
     dim_logical = 2**m
+    # --- End Ancilla Logic ---
 
     # Handle the default initial state if None is provided
     if initial_state is None:
         initial_state = np.zeros(dim_logical, dtype=complex)
         initial_state[0] = 1.0  # Default to |0...0>
+    elif initial_state.shape[0] != dim_logical:
+        # Validate initial state dimension against the *new* logical dimension
+        raise ValueError(
+            f"Initial state dimension ({initial_state.shape[0]}) does not "
+            f"match logical dimension ({dim_logical}) derived from "
+            f"total modes ({total_modes}) minus ancillary modes "
+            f"({len(ancillary_modes)})."
+        )
 
+    # Helper function to map logical states to the correct physical modes
+    def _get_physical_modes(logical_state: int, num_qubits: int, logical_mode_map: List[int]) -> List[int]:
+        """Maps a logical state to physical modes given a specific mode layout."""
+        # Convert integer to bit list for m qubits
+        bits = [(logical_state >> (num_qubits - 1 - k)) & 1 for k in range(num_qubits)]
+        modes = []
+        for k in range(num_qubits):
+            # Qubit k uses modes logical_mode_map[2*k] and logical_mode_map[2*k+1]
+            # |0⟩_k -> logical_mode_map[2*k]
+            # |1⟩_k -> logical_mode_map[2*k+1]
+            mode_index = 2 * k + bits[k]
+            modes.append(logical_mode_map[mode_index])
+        return modes
+    
     # Step 2: Compute the unnormalized post-selected state vector U'|ψ_in>
-    # Since |ψ_in> = Σ_r c_r |r>, the output is U'|ψ_in> = Σ_r c_r (U'|r>)
     psi_out_unnormalized = np.zeros(dim_logical, dtype=complex)
 
     # Iterate through each basis state |r> in the initial superposition
     for r_idx, c_r in enumerate(initial_state):
-        # Skip basis states with negligible amplitude
         if abs(c_r) < 1e-15:
             continue
 
-        # Get the input modes for the current basis state |r>
-        R_modes = logical_state_to_modes(r_idx, m)
+        # Get the physical input modes for logical state |r>
+        # These modes are drawn *only* from the logical_modes_list
+        R_modes = _get_physical_modes(r_idx, m, logical_modes_list)
 
-        # Calculate the contribution vector v_r = U'|r> and add its effect
-        # The j-th component of v_r is <j|U'|r> = permanent(U(S_j, R))
+        # Calculate the contribution vector v_r = U'|r>
         for s_idx in range(dim_logical):
-            S_modes = logical_state_to_modes(s_idx, m)
+            # Get the physical output modes for logical state |s>
+            S_modes = _get_physical_modes(s_idx, m, logical_modes_list)
+            
+            # The transition amplitude <s|U'|r> is the permanent of the
+            # submatrix U(S, R). This calculation implicitly post-selects
+            # on all other modes (including ancillaries) being vacuum.
             submatrix = U_photon[np.ix_(S_modes, R_modes)]
             permanent_val = permanent(submatrix)
 
@@ -599,26 +656,17 @@ def loss_function_photonic_unitary(
     success_prob = np.vdot(psi_out_unnormalized, psi_out_unnormalized).real
 
     if success_prob < 1e-15:
-        # Return a large penalty value if the state is unreachable
-        # to guide the optimizer away from this parameter region.
-        return 1e6
+        return 1e6  # Return penalty
 
     # Step 4: Compute the energy expectation <v|H|v> / <v|v>
-    # where |v> = psi_out_unnormalized
-
-    # Calculate the numerator term <v|H|v>
     numerator_energy = 0.0
     for pauli_string, coeff in H.items():
         if abs(coeff) < 1e-15:
             continue
-        # Get the matrix for the current Pauli term
         pauli_matrix = pauli_string_to_matrix(pauli_string)
-
-        # Calculate <v|P|v> efficiently
         term_expectation = np.vdot(psi_out_unnormalized, pauli_matrix @ psi_out_unnormalized)
         numerator_energy += coeff * term_expectation
 
-    # Final energy is numerator / denominator (success_prob)
     final_energy = numerator_energy / success_prob
 
     return float(np.real(final_energy))

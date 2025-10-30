@@ -1,4 +1,4 @@
-from typing import Dict, Callable
+from typing import List, Dict, Callable
 import numpy as np
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
@@ -23,6 +23,7 @@ class VQE:
         optimizer: str = "COBYLA",
         executor_type: str = 'sampling',
         initial_state: np.ndarray = None, # For now only relevant for photonic_unitary,
+        ancillary_modes: List[int] = None,
     ):
         """
         Initialize the VQE solver.
@@ -34,12 +35,15 @@ class VQE:
             num_params (int): number of parameters that the executor accepts
             optimizer (str): Optimization method to use. Any method supported by scipy.optimize.minimize
             executor_type (str): Type of executor - "sampling", "unitary"
+            ancillary_modes (List[int], optional): List of ancillary mode indices
+                for post-selection when using 'photonic_unitary' executor.
         """
         self.hamiltonian = hamiltonian
         self.executor = executor
         self.num_params = num_params
         self.optimizer = optimizer
         self.initial_state = initial_state
+        self.ancillary_modes = ancillary_modes
 
         # Extract number of qubits from the Hamiltonian
         self.num_qubits = len(next(iter(hamiltonian.keys())))
@@ -77,7 +81,8 @@ class VQE:
             elif self.executor_type == "photonic_unitary":
                 from qlass.utils import loss_function_photonic_unitary
                 energy = loss_function_photonic_unitary(
-                    params, self.hamiltonian, self.executor, self.initial_state
+                    params, self.hamiltonian, self.executor, self.initial_state,
+                    self.ancillary_modes,
                 )
             else:
                 energy = loss_function(params, self.hamiltonian, self.executor)
@@ -166,7 +171,7 @@ class VQE:
                 self.optimization_result = minimize(
                     loss_function_photonic_unitary,
                     initial_params,
-                    args=(self.hamiltonian, self.executor, self.initial_state),
+                    args=(self.hamiltonian, self.executor, self.initial_state, self.ancillary_modes),
                     method=self.optimizer,
                     callback=lambda p: self._callback(p, cost_type="VQE"),
                     options={'maxiter': max_iterations}
