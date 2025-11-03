@@ -63,11 +63,3 @@ Ansatz Module
    :members:
    :show-inheritance:
    :undoc-members:
-
-Submodules
-----------
-
-.. automodule:: qlass.vqe
-   :members:
-   :show-inheritance:
-   :undoc-members:
