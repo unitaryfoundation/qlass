@@ -38,24 +38,6 @@ VQE Class
    :members:
    :show-inheritance:
 
-   **Parameters:**
-   
-   - ``hamiltonian`` (Dict[str, float]): Hamiltonian as Pauli strings with coefficients
-   - ``executor`` (Callable): Function that executes the quantum circuit/unitary
-   - ``num_params`` (int): Number of variational parameters
-   - ``optimizer`` (str): Optimization method (default: "COBYLA")
-   - ``executor_type`` (str): Type of executor - "sampling", "qubit_unitary", or "photonic_unitary"
-   - ``initial_state`` (np.ndarray): Initial quantum state (for photonic_unitary)
-   - ``ancillary_modes`` (List[int]): Ancillary mode indices for post-selection (photonic_unitary)
-
-   **run() method parameters:**
-   
-   - ``initial_params``: Starting parameters (default: random)
-   - ``max_iterations``: Maximum optimization iterations (default: 100)
-   - ``verbose``: Print progress information (default: True)
-   - ``weight_option``: Weighting scheme for e-VQE ("weighted", "equi", "ground_state_only")
-   - ``cost``: Cost function type ("VQE" or "e-VQE")
-
 Ansatz Module
 -------------
 
