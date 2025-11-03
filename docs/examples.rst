@@ -95,11 +95,6 @@ Standard VQE using sampling-based executor with Hartree-Fock ansatz:
    
    # Run optimization
    vqe_energy = vqe.run(max_iterations=50, verbose=True)
-   
-   # Compare with exact solution
-   exact_energy = brute_force_minimize(ham)
-   print(f"VQE Energy: {vqe_energy:.6f}")
-   print(f"Exact Energy: {exact_energy:.6f}")
 
 VQE with Qubit Unitary Executor
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
