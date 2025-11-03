@@ -4,16 +4,25 @@ Introduction
 What is qlass?
 -------------
 
-``qlass`` is a Python package designed to facilitate quantum computing on photonic devices. It is part of the Quantum Glass-based Photonic Integrated Circuits (QLASS) project funded by the European Union.
+``qlass`` is a Python package designed to facilitate quantum computing on photonic devices. 
+It is part of the Quantum Glass-based Photonic Integrated Circuits (QLASS) project funded by the European Union.
 
-The package provides tools for compiling quantum algorithms written in Qiskit to run on photonic quantum computers, with a particular focus on variational quantum algorithms like the Variational Quantum Eigensolver (VQE).
+The package provides tools for compiling quantum circuits written in Qiskit to run on photonic quantum computers, 
+with a particular focus on variational quantum algorithms like the Variational Quantum Eigensolver (VQE).
 
 Key Features
 -----------
 
 - **Circuit Compilation**: Convert Qiskit quantum circuits to Perceval photonic processors
-- **VQE Implementation**: Run Variational Quantum Eigensolver algorithms on photonic hardware
-- **Quantum Chemistry Tools**: Generate and manipulate molecular Hamiltonians
+- **Multiple VQE Modes**: 
+  - Standard VQE for ground state optimization
+  - Ensemble-VQE (e-VQE) for computing multiple excited states
+  - Support for sampling, qubit unitary, and photonic unitary executors
+- **Quantum Chemistry Tools**: 
+  - Generate molecular Hamiltonians (LiH)
+  - Kohn-Sham Hamiltonians for DFT-based calculations
+  - Hamiltonian manipulation utilities
+- **Advanced Ansätze**: Hartree-Fock ansatz with WFT and DFT support
 - **Utility Functions**: Process measurement results and compute expectation values
 
 Architecture
@@ -39,4 +48,5 @@ Use Cases
 Project Background
 ----------------
 
-The ``qlass`` package is developed by the Unitary Foundation as part of the QLASS project, which aims to develop quantum technologies based on photonic integrated circuits. The project is funded by the European Union.
+The ``qlass`` package is developed by the Unitary Foundation as part of the QLASS project, 
+which aims to develop quantum technologies based on photonic integrated circuits. The project is funded by the European Union.
