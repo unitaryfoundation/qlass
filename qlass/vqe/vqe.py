@@ -34,7 +34,7 @@ class VQE:
             executor (Callable): Custom executor function, if None, a default one will be created
             num_params (int): number of parameters that the executor accepts
             optimizer (str): Optimization method to use. Any method supported by scipy.optimize.minimize
-            executor_type (str): Type of executor - "sampling", "unitary"
+            executor_type (str): Type of executor - "sampling", "qubit_unitary", "photonic_unitary"
             ancillary_modes (List[int], optional): List of ancillary mode indices
                 for post-selection when using 'photonic_unitary' executor.
         """
