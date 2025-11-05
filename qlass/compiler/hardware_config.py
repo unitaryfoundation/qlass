@@ -6,13 +6,13 @@ class HardwareConfig:
     A data structure to hold the physical properties of a photonic hardware backend.
     """
     # Noise Model Parameters: to be used for constructing a perceval NoiseModel
-    brightness: float = None
-    indistinguishability: float = None
-    g2: float = None
-    g2_distinguishable: bool = None
-    transmittance: float = None
-    phase_imprecision: float = None
-    phase_error: float = None
+    brightness: float = 1.0
+    indistinguishability: float = 1.0
+    g2: float = 0.0
+    g2_distinguishable: bool = False
+    transmittance: float = 0.9
+    phase_imprecision: float = 0.0
+    phase_error: float = 0.0
 
     # Hardware Resource Limits: to be used for resource-aware compilation
     # Photon Loss Parameters
