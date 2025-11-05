@@ -37,7 +37,9 @@ class VQE:
             executor_type (str): Type of executor. 
                 - "sampling": Uses measurement-based sampling.
                 - "qubit_unitary": For qubit-based simulations (e.g., standard circuit-based quantum computing).
-                - "photonic_unitary": For photonic quantum computing, where the initial state and ancillary modes may be relevant for post-selection. Use this when simulating photonic systems or when post-selection on ancillary modes is required.
+                - "photonic_unitary": For photonic quantum computing, 
+                where the initial state and ancillary modes may be relevant for post-selection. 
+                Use this when simulating photonic systems or when post-selection on ancillary modes is required.
             ancillary_modes (List[int], optional): List of ancillary mode indices
                 for post-selection when using 'photonic_unitary' executor.
         """
