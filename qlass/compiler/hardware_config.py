@@ -5,11 +5,16 @@ class HardwareConfig:
     """
     A data structure to hold the physical properties of a photonic hardware backend.
     """
-    # System-wide transmittance, e.g., 0.9 means 10% photon loss
+    # Noise Model Parameters: to be used for constructing a perceval NoiseModel
+    brightness: float = 1.0
+    indistinguishability: float = 1.0
+    g2: float = 0.0
+    g2_distinguishable: bool = False
     transmittance: float = 0.9
-    # Small random phase shifts (in radians)
-    phase_imprecision: float = 0.01  
+    phase_imprecision: float = 0.0
+    phase_error: float = 0.0
 
+    # Hardware Resource Limits: to be used for resource-aware compilation
     # Photon Loss Parameters
     photon_loss_component_db: float = 0.05  # Loss per optical component in dB
     photon_loss_waveguide_db_per_cm: float = 0.3 # Loss per cm of waveguide in dB
