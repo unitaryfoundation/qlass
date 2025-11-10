@@ -1,4 +1,3 @@
-
 import numpy as np
 import perceval as pcvl
 from perceval.algorithm import Sampler
@@ -318,6 +317,23 @@ def test_plot_convergence(simple_vqe, mocker):
     mock_legend.assert_called_once()
     mock_grid.assert_called_once()
     mock_show.assert_called_once()
+
+def test_plot_energy_landscape(simple_vqe):
+    """
+    Tests the `plot_energy_landscape` method to ensure it runs without errors
+    for both 1D and 2D parameter ranges.
+    """
+    # Test 1D parameter range
+    try:
+        simple_vqe.plot_energy_landscape([(0, 2 * np.pi)])
+    except Exception as e:
+        pytest.fail(f"plot_energy_landscape failed for 1D range: {e}")
+
+    # Test 2D parameter range
+    try:
+        simple_vqe.plot_energy_landscape([(0, 2 * np.pi), (0, 2 * np.pi)])
+    except Exception as e:
+        pytest.fail(f"plot_energy_landscape failed for 2D range: {e}")
 
 def identity_unitary_executor(params):
     """Simple unitary executor that returns identity matrix."""
