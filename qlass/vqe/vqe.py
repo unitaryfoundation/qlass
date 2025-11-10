@@ -284,7 +284,18 @@ class VQE:
             resolution (int): Number of points per parameter axis.
         """
         import matplotlib.pyplot as plt
-        from qlass.utils import loss_function
+
+        def compute_energy(params):
+            if self.executor_type == "qubit_unitary":
+                from qlass.utils import loss_function_matrix
+                return loss_function_matrix(params, self.hamiltonian, self.executor)
+            elif self.executor_type == "photonic_unitary":
+                from qlass.utils import loss_function_photonic_unitary
+                return loss_function_photonic_unitary(
+                    params, self.hamiltonian, self.executor, self.initial_state, self.ancillary_modes
+                )
+            else:  # Default to sampling
+                return loss_function(params, self.hamiltonian, self.executor)
 
         if len(param_ranges) == 1:
             # 1D plot
@@ -294,8 +305,7 @@ class VQE:
             for p in params:
                 x = np.zeros(self.num_params)
                 x[0] = p
-                e = loss_function(x, self.hamiltonian, self.executor)
-                energies.append(e)
+                energies.append(compute_energy(x))
             plt.figure(figsize=(8, 5))
             plt.plot(params, energies, label='Energy landscape')
             plt.xlabel('Parameter 0')
@@ -316,7 +326,7 @@ class VQE:
                     x = np.zeros(self.num_params)
                     x[0] = P1[i, j]
                     x[1] = P2[i, j]
-                    E[i, j] = loss_function(x, self.hamiltonian, self.executor)
+                    E[i, j] = compute_energy(x)
             plt.figure(figsize=(8, 6))
             cp = plt.contourf(P1, P2, E, levels=30, cmap='viridis')
             plt.colorbar(cp, label='Energy')
