@@ -274,3 +274,55 @@ class VQE:
         }
 
         return comparison
+
+    def plot_energy_landscape(self, param_ranges, resolution=50):
+        """
+        Visualize the energy landscape as a function of 1 or 2 parameters.
+
+        Args:
+            param_ranges (list of tuple): List of (min, max) for each parameter to scan (length 1 or 2).
+            resolution (int): Number of points per parameter axis.
+        """
+        import matplotlib.pyplot as plt
+        from qlass.utils import loss_function
+
+        if len(param_ranges) == 1:
+            # 1D plot
+            pmin, pmax = param_ranges[0]
+            params = np.linspace(pmin, pmax, resolution)
+            energies = []
+            for p in params:
+                x = np.zeros(self.num_params)
+                x[0] = p
+                e = loss_function(x, self.hamiltonian, self.executor)
+                energies.append(e)
+            plt.figure(figsize=(8, 5))
+            plt.plot(params, energies, label='Energy landscape')
+            plt.xlabel('Parameter 0')
+            plt.ylabel('Energy')
+            plt.title('Energy landscape (1D)')
+            plt.grid(True, alpha=0.3)
+            plt.legend()
+            plt.show()
+        elif len(param_ranges) == 2:
+            # 2D contour plot
+            (p1min, p1max), (p2min, p2max) = param_ranges
+            p1 = np.linspace(p1min, p1max, resolution)
+            p2 = np.linspace(p2min, p2max, resolution)
+            P1, P2 = np.meshgrid(p1, p2)
+            E = np.zeros_like(P1)
+            for i in range(resolution):
+                for j in range(resolution):
+                    x = np.zeros(self.num_params)
+                    x[0] = P1[i, j]
+                    x[1] = P2[i, j]
+                    E[i, j] = loss_function(x, self.hamiltonian, self.executor)
+            plt.figure(figsize=(8, 6))
+            cp = plt.contourf(P1, P2, E, levels=30, cmap='viridis')
+            plt.colorbar(cp, label='Energy')
+            plt.xlabel('Parameter 0')
+            plt.ylabel('Parameter 1')
+            plt.title('Energy landscape (2D)')
+            plt.show()
+        else:
+            raise ValueError('Only 1D or 2D energy landscape visualization is supported.')
