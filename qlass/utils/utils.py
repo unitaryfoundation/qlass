@@ -256,6 +256,7 @@ def loss_function(lp: np.ndarray, H: Dict[str, float], executor) -> float:
         use_grouping = False
 
     loss = 0.0
+    contributions = {}
 
     if use_grouping:
         # Use automatic grouping for optimized measurements
@@ -279,7 +280,10 @@ def loss_function(lp: np.ndarray, H: Dict[str, float], executor) -> float:
 
                 qubit_state_marg = qubit_state_marginal(prob_dist)
                 expectation = compute_energy(pauli_bin, qubit_state_marg)
-                loss += coefficient * expectation
+                
+                term_energy = coefficient * expectation
+                contributions[pauli_string] = term_energy
+                loss += term_energy
     else:
         # Fallback to original implementation without grouping
         for pauli_string, coefficient in H.items():
@@ -296,9 +300,12 @@ def loss_function(lp: np.ndarray, H: Dict[str, float], executor) -> float:
 
             qubit_state_marg = qubit_state_marginal(prob_dist)
             expectation = compute_energy(pauli_bin, qubit_state_marg)
-            loss += coefficient * expectation
+            
+            term_energy = coefficient * expectation
+            contributions[pauli_string] = term_energy
+            loss += term_energy
 
-    return loss.real
+    return float(np.real(loss)), contributions
 
 
 def _extract_samples_from_executor_result(samples):
@@ -412,6 +419,8 @@ def loss_function_matrix(
     unitary = unitary_executor(params)
 
     loss = 0.0
+    contributions = {}
+
     for pauli_string, coefficient in H.items():
         # Convert Pauli string to matrix
         pauli_matrix = pauli_string_to_matrix(pauli_string)
@@ -422,9 +431,11 @@ def loss_function_matrix(
             pauli_matrix
         )
 
-        loss += coefficient * expectation
+        term_energy = coefficient * expectation
+        contributions[pauli_string] = float(np.real(term_energy))
+        loss += term_energy
     
-    return float(np.real(loss))
+    return float(np.real(loss)), contributions
 
 def permanent(matrix: np.ndarray) -> complex:
     """
@@ -654,9 +665,10 @@ def loss_function_photonic_unitary(
 
     # Step 3: Calculate success probability
     success_prob = np.vdot(psi_out_unnormalized, psi_out_unnormalized).real
+    contributions = {}
 
     if success_prob < 1e-15:
-        return 1e6  # Return penalty
+        return 1e6, {}  # Return penalty
 
     # Step 4: Compute the energy expectation <v|H|v> / <v|v>
     numerator_energy = 0.0
@@ -665,11 +677,16 @@ def loss_function_photonic_unitary(
             continue
         pauli_matrix = pauli_string_to_matrix(pauli_string)
         term_expectation = np.vdot(psi_out_unnormalized, pauli_matrix @ psi_out_unnormalized)
+
+        # Calculate and store the contribution for this term
+        term_energy = (coeff * term_expectation) / success_prob
+        contributions[pauli_string] = float(np.real(term_energy))
+
         numerator_energy += coeff * term_expectation
 
     final_energy = numerator_energy / success_prob
 
-    return float(np.real(final_energy))
+    return float(np.real(final_energy)), contributions
 
 def e_vqe_loss_function(lp: np.ndarray, H: Dict[str, float], executor, energy_collector, weight_option: str= "weighted") -> float:
     """

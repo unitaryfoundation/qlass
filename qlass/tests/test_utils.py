@@ -106,20 +106,20 @@ def test_loss_function_automatic_grouping():
     # test case 1: simple 2-qubit hamiltonian with commuting terms
     simple_ham = {"II": 1.0, "ZI": 0.5, "IZ": -0.3, "ZZ": 0.2}
     test_params = np.array([0.1, 0.2])
+
+    energy, contributions = loss_function(test_params, simple_ham, mock_executor)
+    assert isinstance(energy, float), "loss_function should return a float energy"
+    assert isinstance(contributions, dict), "loss_function should return a contrib dict"
     
-    # Function should work with automatic grouping
-    result = loss_function(test_params, simple_ham, mock_executor)
-    assert isinstance(result, float), "loss_function should return a float"
-    
-    # test case 2: empty hamiltonian should work
     empty_ham = {}
-    result_empty = loss_function(test_params, empty_ham, mock_executor)
-    assert result_empty == 0.0, "Empty Hamiltonian should give zero loss"
-    
-    # test case 3: single term should work
+    energy_empty, contrib_empty = loss_function(test_params, empty_ham, mock_executor)
+    assert energy_empty == 0.0, "Empty Hamiltonian should give zero loss"
+    assert contrib_empty == {}, "Empty Hamiltonian should give empty contribs"
+
     single_ham = {"ZZ": 1.0}
-    result_single = loss_function(test_params, single_ham, mock_executor)
-    assert isinstance(result_single, float), "Single term should work correctly"
+    energy_single, contrib_single = loss_function(test_params, single_ham, mock_executor)
+    assert isinstance(energy_single, float), "Single term should work correctly"
+    assert "ZZ" in contrib_single
 
 
 def test_loss_function_perceval_format():
@@ -128,15 +128,21 @@ def test_loss_function_perceval_format():
     def mock_perceval_executor(params, pauli_string):
         return {
             'results': [
-                pcvl.BasicState([1, 0, 1, 0]),  # |01⟩ 
+                pcvl.BasicState([1, 0, 1, 0]),  # |00⟩ 
                 pcvl.BasicState([0, 1, 0, 1]),  # |11⟩
-                pcvl.BasicState([1, 0, 0, 1]),  # |00⟩
+                pcvl.BasicState([1, 0, 0, 1]),  # |01⟩
             ]
         }
     
     hamiltonian = {"II": 0.5, "ZZ": 0.3}
-    result = loss_function(np.array([0.1, 0.2]), hamiltonian, mock_perceval_executor)
-    assert isinstance(result, float)
+    energy, contributions = loss_function(np.array([0.1, 0.2]), hamiltonian, mock_perceval_executor)
+    assert isinstance(energy, float)
+    assert isinstance(contributions, dict)
+    # Manual check: States are |00⟩, |11⟩, |01⟩. All 1/3 prob.
+    # II: 0.5 * 1.0 = 0.5
+    # ZZ: 0.3 * ( (1/3)*(+1) + (1/3)*(+1) + (1/3)*(-1) ) = 0.3 * (1/3) = 0.1
+    # Expected: 0.5 + 0.1 = 0.6
+    assert np.isclose(energy, 0.6)
 
 def test_loss_function_qiskit_bitstring_format():
     
@@ -145,8 +151,13 @@ def test_loss_function_qiskit_bitstring_format():
         return {'results': ['00', '01', '10', '11']}
     
     hamiltonian = {"II": 1.0, "ZZ": 0.5}
-    result = loss_function(np.array([0.1, 0.2]), hamiltonian, mock_qiskit_executor)
-    assert isinstance(result, float)
+    energy, contributions = loss_function(np.array([0.1, 0.2]), hamiltonian, mock_qiskit_executor)
+    assert isinstance(energy, float)
+    # Manual check: States are |00⟩, |01⟩, |10⟩, |11⟩. All 1/4 prob.
+    # II: 1.0 * 1.0 = 1.0
+    # ZZ: 0.5 * ( (1/4)*(+1) + (1/4)*(-1) + (1/4)*(-1) + (1/4)*(+1) ) = 0.5 * 0 = 0
+    # Expected: 1.0 + 0 = 1.0
+    assert np.isclose(energy, 1.0)
 
 def test_loss_function_qiskit_counts_format():
     
@@ -155,8 +166,13 @@ def test_loss_function_qiskit_counts_format():
         return {'counts': {'00': 250, '01': 250, '10': 250, '11': 250}}
     
     hamiltonian = {"II": 1.0, "ZI": 0.2}
-    result = loss_function(np.array([0.1, 0.2]), hamiltonian, mock_counts_executor)
-    assert isinstance(result, float)
+    energy, contributions = loss_function(np.array([0.1, 0.2]), hamiltonian, mock_counts_executor)
+    assert isinstance(energy, float)
+    # Manual check: All states 1/4 prob.
+    # II: 1.0 * 1.0 = 1.0
+    # ZI: 0.2 * ( (1/4)*(+1) + (1/4)*(+1) + (1/4)*(-1) + (1/4)*(-1) ) = 0.2 * 0 = 0
+    # Expected: 1.0 + 0 = 1.0
+    assert np.isclose(energy, 1.0)
 
 def test_loss_function_direct_list_format():
     
@@ -165,8 +181,13 @@ def test_loss_function_direct_list_format():
         return [(0, 0), (0, 1), (1, 0), (1, 1)]
     
     hamiltonian = {"ZZ": 1.0, "XX": -0.5}
-    result = loss_function(np.array([0.1, 0.2]), hamiltonian, mock_direct_executor)
-    assert isinstance(result, float)
+    energy, contributions = loss_function(np.array([0.1, 0.2]), hamiltonian, mock_direct_executor)
+    assert isinstance(energy, float)
+    # Manual check: All states 1/4 prob.
+    # ZZ: 1.0 * ( (1/4)*(+1) + (1/4)*(-1) + (1/4)*(-1) + (1/4)*(+1) ) = 1.0 * 0 = 0
+    # XX: -0.5 * ( (1/4)*(+1) + (1/4)*(-1) + (1/4)*(-1) + (1/4)*(+1) ) = -0.5 * 0 = 0
+    # Expected: 0 + 0 = 0.0
+    assert np.isclose(energy, 0.0)
 
 def test_loss_function_error_handling():
 
@@ -199,9 +220,9 @@ def test_loss_function_format_consistency():
     hamiltonian = {"ZZ": 1.0, "XX": -0.5}
     params = np.array([0.1, 0.2])
     
-    result1 = loss_function(params, hamiltonian, executor1)
-    result2 = loss_function(params, hamiltonian, executor2)
-    result3 = loss_function(params, hamiltonian, executor3)
+    result1, _ = loss_function(params, hamiltonian, executor1)
+    result2, _ = loss_function(params, hamiltonian, executor2)
+    result3, _ = loss_function(params, hamiltonian, executor3)
     
     # Allow small numerical differences
     tolerance = 1e-10
@@ -265,9 +286,12 @@ def test_loss_function_fallback_without_grouping(mocker):
     expected_loss = 1.0
 
     # 5. Run the loss function and assert the result
-    calculated_loss = loss_function(params, hamiltonian, mock_executor)
+    calculated_loss, contributions = loss_function(params, hamiltonian, mock_executor)
 
     assert np.isclose(calculated_loss, expected_loss)
+    assert isinstance(contributions, dict)
+    assert np.isclose(contributions["ZI"], 0.5)
+    assert np.isclose(contributions["IZ"], 0.5)
 
 def test_compute_expectation_value_from_unitary_identity():
     """Test expectation value computation with identity unitary and Pauli Z."""
@@ -299,9 +323,13 @@ def test_loss_function_matrix_multi_term_hamiltonian():
     }
     params = np.array([0.1])
     
-    loss = loss_function_matrix(params, hamiltonian, identity_executor)
-    # Expected: 0.5 * 1 + 1.0 * 1 + (-0.5) * 0 = 1.5
+    loss, contributions = loss_function_matrix(params, hamiltonian, identity_executor)
+    
     assert np.isclose(loss, 1.5)
+    assert isinstance(contributions, dict)
+    assert np.isclose(contributions["I"], 0.5)
+    assert np.isclose(contributions["Z"], 1.0)
+    assert np.isclose(contributions["X"], 0.0)
 
 def test_loss_function_matrix_two_qubit():
     """Test matrix-based loss function for 2-qubit system."""
@@ -315,10 +343,13 @@ def test_loss_function_matrix_two_qubit():
     }
     params = np.array([0.1, 0.2])
     
-    loss = loss_function_matrix(params, hamiltonian, identity_executor)
-    # |00> state: II=1, ZZ=1, XX=0
-    # Expected: 1.0 * 1 + 0.5 * 1 + (-0.3) * 0 = 1.5
+    loss, contributions = loss_function_matrix(params, hamiltonian, identity_executor)
+    
     assert np.isclose(loss, 1.5)
+    assert isinstance(contributions, dict)
+    assert np.isclose(contributions["II"], 1.0)
+    assert np.isclose(contributions["ZZ"], 0.5)
+    assert np.isclose(contributions["XX"], 0.0)
 
 def test_loss_function_matrix_parameterized_unitary():
     """Test with parameterized unitary (rotation)."""
@@ -332,19 +363,19 @@ def test_loss_function_matrix_parameterized_unitary():
     
     hamiltonian = {"Z": 1.0}
     
-    # At theta=0, should get <0|Z|0> = 1
-    loss_0 = loss_function_matrix(np.array([0.0]), hamiltonian, rotation_executor)
+    loss_0, contrib_0 = loss_function_matrix(np.array([0.0]), hamiltonian, rotation_executor)
     assert np.isclose(loss_0, 1.0)
-    
-    # At theta=pi, should get <1|Z|1> = -1
-    loss_pi = loss_function_matrix(np.array([np.pi]), hamiltonian, rotation_executor)
+    assert np.isclose(contrib_0["Z"], 1.0)
+
+    loss_pi, contrib_pi = loss_function_matrix(np.array([np.pi]), hamiltonian, rotation_executor)
     assert np.isclose(loss_pi, -1.0)
-    
-    # At theta=pi/2, should get 0
-    loss_half = loss_function_matrix(
+    assert np.isclose(contrib_pi["Z"], -1.0)
+
+    loss_half, contrib_half = loss_function_matrix(
         np.array([np.pi/2]), hamiltonian, rotation_executor
     )
     assert np.isclose(loss_half, 0.0, atol=1e-10)
+    assert np.isclose(contrib_half["Z"], 0.0, atol=1e-10)
 
 def test_permanent():
     """Test permanent calculation for key cases."""
@@ -399,90 +430,72 @@ def test_photon_to_qubit_unitary():
 def test_loss_function_photonic_unitary():
     """Test photonic unitary loss function, including ancillary post-selection."""
     from qlass.utils import loss_function_photonic_unitary
-
     # --- (No Ancillas) ---
     def identity_executor_4x4(params):
-        return np.eye(4, dtype=complex)  # 2 qubits, 4 modes
+        return np.eye(4, dtype=complex)
     
     hamiltonian = {"II": 0.5, "ZZ": 1.0}
     params = np.array([0.1, 0.2])
     
-    loss = loss_function_photonic_unitary(params, hamiltonian, identity_executor_4x4)
+    loss, contributions = loss_function_photonic_unitary(params, hamiltonian, identity_executor_4x4)
     
-    # Initial state |00⟩: II=1, ZZ=1
-    # Expected: 0.5*1 + 1.0*1 = 1.5
     assert np.isclose(loss, 1.5), "Test failed for default state, no ancillas"
-    
+    assert isinstance(contributions, dict)
+    assert np.isclose(contributions["II"], 0.5)
+    assert np.isclose(contributions["ZZ"], 1.0)
+
     # --- (Custom Initial State, No Ancillas) ---
     initial_state_11 = np.array([0, 0, 0, 1], dtype=complex) # Logical |11⟩
     hamiltonian_z = {"ZZ": 1.0}
-    loss_11 = loss_function_photonic_unitary(
+    loss_11, contrib_11 = loss_function_photonic_unitary(
         params, hamiltonian_z, identity_executor_4x4, initial_state_11
     )
-    # <11|ZZ|11> = 1
     assert np.isclose(loss_11, 1.0), "Test failed for |11⟩ state, no ancillas"
+    assert np.isclose(contrib_11["ZZ"], 1.0)
 
     # --- With Ancillas, Identity logical sub-matrix ---
-    # 6 total modes: 2 logical qubits (4 modes) + 2 ancillary modes
     def identity_executor_6x6(params):
         return np.eye(6, dtype=complex)
         
-    # Ancillary modes are [0, 5]. Logical modes are [1, 2, 3, 4]
-    # Logical Q0 -> physical modes [1, 2]
-    # Logical Q1 -> physical modes [3, 4]
     anc_modes = [0, 5]
     
-    # Use the same 2-qubit Hamiltonian
-    # With a 6x6 identity matrix, the logical evolution is also identity.
-    # <00|H|00> should be 1.5
-    loss_ancilla = loss_function_photonic_unitary(
+    loss_ancilla, contrib_ancilla = loss_function_photonic_unitary(
         params, hamiltonian, identity_executor_6x6, ancillary_modes=anc_modes
     )
     assert np.isclose(loss_ancilla, 1.5), "Test failed for default state with ancillas"
+    assert np.isclose(contrib_ancilla["II"], 0.5)
+    assert np.isclose(contrib_ancilla["ZZ"], 1.0)
 
     # --- With Ancillas, Custom Initial State ---
-    # Use the same 2-qubit |11⟩ initial state
-    loss_ancilla_11 = loss_function_photonic_unitary(
+    loss_ancilla_11, contrib_ancilla_11 = loss_function_photonic_unitary(
         params, hamiltonian_z, identity_executor_6x6, initial_state_11, anc_modes
     )
-    # <11|ZZ|11> = 1
     assert np.isclose(loss_ancilla_11, 1.0), "Test failed for |11⟩ state with ancillas"
+    assert np.isclose(contrib_ancilla_11["ZZ"], 1.0)
     
     # --- Post-selection failure (leakage to ancilla) ---
-    # Unitary swaps a logical mode (1) with an ancillary mode (5)
     def swap_1_5_executor(params):
         U = np.eye(6, dtype=complex)
-        U[1, 1] = 0
-        U[5, 5] = 0
-        U[1, 5] = 1
-        U[5, 1] = 1
+        U[1, 1] = 0; U[5, 5] = 0; U[1, 5] = 1; U[5, 1] = 1
         return U
         
-    # Logical |00⟩ (physical modes [1, 3]) evolves to a state
-    # where the photon from mode 1 goes to mode 5 (ancillary).
-    # This should fail post-selection.
-    # Success probability should be 0, loss should be penalty (1e6)
-    loss_fail = loss_function_photonic_unitary(
+    loss_fail, contrib_fail = loss_function_photonic_unitary(
         params, hamiltonian, swap_1_5_executor, ancillary_modes=anc_modes
     )
-    assert np.isclose(loss_fail, 1e6), "Test failed to return penalty for post-selection failure"
+    assert np.isclose(loss_fail, 1e6), "Test failed to return penalty"
+    assert contrib_fail == {}, "Contributions should be empty on failure"
     
-    # --- Error - Invalid Ancilla Index ---
     with pytest.raises(ValueError, match="contain indices outside"):
         loss_function_photonic_unitary(
             params, hamiltonian, identity_executor_4x4, ancillary_modes=[0, 10]
         )
         
-    # --- Error - Odd Logical Modes ---
     with pytest.raises(ValueError, match="must be even"):
         loss_function_photonic_unitary(
             params, hamiltonian, identity_executor_4x4, ancillary_modes=[0]
         )
         
-    # --- Error - Mismatched Initial State Dim ---
     with pytest.raises(ValueError, match="Initial state dimension"):
-        # 6 modes, 2 ancillas -> 4 logical modes -> 2 qubits -> dim 4
-        # Pass a 1-qubit (dim 2) initial state
         initial_state_1q = np.array([0, 1], dtype=complex)
         loss_function_photonic_unitary(
             params, hamiltonian, identity_executor_6x6, initial_state_1q, anc_modes
@@ -490,7 +503,7 @@ def test_loss_function_photonic_unitary():
 
 
 def test_ensemble_weights():
-    from qlass.utils.utils import ensemble_weights
+    from qlass.utils import ensemble_weights
 
     equal_weights = ensemble_weights('equi', 2)
     assert isinstance(equal_weights, list)

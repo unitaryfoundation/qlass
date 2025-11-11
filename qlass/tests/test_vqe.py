@@ -596,3 +596,61 @@ def test_vqe_compare_executor_types():
     
     # For identity operators and |00⟩ state, all should give similar results
     assert np.isclose(energy_unitary, energy_photonic, atol=0.1)
+
+def test_plot_hamiltonian_contributions(simple_vqe, mocker):
+    """
+    Tests the plot_hamiltonian_contributions method, focusing on
+    data correctness and argument handling.
+    """
+    # 1. Mock critical functions
+    mock_print = mocker.patch('builtins.print')
+    mock_bar = mocker.patch('matplotlib.pyplot.bar')
+    mock_show = mocker.patch('matplotlib.pyplot.show') # To prevent GUI
+
+    # 2. Test warning when no data is available
+    simple_vqe.plot_hamiltonian_contributions()
+    mock_print.assert_any_call("No contribution data found. Did VQE run successfully?")
+
+    # 3. Test warning for e-VQE
+    simple_vqe.cost_type = "e-VQE"
+    simple_vqe.final_contributions = {} # Ensure no data
+    simple_vqe.plot_hamiltonian_contributions()
+    mock_print.assert_any_call("Plotting contributions is not supported for e-VQE.")
+    simple_vqe.cost_type = "VQE" # Reset
+
+    # 4. Run VQE to populate contributions
+    # The simple_vqe fixture has hamiltonian = {"II": -0.5, "ZZ": 1.0, "XX": 0.5}
+    simple_vqe.run(max_iterations=5, verbose=False)
+
+    # 5. Call plot function with sorting and top_n
+    simple_vqe.plot_hamiltonian_contributions(sort_by_magnitude=True, top_n=2)
+
+    # 6. Assert plot was called and data was processed correctly
+    mock_show.assert_called_once()
+    mock_bar.assert_called_once()
+    
+    # 7. Check that sorting and top_n were respected
+    # Get the arguments passed to plt.bar(labels, values, ...)
+    bar_args = mock_bar.call_args[0]
+    plotted_labels = bar_args[0]
+    plotted_values = bar_args[1]
+    
+    # Check that only top_n=2 items are plotted
+    assert len(plotted_labels) == 2
+    # Check that the items are sorted by *absolute value*, descending
+    assert abs(plotted_values[0]) >= abs(plotted_values[1])
+
+    # 8. Check that the plotted data matches the original data
+    original_data = simple_vqe.final_contributions
+    # Re-sort the original data to match what the plot *should* have done
+    expected_sorted_items = sorted(
+        original_data.items(),
+        key=lambda item: abs(item[1]),
+        reverse=True
+    )
+    
+    # Check that the plotted data matches the top_n of the expected sorted data
+    assert plotted_labels[0] == expected_sorted_items[0][0]
+    assert plotted_labels[1] == expected_sorted_items[1][0]
+    assert np.isclose(plotted_values[0], expected_sorted_items[0][1])
+    assert np.isclose(plotted_values[1], expected_sorted_items[1][1])

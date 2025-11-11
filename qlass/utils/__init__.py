@@ -15,6 +15,7 @@ from .utils import (
     logical_state_to_modes,
     photon_to_qubit_unitary,
     loss_function_photonic_unitary,
+    ensemble_weights,
 
     
 )
@@ -35,5 +36,6 @@ __all__ = [
     "logical_state_to_modes",
     "photon_to_qubit_unitary",
     "loss_function_photonic_unitary",
+    'ensemble_weights',
 
 ]
