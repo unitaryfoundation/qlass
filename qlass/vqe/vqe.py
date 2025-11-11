@@ -287,3 +287,66 @@ class VQE:
         }
 
         return comparison
+    
+    def plot_hamiltonian_contributions(self, sort_by_magnitude: bool = True, top_n: int = None):
+        """
+        Plots a bar chart of the energy contribution from each Pauli term
+        in the Hamiltonian, based on the final optimized parameters.
+
+        This function must be called after `run()` has completed.
+        It will not work for 'e-VQE' cost functions.
+        
+        Args:
+            sort_by_magnitude (bool): If True, sort the bars from largest
+                                      to smallest contribution (by absolute value).
+            top_n (int): If set, only show the top N contributing terms.
+        """
+        if not self.final_contributions:
+            if self.cost_type == "e-VQE":
+                print("Plotting contributions is not supported for e-VQE.")
+            else:
+                print("No contribution data found. Did VQE run successfully?")
+            return
+
+        # --- Data Preparation ---
+        # Sort contributions by key (Pauli string)
+        if sort_by_magnitude:
+            sorted_items = sorted(
+                self.final_contributions.items(),
+                key=lambda item: abs(item[1]),
+                reverse=True
+            )
+        else:
+            sorted_items = sorted(self.final_contributions.items())
+        
+        # Filter for top_n if specified
+        if top_n is not None:
+            sorted_items = sorted_items[:top_n]
+            
+        labels = [item[0] for item in sorted_items]
+        values = [item[1] for item in sorted_items]
+        
+        # --- Plotting ---
+        plt.figure(figsize=(max(10, len(labels) * 0.5), 6))
+        colors = ['#4C72B0' if v >= 0 else '#C44E52' for v in values]
+        
+        bars = plt.bar(labels, values, color=colors)
+        
+        plt.xlabel('Pauli Term')
+        plt.ylabel('Energy Contribution')
+        plt.title('Hamiltonian Term Contributions to Final Energy')
+        plt.xticks(rotation=90)
+        plt.grid(axis='y', linestyle='--', alpha=0.7)
+        plt.axhline(y=0, color='black', linewidth=0.8) # Add y=0 line
+        
+        # Add labels to bars
+        for bar in bars:
+            yval = bar.get_height()
+            plt.text(bar.get_x() + bar.get_width()/2.0, 
+                     yval + (0.01 * max(np.abs(values))) * np.sign(yval), # Offset
+                     f'{yval:.3f}', 
+                     ha='center', va='bottom' if yval >= 0 else 'top',
+                     fontsize=8)
+            
+        plt.tight_layout() # Adjust layout to prevent label cutoff
+        plt.show()
