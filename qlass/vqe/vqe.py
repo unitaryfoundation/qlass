@@ -3,7 +3,7 @@ import numpy as np
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 
-from qlass.utils import loss_function, e_vqe_loss_function
+from qlass.utils import loss_function, e_vqe_loss_function, loss_function_matrix, loss_function_photonic_unitary
 from qlass.utils.utils import DataCollector
 
 
@@ -66,8 +66,51 @@ class VQE:
         self.loss_history = []
         self.energy_collector = DataCollector()
 
-    def _callback(self, params, cost_type="VQE", weight_option="weighted"):
-        """Callback function to record optimization progress."""
+        # Storage for contribution of each Hamiltonian term
+        self.final_contributions: Dict[str, float] = {}
+        self.cost_type: str = "VQE"
+
+    def _objective_function(self, params: np.ndarray) -> float:
+        """
+        Wrapper for Scipy.minimize.
+        
+        This single function is passed to the optimizer. It calls the
+        appropriate loss function from utils.py, which now returns
+        (energy, contributions).
+        
+        It handles all history and contribution logging, and then
+        returns *only* the scalar energy to the optimizer.
+        """
+        energy = 0.0
+        contributions = {}
+        
+        if self.executor_type == "qubit_unitary":
+            energy, contributions = loss_function_matrix(
+                params, self.hamiltonian, self.executor
+            )
+        elif self.executor_type == "photonic_unitary":
+            energy, contributions = loss_function_photonic_unitary(
+                params, self.hamiltonian, self.executor, 
+                self.initial_state, self.ancillary_modes
+            )
+        else: # sampling
+            energy, contributions = loss_function(
+                params, self.hamiltonian, self.executor
+            )
+        
+        # --- All "callback" logic is now here ---
+        self.energy_history.append(energy)
+        self.parameter_history.append(params.copy())
+        self.final_contributions = contributions # Store contributions
+        # ----------------------------------------
+
+        # Return *only* the scalar energy to SciPy
+        return energy
+
+    def _callback(self, params, cost_type="e-VQE", weight_option="weighted"):
+        """
+        Callback function, now *only* used for e-VQE.
+        """
         if cost_type == "e-VQE":
             # Ensemble-VQE mode
             cost = e_vqe_loss_function(
@@ -78,24 +121,12 @@ class VQE:
                 weight_option=weight_option
             )
             self.loss_history.append(cost)
+            self.parameter_history.append(params.copy())
+            # We don't log contributions for e-VQE
+            self.final_contributions = {} 
         else:
-            # Standard VQE mode
-            if self.executor_type == "qubit_unitary":
-                from qlass.utils import loss_function_matrix
-                energy = loss_function_matrix(params, self.hamiltonian, self.executor)
-            elif self.executor_type == "photonic_unitary":
-                from qlass.utils import loss_function_photonic_unitary
-                energy = loss_function_photonic_unitary(
-                    params, self.hamiltonian, self.executor, self.initial_state,
-                    self.ancillary_modes,
-                )
-            else:
-                energy = loss_function(params, self.hamiltonian, self.executor)
-
-            self.energy_history.append(energy)
-
-            # Always record parameters
-        self.parameter_history.append(params.copy())
+            # This branch should no longer be used for standard VQE
+            pass
 
 
     def run(self, initial_params=None, max_iterations=100, verbose=True, weight_option: str = "weighted",
@@ -153,6 +184,8 @@ class VQE:
         # Reset history
         self.energy_history = []
         self.parameter_history = []
+        self.final_contributions = {}
+        self.cost_type = cost
 
         if verbose:
             print(f"Starting VQE optimization using {self.optimizer} optimizer")
@@ -161,37 +194,17 @@ class VQE:
             print(f"Executor type: {self.executor_type}")
 
         if cost == "VQE":
-            if self.executor_type == "qubit_unitary":
-                from qlass.utils import loss_function_matrix
-                self.optimization_result = minimize(
-                    loss_function_matrix,
-                    initial_params,
-                    args=(self.hamiltonian, self.executor),
-                    method=self.optimizer,
-                    callback=lambda p: self._callback(p, cost_type="VQE"),
-                    options={'maxiter': max_iterations}
-                )
-            elif self.executor_type == "photonic_unitary":
-                from qlass.utils import loss_function_photonic_unitary
-                self.optimization_result = minimize(
-                    loss_function_photonic_unitary,
-                    initial_params,
-                    args=(self.hamiltonian, self.executor, self.initial_state, self.ancillary_modes),
-                    method=self.optimizer,
-                    callback=lambda p: self._callback(p, cost_type="VQE"),
-                    options={'maxiter': max_iterations}
-                )
-
-            elif self.executor_type == "sampling":
-
-                self.optimization_result = minimize(
-                    loss_function,
-                    initial_params,
-                    args=(self.hamiltonian, self.executor),
-                    method=self.optimizer,
-                    callback=lambda p: self._callback(p, cost_type="VQE"),
-                    options={'maxiter': max_iterations}
-                )
+            # We use our single wrapper function for all executor types.
+            # No args are needed, as _objective_function accesses 'self'.
+            # Callback is None, as our function handles it.
+            self.optimization_result = minimize(
+                self._objective_function, # Pass new wrapper loss function
+                initial_params,
+                args=(),
+                method=self.optimizer,
+                callback=None, # All logic is in _objective_function
+                options={'maxiter': max_iterations}
+            )
 
         elif cost == "e-VQE":
             if self.executor_type == "sampling":
