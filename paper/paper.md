@@ -15,9 +15,9 @@ authors:
     orcid: 0000-0002-8775-3667
     affiliation: "1, 2"
 affiliations:
- - name: Unitary Fund France, Tours, France
+ - name: Unitary Foundation France, Tours, France
    index: 1
- - name: Unitary Fund, San Francisco, USA
+ - name: Unitary Foundation, San Francisco, USA
    index: 2
 
 date: 24 September 2025
@@ -32,7 +32,7 @@ bibliography: paper.bib
 
 Photonic quantum computing represents a powerful approach to building scalable quantum computers, offering advantages such as avoiding the need for dilution fridges, providing natural connectivity to quantum communication networks [@kok2007linear; @o2009photonic] and, as in the case of QLASS devices, allowing for reconfigurable chips. However, the translation of quantum algorithms from the abstract circuit model to photonic implementations presents unique challenges. Existing quantum software frameworks like Qiskit [@aleksandrowicz2019qiskit] and Cirq [@cirq2021] primarily target gate-based quantum computers with qubit architectures, while photonic platforms operate on fundamentally different principles using linear optical elements, photons, and modes. 
 
-There are only a few open source software projects that focus on the simulation or compilation of photonic quantum computers. These include Perceval [@heurtel2023perceval], Strawberry  Fields [@killoran2019strawberry], Piquasso [@kolarovszki2025piquasso] and Graphix [@sunami2022graphix], all Python packages. These tools are primarily focussed on photonic circuit compilation and simulation. We are however interested in specific applications of photonic quantum computing. In particular in applications related to quantum chemistry. As far as we know, there is no software platform that can run VQE simulations on photonic quantum computing platforms starting with an ansatz defined in the qubit architecture all the way to running the VQE on a photonic quantum computer to obtain ground state energies for molecular hamiltonians.
+There are only a few open source software projects that focus on the simulation or compilation of photonic quantum computers. These include Perceval [@heurtel2023perceval], Strawberry  Fields [@killoran2019strawberry], Piquasso [@kolarovszki2025piquasso] and Graphix [@sunami2022graphix], all Python packages. These tools are primarily focussed on photonic circuit compilation and simulation. We are however interested in specific applications of photonic quantum computing. In particular in applications related to quantum chemistry. As far as we know, there is no software platform that can run VQE simulations on photonic quantum computing platforms starting with an ansatz defined in the qubit architecture all the way to running the VQE on a photonic quantum computer to obtain ground state energies for molecular Hamiltonians.
 
 `qlass` addresses this gap by providing:
 
@@ -76,10 +76,10 @@ The package is structured into four main modules:
 The implementation leverages several design patterns to ensure extensibility. It allows integration with different quantum backends and enables easy addition of new variational forms. We also support multiple output formats from different simulator backends.
 
 # Distribution and Development
-`qlass` source code is hosted on Unitary Fund's Github repository. It is released there and via the Python Package Index (PyPI). The documentation can be found on [https://qlass.readthedocs.org/](https://qlass.readthedocs.org/) and consists of a user guide, an API-doc and tutorials. Milestones are used to guide development sprints and coordinate with contributors. It is licensed under permissive OSI licence Apache 2.0 to facilitate its adoption and integration in the developing quantum software stack. 
+`qlass` source code is hosted on Unitary Foundation's GitHub repository. It is released there and via the Python Package Index (PyPI). The documentation can be found on [https://qlass.readthedocs.org/](https://qlass.readthedocs.org/) and consists of a user guide, an API-doc and tutorials. Milestones are used to guide development sprints and coordinate with contributors. It is licensed under permissive OSI licence Apache 2.0 to facilitate its adoption and integration in the developing quantum software stack. 
 
 # Usage, Contributions and Community 
-Users can open issues on the Github repository to receive assistance from maintainers or use a dedicated Discord channel on the Unitary Fund Discord server for broader support and engagement. `qlass` is already used to support theoretical and experimental work in academia and in the quantum industry, such as in the QLASS project, where it is used to model experiments with the glass-based processors by the startup Ephos and to test quantum chemistry solutions in Lithium ion battery modeling by CNRS and the University of Montpellier. `qlass` participated in unitaryHACK, the largest hackathon in quantum open-source software; it was the first project, out of over 50 participating ones, to have all bounties awarded, gaining two new contributors, a student from the University of Boston and a developer from Mexico. `qlass` has been used as training material for the Collaborative Innovative Network by the European Space Agency's Phi Lab. 
+Users can open issues on the GitHub repository to receive assistance from maintainers or use a dedicated Discord channel on the Unitary Foundation Discord server for broader support and engagement. `qlass` is already used to support theoretical and experimental work in academia and in the quantum industry, such as in the QLASS project, where it is used to model experiments with the glass-based processors by the startup Ephos and to test quantum chemistry solutions in Lithium ion battery modeling by CNRS and the University of Montpellier. `qlass` participated in unitaryHACK, the largest hackathon in quantum open-source software; it was the first project, out of over 50 participating ones, to have all bounties awarded, gaining two new contributors, a student from the University of Boston and a developer from Mexico. `qlass` has been used as training material for the Collaborative Innovative Network by the European Space Agency's Phi Lab. 
 
 # Conclusions and Future Work
 
@@ -94,6 +94,6 @@ The package is actively maintained by the Unitary Foundation as part of the QLAS
 
 # Acknowledgements
 
-We acknowledge support from the European Union through the QLASS project (EU Horizon Europe grant agreement 101135876). Views and opinions expressed are however those of the authors only and do not necessarily reflect those of the European Union. Neither the European Union nor the granting authority can be held responsible for them. We thank the contributors to the open-source quantum computing ecosystem, particularly the developers of Qiskit, Perceval, OpenFermion, and PySCF. We would like to thank Bruno Senjean, Jean-Sébastien Filhol and Francesco Malaspina for their valuable insight and the Github users Kitsunp and Qubit1718 for their code contributions.
+We acknowledge support from the European Union through the QLASS project (EU Horizon Europe grant agreement 101135876). Views and opinions expressed are however those of the authors only and do not necessarily reflect those of the European Union. Neither the European Union nor the granting authority can be held responsible for them. We thank the contributors to the open-source quantum computing ecosystem, particularly the developers of Qiskit, Perceval, OpenFermion, and PySCF. We would like to thank Bruno Senjean, Jean-Sébastien Filhol and Francesco Malaspina for their valuable insight and the GitHub users Kitsunp and Qubit1718 for their code contributions.
 
 # References
