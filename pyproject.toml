@@ -20,7 +20,7 @@ dependencies = [
 ]
 
 readme = "README.md"
-license = "Apache License"
+license = "Apache-2.0"
 license-files = ["LICENSE"]
 
 [project.optional-dependencies]
