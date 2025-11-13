@@ -5,7 +5,7 @@ name = "qlass"
 version = "0.1.4"
 description = "VQE on linear optical circuits"
 authors = [{name = "Farrokh Labib", email = "farrokh@unitary.foundation"}]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 
 dependencies = [
 "qiskit==2.1.2",
