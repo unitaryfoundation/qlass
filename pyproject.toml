@@ -61,3 +61,23 @@ addopts = [
 xfail_strict = true
 log_cli_level = "INFO"
 testpaths = ["tests"]
+
+
+[tool.coverage]
+run.source = ["qlass"]
+run.omit = [
+    '*/tests/*',
+    '*.ipynb',
+    '*/.ipynb_checkpoints/*',
+]
+report.show_missing = true
+# This ensures that even with 100% coverage, files with no statements are not ignored
+report.fail_under = 0
+report.exclude_also = [
+    '\.\.\.',
+    'if TYPE_CHECKING:',
+    'raise AssertionError',
+    'raise NotImplementedError',
+    'def __dir__()',  # Ignore __dir__ method that exists mainly for better IDE support
+    '@overload'  # Overloads are only for static typing
+]
