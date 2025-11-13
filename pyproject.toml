@@ -23,15 +23,12 @@ readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 
-[project.optional-dependencies]
+[dependency-groups]
 test = [
-    "pytest",
-    "pytest-mock",
-    "coverage"
+    "pytest>=8.3.5",
+    "pytest-mock>=3.15.1",
+    "coverage>=7.11.3"
 ]
-
-[tool.poetry.dev-dependencies]
-pytest = "^8.3"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
