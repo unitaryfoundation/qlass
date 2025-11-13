@@ -18,15 +18,17 @@ classifiers = [
 
 
 dependencies = [
-"qiskit==2.1.2",
-"qiskit_aer",
-"numpy",
-"perceval-quandela==0.13.2",
-"openfermion",
-"openfermionpyscf",
-"pyscf",
-"tqdm",
-"numba>=0.59.0"
+    "qiskit>=2.0.0",
+    "numpy>=2.1; python_version >= '3.13'",
+    "numpy>=1.26; python_version >= '3.12'",
+    "numpy>=1.24; python_version >= '3.11'",
+    "numpy>=1.22",
+    "qiskit_aer>=0.17.0",
+    "perceval-quandela>=0.13.2,<1.0.0",
+    "openfermionpyscf>=0.5",
+    "tqdm>=4.67.1",
+    "numba>=0.59.0; python_version < '3.13'",
+    "numba>=0.61.0; python_version >= '3.13'",
 ]
 
 readme = "README.md"
