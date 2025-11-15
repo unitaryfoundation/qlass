@@ -42,4 +42,5 @@ __all__ = [
 ]
 
 # Version information
-__version__ = "0.1.1"
+from importlib.metadata import version
+__version__ = version("qlass")

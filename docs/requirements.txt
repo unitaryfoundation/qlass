@@ -1,9 +1,0 @@
-sphinx_rtd_theme
-qiskit==2.2.2
-numpy
-perceval-quandela==0.13.2
-openfermion
-openfermionpyscf
-pyscf
-tqdm
-numba
