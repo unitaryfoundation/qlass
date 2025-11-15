@@ -15,7 +15,7 @@ authors:
     orcid: 0000-0002-8775-3667
     affiliation: "1, 2"
 affiliations:
- - name: Unitary Foundation France, Tours, France
+ - name: Unitary Fund France, Tours, France
    index: 1
  - name: Unitary Foundation, San Francisco, USA
    index: 2
