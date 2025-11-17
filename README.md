@@ -66,6 +66,8 @@ from qlass.vqe import VQE, le_ansatz
 from qlass.utils import loss_function
 from qlass.quantum_chemistry import LiH_hamiltonian
 
+from perceval.algorithm import Sampler
+
 # Generate a Hamiltonian for the LiH molecule
 hamiltonian = LiH_hamiltonian(num_electrons=2, num_orbitals=1)
 
