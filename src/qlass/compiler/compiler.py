@@ -126,7 +126,7 @@ class ResourceAwareCompiler:
         setattr(processor, 'analysis_report', self.analysis_report)
         return processor
 
-def generate_report(analysis_report) -> None:
+def generate_report(analysis_report: Dict[str, Any]) -> None:
     """Prints the analysis report in a human-readable format."""
     print("\n--- qlass Resource-Aware Compiler Report ---")
 
