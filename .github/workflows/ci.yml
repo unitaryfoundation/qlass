@@ -23,7 +23,7 @@ jobs:
 
     - name: Run type checking
       run: |
-        uv run --group type-check -p 3.12 mypy .
+        uv run --group type-check -p 3.12 mypy src/qlass
 
   test-and-coverage:
     runs-on: ubuntu-latest
