@@ -42,9 +42,9 @@ jobs:
         QLASS_DISABLE_JIT: 1
 
     - name: Upload coverage to Codecov
-      # This step only runs for pull requests
       if: github.event_name == 'pull_request'
       uses: codecov/codecov-action@v5
       with:
-        use_oidc: true
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./coverage.xml
         fail_ci_if_error: true
