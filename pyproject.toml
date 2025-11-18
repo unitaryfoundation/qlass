@@ -41,6 +41,9 @@ test = [
     "pytest-cov>=6.1.1",
     "pytest-mock>=3.15.1",
 ]
+type-check = [
+    "mypy>=1.13.0",
+]
 docs = [
     "sphinx>=7",
     "sphinx-rtd-theme>=3",

@@ -2,7 +2,7 @@ import numpy as np
 from numba import njit
 import os
 
-from typing import Dict
+from typing import Dict, Tuple, Callable, Any
 
 def pauli_string_to_matrix(pauli_string: str) -> np.ndarray:
     '''
@@ -16,7 +16,7 @@ def pauli_string_to_matrix(pauli_string: str) -> np.ndarray:
 
     '''
 
-    res = 1.0
+    res: np.ndarray = np.array([[1.0]])
 
     # Define the Pauli matrices.
     I = np.eye(2)
@@ -51,7 +51,8 @@ def hamiltonian_matrix(H: Dict[str, float]) -> np.ndarray:
     coeffs = list(H.values())
     matrices = [coeff*pauli_string_to_matrix(pauli_string) for pauli_string, coeff in zip(H.keys(), coeffs)]
 
-    return sum(matrices)
+    result: np.ndarray = np.sum(matrices, axis=0)
+    return result
 
 
 def brute_force_minimize(H: Dict[str, float]) -> float:
@@ -70,9 +71,9 @@ def brute_force_minimize(H: Dict[str, float]) -> float:
     l0 = np.linalg.eigvals(H_matrix)
     l0.sort()
 
-    return l0[0]
+    return float(l0[0].real)
 
-def _lanczos_impl(A, v_init, m):
+def _lanczos_impl(A: np.ndarray, v_init: np.ndarray, m: int) -> Tuple[np.ndarray, np.ndarray]:
     """Core Lanczos algorithm implementation."""
     n = len(v_init)
     if m > n:
@@ -130,12 +131,13 @@ def _lanczos_impl(A, v_init, m):
 DISABLE_JIT = os.environ.get('QLASS_DISABLE_JIT', '0') == '1'
 
 # Create JIT-compiled version if enabled
+lanczos: Callable[[np.ndarray, np.ndarray, int], Tuple[np.ndarray, np.ndarray]]
 if not DISABLE_JIT:
-    lanczos = njit(_lanczos_impl)
+    lanczos = njit(_lanczos_impl)  # type: ignore[assignment]
 else:
     lanczos = _lanczos_impl
 
-def eig_decomp_lanczos(R, n=1, m=100):
+def eig_decomp_lanczos(R: np.ndarray, n: int = 1, m: int = 100) -> np.ndarray:
     '''
     Compute the eigenvalues of a matrix using the Lanczos algorithm.
 
@@ -151,7 +153,7 @@ def eig_decomp_lanczos(R, n=1, m=100):
 
     v0   = np.array(np.random.rand( np.shape(R)[0]) , dtype=np.complex128); v0 /= np.sqrt( np.abs(np.dot( v0, np.conjugate(v0) ) ) )
 
-    T, V = lanczos(R, v0, m=m )
+    T, V = lanczos(R, v0, m)
     esT, vsT = np.linalg.eigh( T )
     esT_sort_idx = np.argsort(esT)[::-1]
     lm_eig = np.matrix(V.T @ (vsT[:, esT_sort_idx[:n].squeeze()]))

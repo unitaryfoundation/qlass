@@ -4,7 +4,7 @@ import numpy as np
 import perceval as pcvl
 import qiskit
 import exqalibur
-from typing import List, Tuple, Dict, Union, Callable
+from typing import List, Tuple, Dict, Union, Callable, Optional, Any
 
 
 H_matrix = (1/np.sqrt(2)) * pcvl.Matrix([[1.0, 1.0], [1.0, -1.0]])
@@ -52,8 +52,8 @@ def qubit_state_marginal(prob_dist: Dict[Union[exqalibur.FockState, Tuple[int, .
     Returns:
         Dict[Tuple[int, ...], float]: Frequencies of measured qubit states
     """
-    q_state_frequency = {}
-    total_prob_mass = 0
+    q_state_frequency: Dict[Union[Tuple[int, ...], Any], float] = {}
+    total_prob_mass: float = 0
 
     # Check if we're dealing with Fock states or bitstrings
     if not prob_dist:
@@ -63,7 +63,7 @@ def qubit_state_marginal(prob_dist: Dict[Union[exqalibur.FockState, Tuple[int, .
 
     if isinstance(first_key, tuple):
         # Input is already bitstrings, normalize probabilities and return
-        total_prob_mass = sum(prob_dist.values())
+        total_prob_mass = sum(float(p) for p in prob_dist.values())
         for bitstring, prob in prob_dist.items():
             q_state_frequency[bitstring] = prob / total_prob_mass
     else:
@@ -71,11 +71,11 @@ def qubit_state_marginal(prob_dist: Dict[Union[exqalibur.FockState, Tuple[int, .
         for state in prob_dist:
             q_state = is_qubit_state(state)
             if q_state is not False:
-                total_prob_mass += prob_dist[state]
+                total_prob_mass += float(prob_dist[state])
                 if q_state in q_state_frequency:
-                    q_state_frequency[q_state] += prob_dist[state]
+                    q_state_frequency[q_state] += float(prob_dist[state])
                 else:
-                    q_state_frequency[q_state] = prob_dist[state]
+                    q_state_frequency[q_state] = float(prob_dist[state])
 
         # Normalize probabilities
         if total_prob_mass > 0:
@@ -104,7 +104,7 @@ def get_probabilities(samples: List[Union[exqalibur.FockState, Tuple[int, ...], 
     if not samples:
         return {}
 
-    prob_dist = {}
+    prob_dist: Dict[Union[exqalibur.FockState, Tuple[int, ...]], float] = {}
     for state in samples:
         # Convert string bitstrings (from Qiskit) to tuples
         if isinstance(state, str):
@@ -143,7 +143,7 @@ def compute_energy(pauli_bin: Tuple[int, ...], res: Dict[Tuple[int, ...], float]
         sign = (-1)**inner
         res_copy[key] *= sign
 
-    energy = float(np.sum(np.fromiter(res_copy.values(), dtype=float), where=np.isfinite))
+    energy = float(np.sum([v for v in res_copy.values() if np.isfinite(v)]))
     return energy
 
 def pauli_string_bin(pauli_string: str) -> Tuple[int, ...]:
@@ -187,7 +187,7 @@ def rotate_qubits(pauli_string: str, vqe_circuit: pcvl.Circuit | qiskit.QuantumC
     return vqe_circuit
 
 
-def normalize_samples(samples) -> List[Union[exqalibur.FockState, Tuple[int, ...]]]:
+def normalize_samples(samples: Any) -> List[Union[exqalibur.FockState, Tuple[int, ...]]]:
     """
     Normalize samples from different executor formats to a consistent format.
 
@@ -220,7 +220,7 @@ def normalize_samples(samples) -> List[Union[exqalibur.FockState, Tuple[int, ...
     return normalized
 
 
-def loss_function(lp: np.ndarray, H: Dict[str, float], executor) -> float:
+def loss_function(lp: np.ndarray, H: Dict[str, float], executor: Any) -> float:
     """
     Compute the loss function for the VQE algorithm with automatic Pauli grouping.
 
@@ -301,7 +301,7 @@ def loss_function(lp: np.ndarray, H: Dict[str, float], executor) -> float:
     return loss.real
 
 
-def _extract_samples_from_executor_result(samples):
+def _extract_samples_from_executor_result(samples: Any) -> List[Any]:
     """
     Helper function to extract sample list from different executor return formats.
 
@@ -314,7 +314,7 @@ def _extract_samples_from_executor_result(samples):
     Raises:
         ValueError: If samples format is not recognized
     """
-    sample_list = None
+    sample_list: Optional[List[Any]] = None
 
     if isinstance(samples, dict):
         if 'results' in samples:
@@ -328,12 +328,12 @@ def _extract_samples_from_executor_result(samples):
             # Try to find any list-like values in the dict
             for key, value in samples.items():
                 if isinstance(value, (list, tuple)):
-                    sample_list = value
+                    sample_list = list(value)
                     break
 
     elif isinstance(samples, (list, tuple)):
         # Direct list of samples
-        sample_list = samples
+        sample_list = list(samples)
     else:
         raise ValueError(f"Executor returned unexpected format: {type(samples)}. "
                        "Expected dict with 'results' key, dict with 'counts' key, or list of samples.")
@@ -362,7 +362,7 @@ def linear_circuit_to_unitary(circuit: pcvl.Circuit) -> np.ndarray:
 def compute_expectation_value_from_unitary(
     unitary: np.ndarray,
     pauli_matrix: np.ndarray,
-    initial_state: np.ndarray = None
+    initial_state: Optional[np.ndarray] = None
 ) -> float:
     """
     Compute expectation value <ψ|H|ψ> where |ψ> = U|0>.
@@ -540,8 +540,8 @@ def loss_function_photonic_unitary(
     params: np.ndarray,
     H: Dict[str, float],
     photonic_unitary_executor: Callable,
-    initial_state: np.ndarray = None,
-    ancillary_modes: List[int] = None 
+    initial_state: Optional[np.ndarray] = None,
+    ancillary_modes: Optional[List[int]] = None 
 ) -> float:
     """
     Computes the loss function for a photonic VQE using the efficient, matrix-free
@@ -671,7 +671,7 @@ def loss_function_photonic_unitary(
 
     return float(np.real(final_energy))
 
-def e_vqe_loss_function(lp: np.ndarray, H: Dict[str, float], executor, energy_collector, weight_option: str= "weighted") -> float:
+def e_vqe_loss_function(lp: np.ndarray, H: Dict[str, float], executor: Any, energy_collector: Any, weight_option: str = "weighted") -> float:
     """
     Compute the loss function for the ensemble Variational Quantum Eigensolver (VQE)
     with automatic Pauli grouping for measurement optimization.
@@ -722,7 +722,7 @@ def e_vqe_loss_function(lp: np.ndarray, H: Dict[str, float], executor, energy_co
 
     from qlass.quantum_chemistry.hamiltonians import group_commuting_pauli_terms
     loss = 0.0
-    lst_energies = None
+    lst_energies: Optional[List[float]] = None
 
     # Use automatic grouping for optimized measurements
     grouped_hamiltonians = group_commuting_pauli_terms(H)
@@ -756,13 +756,17 @@ def e_vqe_loss_function(lp: np.ndarray, H: Dict[str, float], executor, energy_co
                 lst_energies[i] += energy
 
 
-    weights = ensemble_weights(weight_option, len(energies))
-    for i in range(len(lst_energies)): loss += lst_energies[i] * weights[i]
+    if lst_energies is None:
+        raise ValueError("No energies computed")
+    
+    weights = ensemble_weights(weight_option, len(lst_energies))
+    for i in range(len(lst_energies)): 
+        loss += lst_energies[i] * weights[i]
     energy_collector.energies_convergence(lst_energies, len(lst_energies), loss)
 
     return loss
 
-def ensemble_weights(weights_choice, n_occ):
+def ensemble_weights(weights_choice: str, n_occ: int) -> List[float]:
     """
      Generate ensemble weights for the ensemble Variational Quantum Eigensolver (VQE).
 
@@ -832,14 +836,14 @@ class DataCollector:
     loss_data : list of float
         List of loss values recorded at each evaluation of the loss function.
     """
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initialize the DataCollector with empty data structures.
         """
-        self.energy_data = {}
-        self.loss_data = []
+        self.energy_data: Dict[int, List[float]] = {}
+        self.loss_data: List[float] = []
 
-    def energies_convergence(self, energy_values, eign_index, loss_values):
+    def energies_convergence(self, energy_values: List[float], eign_index: int, loss_values: float) -> None:
         """
                Record energies and loss values for the current evaluation.
 

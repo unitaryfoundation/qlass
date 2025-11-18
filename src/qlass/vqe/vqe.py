@@ -1,6 +1,6 @@
-from typing import List, Dict, Callable
+from typing import List, Dict, Callable, Optional, Any
 import numpy as np
-from scipy.optimize import minimize
+from scipy.optimize import minimize, OptimizeResult
 import matplotlib.pyplot as plt
 
 from qlass.utils import loss_function, e_vqe_loss_function
@@ -22,8 +22,8 @@ class VQE:
         num_params: int,
         optimizer: str = "COBYLA",
         executor_type: str = 'sampling',
-        initial_state: np.ndarray = None, # For now only relevant for photonic_unitary,
-        ancillary_modes: List[int] = None,
+        initial_state: Optional[np.ndarray] = None, # For now only relevant for photonic_unitary,
+        ancillary_modes: Optional[List[int]] = None,
     ):
         """
         Initialize the VQE solver.
@@ -60,13 +60,13 @@ class VQE:
             raise ValueError(f"Invalid executor_type: {executor_type}. Must be either sampling, qubit_unitary or photonic_unitary.")
 
         # Results storage
-        self.optimization_result = None
-        self.energy_history = []
-        self.parameter_history = []
-        self.loss_history = []
+        self.optimization_result: Optional[OptimizeResult] = None
+        self.energy_history: List[float] = []
+        self.parameter_history: List[np.ndarray] = []
+        self.loss_history: List[float] = []
         self.energy_collector = DataCollector()
 
-    def _callback(self, params, cost_type="VQE", weight_option="weighted"):
+    def _callback(self, params: np.ndarray, cost_type: str = "VQE", weight_option: str = "weighted") -> None:
         """Callback function to record optimization progress."""
         if cost_type == "e-VQE":
             # Ensemble-VQE mode
@@ -98,8 +98,8 @@ class VQE:
         self.parameter_history.append(params.copy())
 
 
-    def run(self, initial_params=None, max_iterations=100, verbose=True, weight_option: str = "weighted",
-            cost: str = "VQE"):
+    def run(self, initial_params: Optional[np.ndarray] = None, max_iterations: int = 100, verbose: bool = True, weight_option: str = "weighted",
+            cost: str = "VQE") -> float:
         """
         Run a Variational Quantum Eigensolver (VQE) or ensemble-VQE optimization to find
         the ground state energy of a given Hamiltonian.
@@ -209,19 +209,21 @@ class VQE:
             raise ValueError("Invalid cost option. Use 'VQE' or 'e-VQE'.")
 
         if verbose:
+            assert self.optimization_result is not None
             print(f"Optimization complete!")
             print(f"Final energy: {self.optimization_result.fun:.6f}")
             print(f"Number of iterations: {self.optimization_result.nfev}")
 
-        return self.optimization_result.fun
+        assert self.optimization_result is not None
+        return float(self.optimization_result.fun)
 
-    def get_optimal_parameters(self):
+    def get_optimal_parameters(self) -> np.ndarray:
         """Get the optimal parameters found during optimization."""
         if self.optimization_result is None:
             raise ValueError("VQE optimization has not been run yet.")
-        return self.optimization_result.x
+        return np.asarray(self.optimization_result.x)
 
-    def plot_convergence(self, exact_energy=None):
+    def plot_convergence(self, exact_energy: Optional[float] = None) -> None:
         """
         Plot the energy convergence during the optimization.
 
@@ -245,7 +247,7 @@ class VQE:
         plt.grid(True, alpha=0.3)
         plt.show()
 
-    def compare_with_exact(self, exact_energy=None):
+    def compare_with_exact(self, exact_energy: Optional[float] = None) -> Dict[str, float]:
         """
         Compare the VQE result with the exact ground state energy.
 

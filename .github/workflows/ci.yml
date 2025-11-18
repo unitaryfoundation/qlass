@@ -9,9 +9,21 @@ on:
 
 permissions:
   contents: read
-  id-token: write # Required for the `codecov/codecov-action` action
 
 jobs:
+  type-check:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v5
+
+    - name: Install the latest version of uv
+      uses: astral-sh/setup-uv@v7
+
+    - name: Run type checking
+      run: |
+        uv run --group type-check -p 3.12 mypy src/qlass
+
   test-and-coverage:
     runs-on: ubuntu-latest
     steps:
@@ -23,15 +35,16 @@ jobs:
 
     - name: Run tests and collect coverage
       run: |
-        uv run -p 3.12 pytest --cov --cov-report=xml
+        uv run --group test -p 3.12 pytest --cov --cov-report=xml
       env:
         # This disables Numba's JIT for accurate coverage reporting
         QLASS_DISABLE_JIT: 1
 
     - name: Upload coverage to Codecov
-      # This step only runs for pull requests
       if: github.event_name == 'pull_request'
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v4
       with:
-        use_oidc: true
-        fail_ci_if_error: true
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./coverage.xml
+        fail_ci_if_error: false
+        verbose: true
