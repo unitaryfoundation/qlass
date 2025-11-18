@@ -7,7 +7,7 @@ from openfermion.transforms import get_fermion_operator, jordan_wigner, symmetry
 from openfermion.ops import InteractionOperator, QubitOperator
 from openfermionpyscf import run_pyscf
 
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 def sparsepauliop_dictionary(H: QubitOperator) -> Dict[str, float]:
     """
@@ -129,7 +129,7 @@ def group_commuting_pauli_terms(hamiltonian: Dict[str, float]) -> List[Dict[str,
     if not hamiltonian:
         return []
     
-    groups = []
+    groups: List[Dict[str, float]] = []
     
     for pauli_string, coefficient in hamiltonian.items():
         placed = False
@@ -204,7 +204,7 @@ def group_commuting_pauli_terms_openfermion_hybrid(hamiltonian: Dict[str, float]
         # Fallback to our implementation if OpenFermion grouping fails
         return group_commuting_pauli_terms(hamiltonian)
 
-def LiH_hamiltonian(R=1.5, charge=0, spin=0, num_electrons=2, num_orbitals=2) -> Dict[str, float]:
+def LiH_hamiltonian(R: float = 1.5, charge: int = 0, spin: int = 0, num_electrons: int = 2, num_orbitals: int = 2) -> Dict[str, float]:
     """
     Generate the qubit Hamiltonian for the LiH molecule at a given bond length.
 
@@ -357,7 +357,7 @@ def LiH_hamiltonian_tapered(R: float) -> Dict[str, float]:
 
     return sparsepauliop_dictionary(qubit_op)
 
-def Hchain_KS_hamiltonian(n_hydrogens=2, R=1.2):
+def Hchain_KS_hamiltonian(n_hydrogens: int = 2, R: float = 1.2) -> Tuple[Dict[str, float], np.ndarray, int]:
     """
         Generate the one-body Hamiltonian for a linear chain of hydrogen atoms at a given bond length.
 
@@ -424,7 +424,7 @@ def Hchain_KS_hamiltonian(n_hydrogens=2, R=1.2):
     return H_qubit_dic, mo_energy, int(len(mo_energy))
 
 
-def transformation_Hmatrix_Hqubit(Hmatrix, nqubits):
+def transformation_Hmatrix_Hqubit(Hmatrix: np.ndarray, nqubits: int) -> QubitOperator:
     """
         Transform a Hamiltonian matrix into an OpenFermion ``QubitOperator`` representation.
 
@@ -464,7 +464,7 @@ def transformation_Hmatrix_Hqubit(Hmatrix, nqubits):
     H_qubit = QubitOperator()
 
     # Basis projectors |i><j| expressed in Pauli basis
-    def single_qubit_projector(bi, bj):
+    def single_qubit_projector(bi: str, bj: str) -> List[Tuple[str, complex]]:
         # |0><0| = (I+Z)/2, |1><1| = (I−Z)/2
         # |0><1| = (X+iY)/2, |1><0| = (X−iY)/2
         if bi == '0' and bj == '0':
@@ -489,10 +489,10 @@ def transformation_Hmatrix_Hqubit(Hmatrix, nqubits):
 
             # Build the tensor product operator for |i><j|
             # We do this by expanding all combinations from single-qubit projectors
-            term_ops = [('', 1.0)]  # (pauli_string, coeff)
+            term_ops: List[Tuple[str, complex]] = [('', 1.0)]  # (pauli_string, coeff)
             for q in range(nqubits):
                 proj = single_qubit_projector(bit_i[q], bit_j[q])
-                new_terms = []
+                new_terms: List[Tuple[str, complex]] = []
                 for ps, pc in term_ops:
                     for p, coeff in proj:
                         new_terms.append((ps + p, pc * coeff))
