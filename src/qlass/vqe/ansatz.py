@@ -8,9 +8,10 @@ import numpy as np
 from perceval.components import Processor
 from qlass.utils import rotate_qubits
 from qlass.compiler import compile
+from typing import List, Optional, Union
 
 
-def le_ansatz(lp: np.ndarray, pauli_string: str, noise_model: NoiseModel = None) -> Processor:
+def le_ansatz(lp: np.ndarray, pauli_string: str, noise_model: Optional[NoiseModel] = None) -> Processor:
     """
     Creates Perceval quantum processor for the Linear Entangled Ansatz.
     This ansatz consists of a layer of parametrized rotations, followed by 
@@ -38,7 +39,7 @@ def le_ansatz(lp: np.ndarray, pauli_string: str, noise_model: NoiseModel = None)
 def custom_unitary_ansatz(lp: np.ndarray, 
                           pauli_string: str, 
                           U: np.ndarray, 
-                          noise_model: NoiseModel = None) -> Processor:
+                          noise_model: Optional[NoiseModel] = None) -> Processor:
     """
     Creates Perceval quantum processor that directly implements a given unitary matrix.
     This function serves as a custom ansatz that bypasses circuit construction and instead 
@@ -74,7 +75,7 @@ def custom_unitary_ansatz(lp: np.ndarray,
     return processor
 
 
-def list_of_ones(computational_basis_state: int, n_qubits):
+def list_of_ones(computational_basis_state: int, n_qubits: int) -> List[int]:
     """
     Return the indices of ones in the binary expansion of an integer, in big-endian order.
 
@@ -103,7 +104,7 @@ def list_of_ones(computational_basis_state: int, n_qubits):
 
 
 
-def hf_ansatz(layers: int, n_orbs: int, lp: np.ndarray, pauli_string: str, method: str, cost = "VQE", noise_model: NoiseModel = None) -> Processor:
+def hf_ansatz(layers: int, n_orbs: int, lp: np.ndarray, pauli_string: str, method: str, cost: str = "VQE", noise_model: Optional[NoiseModel] = None) -> Union[Processor, List[Processor]]:
     """
         Build a Hartree–Fock-based variational ansatz using Qiskit's ``n_local`` circuit,
         combined with initial reference states and compiled into Perceval processors.
