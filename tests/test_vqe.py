@@ -8,8 +8,8 @@ from perceval.algorithm import Sampler
 from qlass.quantum_chemistry import Hchain_KS_hamiltonian, LiH_hamiltonian
 from qlass.vqe import VQE, custom_unitary_ansatz, hf_ansatz, le_ansatz
 
-warnings.simplefilter('ignore')
-warnings.filterwarnings('ignore')
+warnings.simplefilter("ignore")
+warnings.filterwarnings("ignore")
 
 
 def mock_executor(params, pauli_string):
@@ -18,7 +18,8 @@ def mock_executor(params, pauli_string):
     For this test, the actual computation doesn't matter, only the format.
     It returns a distribution where '00' and '11' are equally likely.
     """
-    return {'counts': {'00': 500, '11': 500}}
+    return {"counts": {"00": 500, "11": 500}}
+
 
 @pytest.fixture
 def simple_vqe():
@@ -27,6 +28,7 @@ def simple_vqe():
     num_params = 4
     return VQE(hamiltonian=hamiltonian, executor=mock_executor, num_params=num_params)
 
+
 def test_vqe_init(simple_vqe):
     """Tests if the VQE class is initialized with the correct attributes."""
     assert simple_vqe.num_qubits == 2
@@ -34,6 +36,7 @@ def test_vqe_init(simple_vqe):
     assert simple_vqe.optimizer == "COBYLA"
     assert callable(simple_vqe.executor)
     assert simple_vqe.optimization_result is None
+
 
 def test_vqe_run(simple_vqe):
     """Tests the main `run` method to ensure optimization completes."""
@@ -47,6 +50,7 @@ def test_vqe_run(simple_vqe):
     assert len(simple_vqe.parameter_history) > 0
     # The final energy should match the one in the result object
     assert np.isclose(final_energy, simple_vqe.optimization_result.fun)
+
 
 def test_get_optimal_parameters(simple_vqe):
     """
@@ -65,6 +69,7 @@ def test_get_optimal_parameters(simple_vqe):
     assert len(optimal_params) == simple_vqe.num_params
     assert np.allclose(optimal_params, simple_vqe.optimization_result.x)
 
+
 def test_compare_with_exact(simple_vqe):
     """
     Tests the comparison with an exact energy value.
@@ -82,13 +87,13 @@ def test_compare_with_exact(simple_vqe):
     expected_abs_error = abs(vqe_energy - exact_energy)
     expected_rel_error = expected_abs_error / abs(exact_energy)
 
-    assert comparison['vqe_energy'] == vqe_energy
-    assert comparison['exact_energy'] == exact_energy
-    assert np.isclose(comparison['absolute_error'], expected_abs_error)
-    assert np.isclose(comparison['relative_error'], expected_rel_error)
+    assert comparison["vqe_energy"] == vqe_energy
+    assert comparison["exact_energy"] == exact_energy
+    assert np.isclose(comparison["absolute_error"], expected_abs_error)
+    assert np.isclose(comparison["relative_error"], expected_rel_error)
+
 
 def test_vqe_pipeline():
-
     # Define an executor function that uses the linear entangled ansatz
     def executor(params, pauli_string):
         processor = le_ansatz(params, pauli_string)
@@ -106,23 +111,19 @@ def test_vqe_pipeline():
     vqe = VQE(
         hamiltonian=hamiltonian,
         executor=executor,
-        num_params=2*num_qubits, # Number of parameters in the linear entangled ansatz
+        num_params=2 * num_qubits,  # Number of parameters in the linear entangled ansatz
     )
 
     # Run the VQE optimization
-    vqe_energy = vqe.run(
-        max_iterations=10,
-        verbose=True
-    )
+    vqe_energy = vqe.run(max_iterations=10, verbose=True)
 
     if not isinstance(vqe_energy, float):
         raise ValueError("Optimization result is not a valid float")
 
-def test_evqe_pipeline():
 
+def test_evqe_pipeline():
     # Define an executor function that uses the linear entangled ansatz
     def executor(params, pauli_string):
-
         processors = hf_ansatz(1, n_orbs, params, pauli_string, method="DFT", cost="e-VQE")
         samplers = [Sampler(p) for p in processors]
         samples = [sampler.samples(5) for sampler in samplers]
@@ -138,22 +139,17 @@ def test_evqe_pipeline():
     )
 
     # Run the VQE optimization
-    vqe_energy = vqe.run(
-        max_iterations=5,
-        verbose=True,
-        weight_option="weighted",
-        cost="e-VQE"
-    )
+    vqe_energy = vqe.run(max_iterations=5, verbose=True, weight_option="weighted", cost="e-VQE")
 
     if not isinstance(vqe_energy, float):
         raise ValueError("Optimization result is not a valid float")
+
 
 def test_invalid_cost_type():
     """Test that invalid cost error."""
 
     # Define an executor function that uses the linear entangled ansatz
     def executor(params, pauli_string):
-
         processors = hf_ansatz(1, n_orbs, params, pauli_string, method="DFT", cost="e-VQE")
         samplers = [Sampler(p) for p in processors]
         samples = [sampler.samples(5) for sampler in samplers]
@@ -169,15 +165,12 @@ def test_invalid_cost_type():
     )
 
     with pytest.raises(ValueError, match="Invalid cost option. Use 'VQE' or 'e-VQE'."):
-        vqe.run(
-            max_iterations=5,
-            verbose=True,
-            weight_option="weighted",
-            cost="Invalid_cost"
-        )
+        vqe.run(max_iterations=5, verbose=True, weight_option="weighted", cost="Invalid_cost")
+
 
 def test_invalid_evqe_executor_type():
     """Test that invalid executor error."""
+
     def unitary_exec():
         return np.eye(4, dtype=complex)
 
@@ -191,12 +184,8 @@ def test_invalid_evqe_executor_type():
     )
 
     with pytest.raises(ValueError, match="option: e-VQE takes only executor_type: sampling"):
-        vqe.run(
-            max_iterations=5,
-            verbose=True,
-            weight_option="weighted",
-            cost="e-VQE"
-        )
+        vqe.run(max_iterations=5, verbose=True, weight_option="weighted", cost="e-VQE")
+
 
 def test_custom_unitary_ansatz():
     """
@@ -205,8 +194,7 @@ def test_custom_unitary_ansatz():
     """
 
     # Define 1-qubit Hadamard gate
-    H = 1 / np.sqrt(2) * np.array([[1, 1],
-                                   [1, -1]])
+    H = 1 / np.sqrt(2) * np.array([[1, 1], [1, -1]])
     lp_dummy = np.array([0.0])
     pauli_string = "Z"
 
@@ -218,18 +206,20 @@ def test_custom_unitary_ansatz():
     prob_dist = sampler.probs()
 
     # Extract probabilities from BSDistribution
-    prob_dict = {state: float(prob) for state, prob in prob_dist['results'].items()}
+    prob_dict = {state: float(prob) for state, prob in prob_dist["results"].items()}
 
     # Assert both logical outcomes are present and roughly balanced
     assert len(prob_dict) == 2, f"Unexpected number of outcomes: {prob_dict}"
-    assert all(state in prob_dict for state in [pcvl.BasicState('|1,0>'), pcvl.BasicState('|0,1>')]), \
-        f"Expected states |1,0> and |0,1> not found in results: {prob_dict}"
+    assert all(
+        state in prob_dict for state in [pcvl.BasicState("|1,0>"), pcvl.BasicState("|0,1>")]
+    ), f"Expected states |1,0> and |0,1> not found in results: {prob_dict}"
 
-    prob_0 = prob_dict[pcvl.BasicState('|1,0>')]
-    prob_1 = prob_dict[pcvl.BasicState('|0,1>')]
+    prob_0 = prob_dict[pcvl.BasicState("|1,0>")]
+    prob_1 = prob_dict[pcvl.BasicState("|0,1>")]
 
     assert 0.45 <= prob_0 <= 0.55, f"Unexpected probability for |0⟩: {prob_0}"
     assert 0.45 <= prob_1 <= 0.55, f"Unexpected probability for |1⟩: {prob_1}"
+
 
 def test_hf_ansatz_vqe():
     proc = hf_ansatz(
@@ -239,12 +229,13 @@ def test_hf_ansatz_vqe():
         pauli_string="II",
         method="WFT",
         cost="VQE",
-        noise_model=None
+        noise_model=None,
     )
     # Check that the returned object is not None
     assert proc is not None
     # Basic attribute check for Perceval processor
     assert isinstance(proc, pcvl.Processor)
+
 
 def test_hf_ansatz_e_vqe():
     procs = hf_ansatz(
@@ -254,13 +245,14 @@ def test_hf_ansatz_e_vqe():
         pauli_string="II",
         method="WFT",
         cost="e-VQE",
-        noise_model=None
+        noise_model=None,
     )
     assert isinstance(procs, list)
     assert len(procs) > 0
     # Each element should look like a processor
     for p in procs:
         assert isinstance(p, pcvl.Processor)
+
 
 def test_plot_convergence(simple_vqe, mocker):
     """
@@ -274,15 +266,15 @@ def test_plot_convergence(simple_vqe, mocker):
         simple_vqe.plot_convergence()
 
     # 2. Mock all pyplot functions to avoid GUI pop-ups
-    mock_figure = mocker.patch('matplotlib.pyplot.figure')
-    mock_plot = mocker.patch('matplotlib.pyplot.plot')
-    mock_axhline = mocker.patch('matplotlib.pyplot.axhline')
-    mock_xlabel = mocker.patch('matplotlib.pyplot.xlabel')
-    mock_ylabel = mocker.patch('matplotlib.pyplot.ylabel')
-    mock_title = mocker.patch('matplotlib.pyplot.title')
-    mock_legend = mocker.patch('matplotlib.pyplot.legend')
-    mock_grid = mocker.patch('matplotlib.pyplot.grid')
-    mock_show = mocker.patch('matplotlib.pyplot.show')
+    mock_figure = mocker.patch("matplotlib.pyplot.figure")
+    mock_plot = mocker.patch("matplotlib.pyplot.plot")
+    mock_axhline = mocker.patch("matplotlib.pyplot.axhline")
+    mock_xlabel = mocker.patch("matplotlib.pyplot.xlabel")
+    mock_ylabel = mocker.patch("matplotlib.pyplot.ylabel")
+    mock_title = mocker.patch("matplotlib.pyplot.title")
+    mock_legend = mocker.patch("matplotlib.pyplot.legend")
+    mock_grid = mocker.patch("matplotlib.pyplot.grid")
+    mock_show = mocker.patch("matplotlib.pyplot.show")
 
     # 3. Run VQE to populate history and call the plot function
     simple_vqe.run(max_iterations=10, verbose=False)
@@ -292,13 +284,16 @@ def test_plot_convergence(simple_vqe, mocker):
     # 4. Assert that the plotting functions were called as expected
     mock_figure.assert_called_once()
     mock_plot.assert_called_once()
-    mock_axhline.assert_called_once_with(y=exact_energy_val, color='r', linestyle='--', label='Exact Energy')
+    mock_axhline.assert_called_once_with(
+        y=exact_energy_val, color="r", linestyle="--", label="Exact Energy"
+    )
     mock_xlabel.assert_called_once()
     mock_ylabel.assert_called_once()
     mock_title.assert_called_once()
     mock_legend.assert_called_once()
     mock_grid.assert_called_once()
     mock_show.assert_called_once()
+
 
 def identity_unitary_executor(params):
     """Simple unitary executor that returns identity matrix."""
@@ -310,15 +305,15 @@ def parametrized_unitary_executor(params):
     # Create a simple 2-qubit unitary using RY rotations
     theta1, theta2 = params[0], params[1]
 
-    ry1 = np.array([
-        [np.cos(theta1/2), -np.sin(theta1/2)],
-        [np.sin(theta1/2), np.cos(theta1/2)]
-    ], dtype=complex)
+    ry1 = np.array(
+        [[np.cos(theta1 / 2), -np.sin(theta1 / 2)], [np.sin(theta1 / 2), np.cos(theta1 / 2)]],
+        dtype=complex,
+    )
 
-    ry2 = np.array([
-        [np.cos(theta2/2), -np.sin(theta2/2)],
-        [np.sin(theta2/2), np.cos(theta2/2)]
-    ], dtype=complex)
+    ry2 = np.array(
+        [[np.cos(theta2 / 2), -np.sin(theta2 / 2)], [np.sin(theta2 / 2), np.cos(theta2 / 2)]],
+        dtype=complex,
+    )
 
     return np.kron(ry1, ry2)
 
@@ -331,7 +326,7 @@ def test_vqe_init_with_unitary_executor():
         hamiltonian=hamiltonian,
         executor=identity_unitary_executor,
         num_params=2,
-        executor_type="qubit_unitary"
+        executor_type="qubit_unitary",
     )
 
     assert vqe.executor_type == "qubit_unitary"
@@ -344,16 +339,14 @@ def test_vqe_init_with_sampling_executor():
     hamiltonian = {"II": -0.5, "ZZ": 1.0}
 
     def sampling_exec(params, pauli_string):
-        return {'results': [(0, 0)] * 100}
+        return {"results": [(0, 0)] * 100}
 
     vqe = VQE(
-        hamiltonian=hamiltonian,
-        executor=sampling_exec,
-        num_params=2,
-        executor_type="sampling"
+        hamiltonian=hamiltonian, executor=sampling_exec, num_params=2, executor_type="sampling"
     )
 
     assert vqe.executor_type == "sampling"
+
 
 def test_vqe_invalid_executor_type():
     """Test that invalid executor_type raises error."""
@@ -364,8 +357,9 @@ def test_vqe_invalid_executor_type():
             hamiltonian=hamiltonian,
             executor=identity_unitary_executor,
             num_params=2,
-            executor_type="invalid_type"
+            executor_type="invalid_type",
         )
+
 
 def test_vqe_compare_unitary_vs_sampling():
     """
@@ -380,37 +374,24 @@ def test_vqe_compare_unitary_vs_sampling():
 
     # Sampling executor (deterministic - always returns |00>)
     def sampling_exec(params, pauli_string):
-        return {'results': [(0, 0)] * 10000}
+        return {"results": [(0, 0)] * 10000}
 
     vqe_unitary = VQE(
-        hamiltonian=hamiltonian,
-        executor=unitary_exec,
-        num_params=2,
-        executor_type="qubit_unitary"
+        hamiltonian=hamiltonian, executor=unitary_exec, num_params=2, executor_type="qubit_unitary"
     )
 
     vqe_sampling = VQE(
-        hamiltonian=hamiltonian,
-        executor=sampling_exec,
-        num_params=2,
-        executor_type="sampling"
+        hamiltonian=hamiltonian, executor=sampling_exec, num_params=2, executor_type="sampling"
     )
 
     # Both should give same energy for identity circuit
-    energy_unitary = vqe_unitary.run(
-        initial_params=np.zeros(2),
-        max_iterations=10,
-        verbose=False
-    )
-    energy_sampling = vqe_sampling.run(
-        initial_params=np.zeros(2),
-        max_iterations=10,
-        verbose=False
-    )
+    energy_unitary = vqe_unitary.run(initial_params=np.zeros(2), max_iterations=10, verbose=False)
+    energy_sampling = vqe_sampling.run(initial_params=np.zeros(2), max_iterations=10, verbose=False)
 
     # Expected: 0.5 * 1 + 1.0 * 1 = 1.5
     assert np.isclose(energy_unitary, 1.5)
     assert np.isclose(energy_sampling, 1.5, atol=0.01)
+
 
 def photonic_identity_executor(params):
     """Photonic unitary executor that returns identity."""
@@ -444,7 +425,7 @@ def test_vqe_init_with_photonic_unitary_executor():
         hamiltonian=hamiltonian,
         executor=photonic_identity_executor,
         num_params=2,
-        executor_type="photonic_unitary"
+        executor_type="photonic_unitary",
     )
 
     assert vqe.executor_type == "photonic_unitary"
@@ -460,14 +441,10 @@ def test_vqe_run_with_photonic_unitary():
         hamiltonian=hamiltonian,
         executor=photonic_identity_executor,
         num_params=2,
-        executor_type="photonic_unitary"
+        executor_type="photonic_unitary",
     )
 
-    energy = vqe.run(
-        initial_params=np.zeros(2),
-        max_iterations=5,
-        verbose=False
-    )
+    energy = vqe.run(initial_params=np.zeros(2), max_iterations=5, verbose=False)
 
     # With identity executor and |00⟩ initial state: II=1, ZZ=1
     # Expected: 0.5*1 + 1.0*1 = 1.5
@@ -487,14 +464,10 @@ def test_vqe_photonic_unitary_with_custom_initial_state():
         executor=photonic_identity_executor,
         num_params=2,
         executor_type="photonic_unitary",
-        initial_state=initial_state
+        initial_state=initial_state,
     )
 
-    energy = vqe.run(
-        initial_params=np.zeros(2),
-        max_iterations=5,
-        verbose=False
-    )
+    energy = vqe.run(initial_params=np.zeros(2), max_iterations=5, verbose=False)
 
     # <11|ZZ|11> = 1
     assert np.isclose(energy, 1.0)
@@ -508,7 +481,7 @@ def test_vqe_photonic_unitary_optimization():
         hamiltonian=hamiltonian,
         executor=photonic_parametrized_executor,
         num_params=2,
-        executor_type="photonic_unitary"
+        executor_type="photonic_unitary",
     )
 
     energy = vqe.run(max_iterations=10, verbose=False)
@@ -528,7 +501,7 @@ def test_vqe_compare_executor_types():
 
     # Sampling executor
     def sampling_exec(params, pauli_string):
-        return {'results': [(0, 0)] * 100}
+        return {"results": [(0, 0)] * 100}
 
     # Unitary executor
     def unitary_exec(params):
@@ -539,24 +512,18 @@ def test_vqe_compare_executor_types():
         return np.eye(4, dtype=complex)
 
     vqe_sampling = VQE(
-        hamiltonian=hamiltonian,
-        executor=sampling_exec,
-        num_params=2,
-        executor_type="sampling"
+        hamiltonian=hamiltonian, executor=sampling_exec, num_params=2, executor_type="sampling"
     )
 
     vqe_unitary = VQE(
-        hamiltonian=hamiltonian,
-        executor=unitary_exec,
-        num_params=2,
-        executor_type="qubit_unitary"
+        hamiltonian=hamiltonian, executor=unitary_exec, num_params=2, executor_type="qubit_unitary"
     )
 
     vqe_photonic = VQE(
         hamiltonian=hamiltonian,
         executor=photonic_exec,
         num_params=2,
-        executor_type="photonic_unitary"
+        executor_type="photonic_unitary",
     )
 
     # All should initialize successfully
@@ -565,15 +532,9 @@ def test_vqe_compare_executor_types():
     assert vqe_photonic.executor_type == "photonic_unitary"
 
     # Run short optimizations
-    vqe_sampling.run(
-        initial_params=np.zeros(2), max_iterations=3, verbose=False
-    )
-    energy_unitary = vqe_unitary.run(
-        initial_params=np.zeros(2), max_iterations=3, verbose=False
-    )
-    energy_photonic = vqe_photonic.run(
-        initial_params=np.zeros(2), max_iterations=3, verbose=False
-    )
+    vqe_sampling.run(initial_params=np.zeros(2), max_iterations=3, verbose=False)
+    energy_unitary = vqe_unitary.run(initial_params=np.zeros(2), max_iterations=3, verbose=False)
+    energy_photonic = vqe_photonic.run(initial_params=np.zeros(2), max_iterations=3, verbose=False)
 
     # For identity operators and |00⟩ state, all should give similar results
     assert np.isclose(energy_unitary, energy_photonic, atol=0.1)

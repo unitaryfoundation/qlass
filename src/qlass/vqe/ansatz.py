@@ -10,7 +10,9 @@ from qlass.compiler import compile
 from qlass.utils import rotate_qubits
 
 
-def le_ansatz(lp: np.ndarray, pauli_string: str, noise_model: NoiseModel | None = None) -> Processor:
+def le_ansatz(
+    lp: np.ndarray, pauli_string: str, noise_model: NoiseModel | None = None
+) -> Processor:
     """
     Creates Perceval quantum processor for the Linear Entangled Ansatz.
     This ansatz consists of a layer of parametrized rotations, followed by
@@ -25,20 +27,22 @@ def le_ansatz(lp: np.ndarray, pauli_string: str, noise_model: NoiseModel | None 
         Processor: The quantum circuit as a Perceval processor
     """
     num_qubits = len(pauli_string)
-    ansatz = n_local(num_qubits, 'ry', 'cx', reps=1, entanglement='linear')
+    ansatz = n_local(num_qubits, "ry", "cx", reps=1, entanglement="linear")
 
     ansatz_assigned = ansatz.assign_parameters(lp)
-    ansatz_transpiled = transpile(ansatz_assigned, basis_gates=['u3', 'cx'], optimization_level=3)
+    ansatz_transpiled = transpile(ansatz_assigned, basis_gates=["u3", "cx"], optimization_level=3)
 
     ansatz_rot = rotate_qubits(pauli_string, ansatz_transpiled.copy())
-    processor = compile(ansatz_rot, input_state=pcvl.LogicalState([0]*num_qubits), noise_model=noise_model)
+    processor = compile(
+        ansatz_rot, input_state=pcvl.LogicalState([0] * num_qubits), noise_model=noise_model
+    )
 
     return processor
 
-def custom_unitary_ansatz(lp: np.ndarray,
-                          pauli_string: str,
-                          U: np.ndarray,
-                          noise_model: NoiseModel | None = None) -> Processor:
+
+def custom_unitary_ansatz(
+    lp: np.ndarray, pauli_string: str, U: np.ndarray, noise_model: NoiseModel | None = None
+) -> Processor:
     """
     Creates Perceval quantum processor that directly implements a given unitary matrix.
     This function serves as a custom ansatz that bypasses circuit construction and instead
@@ -57,7 +61,7 @@ def custom_unitary_ansatz(lp: np.ndarray,
         Processor: The quantum circuit as a Perceval processor implementing unitary U.
     """
     num_qubits = len(pauli_string)
-    dim = 2 ** num_qubits
+    dim = 2**num_qubits
 
     if U.shape != (dim, dim):
         raise ValueError(f"Expected unitary of shape ({dim}, {dim}), got {U.shape}")
@@ -68,8 +72,10 @@ def custom_unitary_ansatz(lp: np.ndarray,
     qc.unitary(U, range(num_qubits))
 
     qc_rotated = rotate_qubits(pauli_string, qc.copy())
-    processor = compile(qc_rotated, input_state=pcvl.LogicalState([0]*num_qubits), noise_model=noise_model)
-    processor.with_input(pcvl.LogicalState([0]*num_qubits))
+    processor = compile(
+        qc_rotated, input_state=pcvl.LogicalState([0] * num_qubits), noise_model=noise_model
+    )
+    processor.with_input(pcvl.LogicalState([0] * num_qubits))
 
     return processor
 
@@ -97,62 +103,69 @@ def list_of_ones(computational_basis_state: int, n_qubits: int) -> list[int]:
     The output index ordering corresponds to the big-endian representation of the qubits.
     """
 
-    bitstring = format(computational_basis_state, 'b').zfill(n_qubits)
+    bitstring = format(computational_basis_state, "b").zfill(n_qubits)
 
-    return [abs(j - n_qubits + 1) for j in range(len(bitstring)) if bitstring[j] == '1']
+    return [abs(j - n_qubits + 1) for j in range(len(bitstring)) if bitstring[j] == "1"]
 
 
-
-def hf_ansatz(layers: int, n_orbs: int, lp: np.ndarray, pauli_string: str, method: str, cost: str = "VQE", noise_model: NoiseModel | None = None) -> Processor | list[Processor]:
+def hf_ansatz(
+    layers: int,
+    n_orbs: int,
+    lp: np.ndarray,
+    pauli_string: str,
+    method: str,
+    cost: str = "VQE",
+    noise_model: NoiseModel | None = None,
+) -> Processor | list[Processor]:
     """
-        Build a Hartree–Fock-based variational ansatz using Qiskit's ``n_local`` circuit,
-        combined with initial reference states and compiled into Perceval processors.
+    Build a Hartree–Fock-based variational ansatz using Qiskit's ``n_local`` circuit,
+    combined with initial reference states and compiled into Perceval processors.
 
-        Parameters
-        ----------
-        layers : int
-            Number of circuit layers (repetitions) in the ansatz.
-        n_orbs : int
-            Number of orbitals.
-        lp : np.ndarray
-            Array of parameter values for the ansatz circuit.
-        pauli_string : str
-            Pauli operator string defining the measurement basis.
-        method : str
-            Mapping method. One of:
-                - ``"WFT"`` : Wavefunction theory mapping (spin orbitals → qubits)
-                - ``"DFT"`` : Density functional mapping (spatial orbitals → qubits)
-        cost : str, optional
-            Type of cost function to prepare. One of:
-                - ``"VQE"`` : Return only the ground-state processor (default)
-                - ``"e-VQE"`` : Return a list of processors for excited states
-        noise_model : NoiseModel, optional
-            A Perceval ``NoiseModel`` object representing the noise model to include in compilation.
+    Parameters
+    ----------
+    layers : int
+        Number of circuit layers (repetitions) in the ansatz.
+    n_orbs : int
+        Number of orbitals.
+    lp : np.ndarray
+        Array of parameter values for the ansatz circuit.
+    pauli_string : str
+        Pauli operator string defining the measurement basis.
+    method : str
+        Mapping method. One of:
+            - ``"WFT"`` : Wavefunction theory mapping (spin orbitals → qubits)
+            - ``"DFT"`` : Density functional mapping (spatial orbitals → qubits)
+    cost : str, optional
+        Type of cost function to prepare. One of:
+            - ``"VQE"`` : Return only the ground-state processor (default)
+            - ``"e-VQE"`` : Return a list of processors for excited states
+    noise_model : NoiseModel, optional
+        A Perceval ``NoiseModel`` object representing the noise model to include in compilation.
 
-        Returns
-        -------
-        Processor or list of Processor
-            If ``cost="VQE"``, returns a single Perceval ``Processor`` instance.
-            If ``cost="e-VQE"``, returns a list of processors based on method. One of: "WFT", "DFT".
+    Returns
+    -------
+    Processor or list of Processor
+        If ``cost="VQE"``, returns a single Perceval ``Processor`` instance.
+        If ``cost="e-VQE"``, returns a list of processors based on method. One of: "WFT", "DFT".
 
-        Raises
-        ------
-        ValueError
-            If ``method`` or ``cost`` arguments are invalid.
+    Raises
+    ------
+    ValueError
+        If ``method`` or ``cost`` arguments are invalid.
 
-        Notes
-        -----
-        - The ansatz is constructed by composing the initial Hartree–Fock reference circuit
-          with a parameterized ``n_local`` circuit (Ry–CX entangling pattern).
-        - See `https://scipost.org/SciPostPhys.14.3.055` for details on the DFT mapping.
-        """
+    Notes
+    -----
+    - The ansatz is constructed by composing the initial Hartree–Fock reference circuit
+      with a parameterized ``n_local`` circuit (Ry–CX entangling pattern).
+    - See `https://scipost.org/SciPostPhys.14.3.055` for details on the DFT mapping.
+    """
 
-    '''Circuit implementation'''
+    """Circuit implementation"""
     num_qubits = len(pauli_string)
     if method == "WFT":
-        n_occ = n_orbs * 2 # number of spin orbitals
+        n_occ = n_orbs * 2  # number of spin orbitals
     elif method == "DFT":
-        n_occ = n_orbs // 2 # number of spatial orbitals
+        n_occ = n_orbs // 2  # number of spatial orbitals
     else:
         raise ValueError("Invalid method. Use 'WFT' or 'DFT'.")
 
@@ -160,7 +173,7 @@ def hf_ansatz(layers: int, n_orbs: int, lp: np.ndarray, pauli_string: str, metho
 
     for _i in range(n_occ):
         initial_circuits += [QuantumCircuit(num_qubits)]
-    '''Intial states'''
+    """Intial states"""
     for state in range(n_occ):  # binarystring representation of the integer
         for i in list_of_ones(state, num_qubits):
             initial_circuits[state].x(i)
@@ -169,11 +182,11 @@ def hf_ansatz(layers: int, n_orbs: int, lp: np.ndarray, pauli_string: str, metho
     for state in range(n_occ):
         ansatz = n_local(
             num_qubits=num_qubits,
-            rotation_blocks='ry',
-            entanglement_blocks='cx',
-            entanglement='linear',
+            rotation_blocks="ry",
+            entanglement_blocks="cx",
+            entanglement="linear",
             reps=layers,
-            insert_barriers=False
+            insert_barriers=False,
         )
         # Prepend the initial state
         circuit = QuantumCircuit(num_qubits)
@@ -181,22 +194,27 @@ def hf_ansatz(layers: int, n_orbs: int, lp: np.ndarray, pauli_string: str, metho
         circuit.compose(ansatz, inplace=True)
         circuits.append(circuit)
 
-    '''Assign parameters'''
+    """Assign parameters"""
     circuits = [c.assign_parameters(lp) for c in circuits]
 
     intial_states = []
     for c in range(len(initial_circuits)):
         sv = Statevector.from_instruction(initial_circuits[c])
         index = list(sv.data).index(1 + 0j)  # position of the "1"
-        bitstring = format(index, f'0{sv.num_qubits}b')
+        bitstring = format(index, f"0{sv.num_qubits}b")
         bits_list = [int(b) for b in bitstring]
         intial_states.append(pcvl.LogicalState(bits_list))
 
-    ansatz_transpiled = [transpile(c, basis_gates=['u3', 'cx'], optimization_level=3) for c in circuits]
+    ansatz_transpiled = [
+        transpile(c, basis_gates=["u3", "cx"], optimization_level=3) for c in circuits
+    ]
 
     ansatz_rot = [rotate_qubits(pauli_string, at.copy()) for at in ansatz_transpiled]
 
-    processors = [compile(ar, input_state=st, noise_model=noise_model) for ar, st in zip(ansatz_rot, intial_states, strict=False)]
+    processors = [
+        compile(ar, input_state=st, noise_model=noise_model)
+        for ar, st in zip(ansatz_rot, intial_states, strict=False)
+    ]
     if cost == "VQE":
         return processors[0]
     elif cost == "e-VQE":

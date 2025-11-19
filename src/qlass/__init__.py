@@ -38,7 +38,7 @@ __all__ = [
     "rotate_qubits",
     "ResourceAwareCompiler",
     "HardwareConfig",
-    "generate_report"
+    "generate_report",
 ]
 
 # Version information

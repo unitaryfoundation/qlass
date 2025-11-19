@@ -6,7 +6,7 @@ from scipy.linalg import expm
 from qlass.quantum_chemistry import LiH_hamiltonian, brute_force_minimize
 from qlass.vqe import VQE
 
-warnings.simplefilter('ignore')
+warnings.simplefilter("ignore")
 
 
 def unitary_executor(params):
@@ -37,6 +37,7 @@ def unitary_executor(params):
 
     return unitary
 
+
 def main():
     # Generate Hamiltonian
     hamiltonian = LiH_hamiltonian(num_electrons=2, num_orbitals=1)
@@ -50,7 +51,7 @@ def main():
         hamiltonian=hamiltonian,
         executor=unitary_executor,
         num_params=4,
-        executor_type="qubit_unitary"  # Explicitly specify type
+        executor_type="qubit_unitary",  # Explicitly specify type
     )
 
     # Run optimization
@@ -66,6 +67,7 @@ def main():
 
     # Plot convergence
     vqe.plot_convergence(exact_energy=exact_energy)
+
 
 if __name__ == "__main__":
     main()

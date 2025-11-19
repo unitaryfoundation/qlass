@@ -6,10 +6,14 @@ import numpy as np
 import perceval as pcvl
 import qiskit
 
-H_matrix = (1/np.sqrt(2)) * pcvl.Matrix([[1.0, 1.0], [1.0, -1.0]])
-M_matrix = (1/np.sqrt(2)) * pcvl.Matrix([[1.0, 1.0], [1.0j, -1.0j]])
-mzi = (pcvl.BS() // (0, pcvl.PS(pcvl.Parameter("phi1"))) //
-        pcvl.BS() // (0, pcvl.PS(pcvl.Parameter("phi2"))))
+H_matrix = (1 / np.sqrt(2)) * pcvl.Matrix([[1.0, 1.0], [1.0, -1.0]])
+M_matrix = (1 / np.sqrt(2)) * pcvl.Matrix([[1.0, 1.0], [1.0j, -1.0j]])
+mzi = (
+    pcvl.BS()
+    // (0, pcvl.PS(pcvl.Parameter("phi1")))
+    // pcvl.BS()
+    // (0, pcvl.PS(pcvl.Parameter("phi2")))
+)
 H_circ = pcvl.Circuit.decomposition(H_matrix, mzi, shape=pcvl.InterferometerShape.TRIANGLE)
 M_circ = pcvl.Circuit.decomposition(M_matrix, mzi, shape=pcvl.InterferometerShape.TRIANGLE)
 
@@ -26,17 +30,20 @@ def is_qubit_state(state: exqalibur.FockState) -> tuple[int, ...] | bool:
     """
     q_state = []
     for i in range(state.m // 2):
-        q = state[2*i : 2*i+2]
-        if (q[0] == 0 and q[1] == 1):
+        q = state[2 * i : 2 * i + 2]
+        if q[0] == 0 and q[1] == 1:
             q_state.append(1)
-        elif (q[0] == 1 and q[1] == 0):
+        elif q[0] == 1 and q[1] == 0:
             q_state.append(0)
         else:
             return False
 
     return tuple(q_state)
 
-def qubit_state_marginal(prob_dist: dict[exqalibur.FockState | tuple[int, ...], float]) -> dict[tuple[int, ...], float]:
+
+def qubit_state_marginal(
+    prob_dist: dict[exqalibur.FockState | tuple[int, ...], float],
+) -> dict[tuple[int, ...], float]:
     """
     Calculate the frequencies of measured qubit states from a probability distribution.
 
@@ -83,7 +90,10 @@ def qubit_state_marginal(prob_dist: dict[exqalibur.FockState | tuple[int, ...], 
 
     return q_state_frequency
 
-def get_probabilities(samples: list[exqalibur.FockState | tuple[int, ...] | str]) -> dict[exqalibur.FockState | tuple[int, ...], float]:
+
+def get_probabilities(
+    samples: list[exqalibur.FockState | tuple[int, ...] | str],
+) -> dict[exqalibur.FockState | tuple[int, ...], float]:
     """
     Get the probabilities of sampled states.
 
@@ -120,6 +130,7 @@ def get_probabilities(samples: list[exqalibur.FockState | tuple[int, ...] | str]
 
     return prob_dist
 
+
 def compute_energy(pauli_bin: tuple[int, ...], res: dict[tuple[int, ...], float]) -> float:
     """
     Compute the expectation value for a given Pauli string and measurement results.
@@ -139,11 +150,12 @@ def compute_energy(pauli_bin: tuple[int, ...], res: dict[tuple[int, ...], float]
 
     for key in res_copy:
         inner = np.dot(key, pauli_bin)
-        sign = (-1)**inner
+        sign = (-1) ** inner
         res_copy[key] *= sign
 
     energy = float(np.sum([v for v in res_copy.values() if np.isfinite(v)]))
     return energy
+
 
 def pauli_string_bin(pauli_string: str) -> tuple[int, ...]:
     """
@@ -157,7 +169,10 @@ def pauli_string_bin(pauli_string: str) -> tuple[int, ...]:
     """
     return tuple(0 if c == "I" else 1 for c in pauli_string)
 
-def rotate_qubits(pauli_string: str, vqe_circuit: pcvl.Circuit | qiskit.QuantumCircuit) -> pcvl.Circuit:
+
+def rotate_qubits(
+    pauli_string: str, vqe_circuit: pcvl.Circuit | qiskit.QuantumCircuit
+) -> pcvl.Circuit:
     """
     Apply the correct rotations on corresponding qubits for expectation value computation.
 
@@ -173,11 +188,11 @@ def rotate_qubits(pauli_string: str, vqe_circuit: pcvl.Circuit | qiskit.QuantumC
             if pauli == "X":
                 vqe_circuit.h(i)
             elif pauli == "Y":
-                vqe_circuit.ry(np.pi/2, i)
+                vqe_circuit.ry(np.pi / 2, i)
 
     else:
         for i, pauli in enumerate(pauli_string):
-            qubit = (2*i, 2*i+1)
+            qubit = (2 * i, 2 * i + 1)
             if pauli == "X":
                 vqe_circuit.add(qubit, H_circ)
             elif pauli == "Y":
@@ -209,7 +224,9 @@ def normalize_samples(samples: Any) -> list[exqalibur.FockState | tuple[int, ...
         if isinstance(sample, str):
             # Convert Qiskit bitstring format '00' -> (0,0)
             normalized.append(tuple(int(bit) for bit in sample))
-        elif isinstance(sample, (list, tuple)) and all(isinstance(x, (int, np.integer)) for x in sample):
+        elif isinstance(sample, (list, tuple)) and all(
+            isinstance(x, (int, np.integer)) for x in sample
+        ):
             # Convert list/tuple of ints to tuple
             normalized.append(tuple(sample))
         else:
@@ -249,6 +266,7 @@ def loss_function(lp: np.ndarray, H: dict[str, float], executor: Any) -> float:
     # Import here to avoid circular imports
     try:
         from qlass.quantum_chemistry.hamiltonians import group_commuting_pauli_terms
+
         use_grouping = True
     except ImportError:
         # Fallback to individual processing if grouping not available
@@ -316,12 +334,12 @@ def _extract_samples_from_executor_result(samples: Any) -> list[Any]:
     sample_list: list[Any] | None = None
 
     if isinstance(samples, dict):
-        if 'results' in samples:
-            sample_list = samples['results']
-        elif 'counts' in samples:
+        if "results" in samples:
+            sample_list = samples["results"]
+        elif "counts" in samples:
             # Handle Qiskit counts format: {'00': 500, '11': 500}
             sample_list = []
-            for bitstring, count in samples['counts'].items():
+            for bitstring, count in samples["counts"].items():
                 sample_list.extend([bitstring] * count)
         else:
             # Try to find any list-like values in the dict
@@ -334,8 +352,10 @@ def _extract_samples_from_executor_result(samples: Any) -> list[Any]:
         # Direct list of samples
         sample_list = list(samples)
     else:
-        raise ValueError(f"Executor returned unexpected format: {type(samples)}. "
-                       "Expected dict with 'results' key, dict with 'counts' key, or list of samples.")
+        raise ValueError(
+            f"Executor returned unexpected format: {type(samples)}. "
+            "Expected dict with 'results' key, dict with 'counts' key, or list of samples."
+        )
 
     if sample_list is None:
         raise ValueError("Could not extract sample list from executor return value.")
@@ -358,10 +378,9 @@ def linear_circuit_to_unitary(circuit: pcvl.Circuit) -> np.ndarray:
 
     return unitary_matrix
 
+
 def compute_expectation_value_from_unitary(
-    unitary: np.ndarray,
-    pauli_matrix: np.ndarray,
-    initial_state: np.ndarray | None = None
+    unitary: np.ndarray, pauli_matrix: np.ndarray, initial_state: np.ndarray | None = None
 ) -> float:
     """
     Compute expectation value <ψ|H|ψ> where |ψ> = U|0>.
@@ -389,10 +408,9 @@ def compute_expectation_value_from_unitary(
 
     return float(expectation.real)
 
+
 def loss_function_matrix(
-    params: np.ndarray,
-    H: dict[str, float],
-    unitary_executor: Callable
+    params: np.ndarray, H: dict[str, float], unitary_executor: Callable
 ) -> float:
     """
     Compute loss function using unitary matrices directly.
@@ -416,14 +434,12 @@ def loss_function_matrix(
         pauli_matrix = pauli_string_to_matrix(pauli_string)
 
         # Compute expectation value
-        expectation = compute_expectation_value_from_unitary(
-            unitary,
-            pauli_matrix
-        )
+        expectation = compute_expectation_value_from_unitary(unitary, pauli_matrix)
 
         loss += coefficient * expectation
 
     return float(np.real(loss))
+
 
 def permanent(matrix: np.ndarray) -> complex:
     """
@@ -513,7 +529,7 @@ def photon_to_qubit_unitary(U_photon: np.ndarray) -> np.ndarray:
         raise ValueError("Photon unitary must have even dimension (2m × 2m)")
 
     m = modes_2m // 2
-    num_logical_states = 2 ** m
+    num_logical_states = 2**m
 
     # Initialize the qubit unitary
     U_qubit = np.zeros((num_logical_states, num_logical_states), dtype=complex)
@@ -540,7 +556,7 @@ def loss_function_photonic_unitary(
     H: dict[str, float],
     photonic_unitary_executor: Callable,
     initial_state: np.ndarray | None = None,
-    ancillary_modes: list[int] | None = None
+    ancillary_modes: list[int] | None = None,
 ) -> float:
     """
     Computes the loss function for a photonic VQE using the efficient, matrix-free
@@ -581,7 +597,7 @@ def loss_function_photonic_unitary(
     if not anc_modes_set.issubset(all_modes_set):
         raise ValueError(
             f"Ancillary modes {ancillary_modes} contain indices outside "
-            f"the total mode range [0, {total_modes-1}]"
+            f"the total mode range [0, {total_modes - 1}]"
         )
 
     # Determine logical modes (those not ancillary)
@@ -612,7 +628,9 @@ def loss_function_photonic_unitary(
         )
 
     # Helper function to map logical states to the correct physical modes
-    def _get_physical_modes(logical_state: int, num_qubits: int, logical_mode_map: list[int]) -> list[int]:
+    def _get_physical_modes(
+        logical_state: int, num_qubits: int, logical_mode_map: list[int]
+    ) -> list[int]:
         """Maps a logical state to physical modes given a specific mode layout."""
         # Convert integer to bit list for m qubits
         bits = [(logical_state >> (num_qubits - 1 - k)) & 1 for k in range(num_qubits)]
@@ -670,7 +688,14 @@ def loss_function_photonic_unitary(
 
     return float(np.real(final_energy))
 
-def e_vqe_loss_function(lp: np.ndarray, H: dict[str, float], executor: Any, energy_collector: Any, weight_option: str = "weighted") -> float:
+
+def e_vqe_loss_function(
+    lp: np.ndarray,
+    H: dict[str, float],
+    executor: Any,
+    energy_collector: Any,
+    weight_option: str = "weighted",
+) -> float:
     """
     Compute the loss function for the ensemble Variational Quantum Eigensolver (VQE)
     with automatic Pauli grouping for measurement optimization.
@@ -720,6 +745,7 @@ def e_vqe_loss_function(lp: np.ndarray, H: dict[str, float], executor: Any, ener
     # Import here to avoid circular imports
 
     from qlass.quantum_chemistry.hamiltonians import group_commuting_pauli_terms
+
     loss = 0.0
     lst_energies: list[float] | None = None
 
@@ -731,7 +757,6 @@ def e_vqe_loss_function(lp: np.ndarray, H: dict[str, float], executor: Any, ener
         # In the future, this could be optimized to measure entire groups simultaneously
         # For now, we process each term individually but with the grouping organization
         for pauli_string, coefficient in group.items():
-
             samples = executor(lp, pauli_string)
 
             # Handle different executor return formats
@@ -740,7 +765,9 @@ def e_vqe_loss_function(lp: np.ndarray, H: dict[str, float], executor: Any, ener
             # Normalize samples to consistent format
             normalized_samples = [normalize_samples(sample_list) for sample_list in sample_lists]
 
-            prob_dist = [get_probabilities(normalized_sample) for normalized_sample in normalized_samples]
+            prob_dist = [
+                get_probabilities(normalized_sample) for normalized_sample in normalized_samples
+            ]
             pauli_bin = pauli_string_bin(pauli_string)
 
             qubit_state_marg = [qubit_state_marginal(pd) for pd in prob_dist]
@@ -754,7 +781,6 @@ def e_vqe_loss_function(lp: np.ndarray, H: dict[str, float], executor: Any, ener
             for i, energy in enumerate(energies):
                 lst_energies[i] += energy
 
-
     if lst_energies is None:
         raise ValueError("No energies computed")
 
@@ -765,54 +791,57 @@ def e_vqe_loss_function(lp: np.ndarray, H: dict[str, float], executor: Any, ener
 
     return loss
 
+
 def ensemble_weights(weights_choice: str, n_occ: int) -> list[float]:
     """
-     Generate ensemble weights for the ensemble Variational Quantum Eigensolver (VQE).
+    Generate ensemble weights for the ensemble Variational Quantum Eigensolver (VQE).
 
-     Ensemble VQE uses weighted contributions from multiple eigenstates when
-     computing the loss function. This function provides a choice of weighting
-     schemes for the occupied orbitals.
+    Ensemble VQE uses weighted contributions from multiple eigenstates when
+    computing the loss function. This function provides a choice of weighting
+    schemes for the occupied orbitals.
 
-     Parameters
-     ----------
-     weights_choice : {'weighted', 'equi', 'ground_state_only'}
-         Scheme for assigning ensemble weights:
-         - ``'weighted'`` : Linearly decreasing weights with index, i.e., w_i < w_j for i > j.
-         - ``'equi'`` : Equal weights for all occupied orbitals, w_i = w_j.
-         - ``'ground_state_only'`` : Only the ground state contributes, w_0 = 1, others 0.
-     n_occ : int
-         Number of occupied orbitals in the system. Determines the length of the weight vector.
+    Parameters
+    ----------
+    weights_choice : {'weighted', 'equi', 'ground_state_only'}
+        Scheme for assigning ensemble weights:
+        - ``'weighted'`` : Linearly decreasing weights with index, i.e., w_i < w_j for i > j.
+        - ``'equi'`` : Equal weights for all occupied orbitals, w_i = w_j.
+        - ``'ground_state_only'`` : Only the ground state contributes, w_0 = 1, others 0.
+    n_occ : int
+        Number of occupied orbitals in the system. Determines the length of the weight vector.
 
-     Returns
-     -------
-     weights : np.ndarray
-         Array of length ``n_occ`` containing the ensemble weights corresponding
-         to the chosen weighting scheme.
+    Returns
+    -------
+    weights : np.ndarray
+        Array of length ``n_occ`` containing the ensemble weights corresponding
+        to the chosen weighting scheme.
 
-     Notes
-     -----
-     - See the original article for the derivation of ensemble weights:
-       `arXiv:2509.17982 <https://doi.org/10.48550/arXiv.2509.17982>`_.
+    Notes
+    -----
+    - See the original article for the derivation of ensemble weights:
+      `arXiv:2509.17982 <https://doi.org/10.48550/arXiv.2509.17982>`_.
 
-     Examples
-     --------
-     >>> ensemble_weights("equi", 4)
-     array([0.25, 0.25, 0.25, 0.25])
-     >>> ensemble_weights("weighted", 4)
-     array([0.375, 0.25 , 0.125, 0.   ])
-     >>> ensemble_weights("ground_state_only", 4)
-     array([1., 0., 0., 0.])
-     """
+    Examples
+    --------
+    >>> ensemble_weights("equi", 4)
+    array([0.25, 0.25, 0.25, 0.25])
+    >>> ensemble_weights("weighted", 4)
+    array([0.375, 0.25 , 0.125, 0.   ])
+    >>> ensemble_weights("ground_state_only", 4)
+    array([1., 0., 0., 0.])
+    """
     if weights_choice == "equi":
-        weights = [1. / n_occ for i in range(n_occ)]  # should be n_occ of them
+        weights = [1.0 / n_occ for i in range(n_occ)]  # should be n_occ of them
     elif weights_choice == "weighted":
         weights = []
         for i in range(n_occ):
-            weights.append(1/(n_occ**2) * (2 * n_occ - 1 - 2 * i))
+            weights.append(1 / (n_occ**2) * (2 * n_occ - 1 - 2 * i))
     elif weights_choice == "ground_state_only":
-        weights = [1.] + [0.0]*(n_occ - 1)
+        weights = [1.0] + [0.0] * (n_occ - 1)
     else:
-        raise ValueError("Invalid weights_choice. Must be one of 'equi', 'weighted', or 'ground_state_only'.")
+        raise ValueError(
+            "Invalid weights_choice. Must be one of 'equi', 'weighted', or 'ground_state_only'."
+        )
 
     return weights
 
@@ -835,6 +864,7 @@ class DataCollector:
     loss_data : list of float
         List of loss values recorded at each evaluation of the loss function.
     """
+
     def __init__(self) -> None:
         """
         Initialize the DataCollector with empty data structures.
@@ -842,26 +872,28 @@ class DataCollector:
         self.energy_data: dict[int, list[float]] = {}
         self.loss_data: list[float] = []
 
-    def energies_convergence(self, energy_values: list[float], eign_index: int, loss_values: float) -> None:
+    def energies_convergence(
+        self, energy_values: list[float], eign_index: int, loss_values: float
+    ) -> None:
         """
-               Record energies and loss values for the current evaluation.
+        Record energies and loss values for the current evaluation.
 
-               Each entry in ``energy_values`` is appended to the corresponding orbital
-               index in ``energy_data``. The total loss for this evaluation is appended
-               to ``loss_data``.
+        Each entry in ``energy_values`` is appended to the corresponding orbital
+        index in ``energy_data``. The total loss for this evaluation is appended
+        to ``loss_data``.
 
-               Parameters
-               ----------
-               energy_values : list of float
-                   List of energies for each occupied orbital or eigenstate at the current
-                   loss function evaluation.
-               eign_index : int
-                   Number of energies in ``energy_values`` to record (typically equal to the
-                   number of occupied orbitals in the ensemble).
-               loss_values : float
-                   Scalar value of the loss function at the current evaluation.
+        Parameters
+        ----------
+        energy_values : list of float
+            List of energies for each occupied orbital or eigenstate at the current
+            loss function evaluation.
+        eign_index : int
+            Number of energies in ``energy_values`` to record (typically equal to the
+            number of occupied orbitals in the ensemble).
+        loss_values : float
+            Scalar value of the loss function at the current evaluation.
 
-               """
+        """
         for i in range(eign_index):
             if i not in self.energy_data:
                 self.energy_data[i] = []  # initialize a list if key is new

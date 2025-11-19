@@ -6,7 +6,7 @@ from numba import njit
 
 
 def pauli_string_to_matrix(pauli_string: str) -> np.ndarray:
-    '''
+    """
     Convert a Pauli string to a matrix representation.
 
     Args:
@@ -15,30 +15,31 @@ def pauli_string_to_matrix(pauli_string: str) -> np.ndarray:
     Returns:
         np.ndarray: Matrix representation of the Pauli string
 
-    '''
+    """
 
     res: np.ndarray = np.array([[1.0]])
 
     # Define the Pauli matrices.
     I_pauli = np.eye(2)
-    X = np.array([[0,1],[1,0]])
-    Y = np.array([[0, -1.0j],[1.0j, 0]])
-    Z = np.array([[1,0],[0,-1]])
+    X = np.array([[0, 1], [1, 0]])
+    Y = np.array([[0, -1.0j], [1.0j, 0]])
+    Z = np.array([[1, 0], [0, -1]])
 
     for c in pauli_string:
-        if c=='X':
+        if c == "X":
             res = np.kron(res, X)
-        elif c=='Y':
+        elif c == "Y":
             res = np.kron(res, Y)
-        elif c=='Z':
+        elif c == "Z":
             res = np.kron(res, Z)
         else:
             res = np.kron(res, I_pauli)
 
     return res
 
+
 def hamiltonian_matrix(H: dict[str, float]) -> np.ndarray:
-    '''
+    """
     Convert a Hamiltonian dictionary to a matrix representation.
 
     Args:
@@ -47,17 +48,20 @@ def hamiltonian_matrix(H: dict[str, float]) -> np.ndarray:
     Returns:
         np.ndarray: Matrix representation of the Hamiltonian
 
-    '''
+    """
 
     coeffs = list(H.values())
-    matrices = [coeff*pauli_string_to_matrix(pauli_string) for pauli_string, coeff in zip(H.keys(), coeffs, strict=False)]
+    matrices = [
+        coeff * pauli_string_to_matrix(pauli_string)
+        for pauli_string, coeff in zip(H.keys(), coeffs, strict=False)
+    ]
 
     result: np.ndarray = np.sum(matrices, axis=0)
     return result
 
 
 def brute_force_minimize(H: dict[str, float]) -> float:
-    '''
+    """
     Compute the minimum eigenvalue of a Hamiltonian using brute force.
 
     Args:
@@ -66,13 +70,14 @@ def brute_force_minimize(H: dict[str, float]) -> float:
     Returns:
         float: Minimum eigenvalue of the Hamiltonian
 
-    '''
+    """
 
     H_matrix = hamiltonian_matrix(H)
     l0 = np.linalg.eigvals(H_matrix)
     l0.sort()
 
     return float(l0[0].real)
+
 
 def _lanczos_impl(A: np.ndarray, v_init: np.ndarray, m: int) -> tuple[np.ndarray, np.ndarray]:
     """Core Lanczos algorithm implementation."""
@@ -109,7 +114,7 @@ def _lanczos_impl(A: np.ndarray, v_init: np.ndarray, m: int) -> tuple[np.ndarray
         # This is the key to fixing numerical stability issues.
         for i in range(j):
             v -= np.dot(v.conj(), V[i, :]) * V[i, :]
-        v /= np.linalg.norm(v) # Re-normalize after correction
+        v /= np.linalg.norm(v)  # Re-normalize after correction
         # --- End of Re-orthogonalization ---
 
         V[j, :] = v
@@ -128,15 +133,17 @@ def _lanczos_impl(A: np.ndarray, v_init: np.ndarray, m: int) -> tuple[np.ndarray
 
     return T, V
 
+
 # Check if JIT should be disabled via environment variable
-DISABLE_JIT = os.environ.get('QLASS_DISABLE_JIT', '0') == '1'
+DISABLE_JIT = os.environ.get("QLASS_DISABLE_JIT", "0") == "1"
 
 # Create JIT-compiled version if enabled
 lanczos: Callable[[np.ndarray, np.ndarray, int], tuple[np.ndarray, np.ndarray]]
 lanczos = njit(_lanczos_impl) if not DISABLE_JIT else _lanczos_impl
 
+
 def eig_decomp_lanczos(R: np.ndarray, n: int = 1, m: int = 100) -> np.ndarray:
-    '''
+    """
     Compute the eigenvalues of a matrix using the Lanczos algorithm.
 
     Args:
@@ -147,7 +154,7 @@ def eig_decomp_lanczos(R: np.ndarray, n: int = 1, m: int = 100) -> np.ndarray:
     Returns:
         np.ndarray: Eigenvalues of the matrix
 
-    '''
+    """
 
     v0 = np.array(np.random.rand(np.shape(R)[0]), dtype=np.complex128)
     v0 /= np.sqrt(np.abs(np.dot(v0, np.conjugate(v0))))

@@ -21,8 +21,8 @@ from qlass.quantum_chemistry import LiH_hamiltonian_tapered, brute_force_minimiz
 from qlass.utils import rotate_qubits
 from qlass.vqe import VQE
 
-warnings.simplefilter('ignore')
-warnings.filterwarnings('ignore')
+warnings.simplefilter("ignore")
+warnings.filterwarnings("ignore")
 
 
 # Define an executor function that uses the TwoLocal ansatz
@@ -33,11 +33,11 @@ def executor(params, pauli_string):
     """
     # Create the TwoLocal ansatz circuit
     num_qubits = len(pauli_string)
-    ansatz = TwoLocal(num_qubits, 'ry', 'cx', reps=1)
+    ansatz = TwoLocal(num_qubits, "ry", "cx", reps=1)
 
     # Assign parameters to the ansatz
     ansatz_assigned = ansatz.assign_parameters(params)
-    ansatz_transpiled = transpile(ansatz_assigned, basis_gates=['u3', 'cx'], optimization_level=3)
+    ansatz_transpiled = transpile(ansatz_assigned, basis_gates=["u3", "cx"], optimization_level=3)
 
     # Apply rotation for Pauli measurement
     ansatz_rot = rotate_qubits(pauli_string, ansatz_transpiled.copy())
@@ -50,7 +50,7 @@ def executor(params, pauli_string):
         g2_distinguishable=True,
         transmittance=0.4,
         phase_imprecision=0.02,
-        phase_error=0.02
+        phase_error=0.02,
     )
 
     # Compile with ResourceAwareCompiler
@@ -58,12 +58,13 @@ def executor(params, pauli_string):
     processor = compiler.compile(ansatz_rot)
 
     # Set the input state
-    processor.with_input(LogicalState([0]*num_qubits))
+    processor.with_input(LogicalState([0] * num_qubits))
 
     # Run the sampler
     sampler = Sampler(processor)
     samples = sampler.samples(10_000)
     return samples
+
 
 def main():
     """
@@ -91,37 +92,34 @@ def main():
         exact_energies.append(exact_energy)
 
         # Initialize the VQE solver
-        vqe = VQE(
-            hamiltonian=hamiltonian,
-            executor=executor,
-            num_params=num_params
-        )
+        vqe = VQE(hamiltonian=hamiltonian, executor=executor, num_params=num_params)
 
         # Run the VQE optimization
         vqe_energy = vqe.run(
-            max_iterations=25, # More iterations for better convergence
-            verbose=True      # Turn off verbose output for the loop
+            max_iterations=25,  # More iterations for better convergence
+            verbose=True,  # Turn off verbose output for the loop
         )
         vqe_energies.append(vqe_energy)
 
     # 3. Plot the results
-    plt.style.use('seaborn-v0_8-whitegrid')
+    plt.style.use("seaborn-v0_8-whitegrid")
     plt.figure(figsize=(12, 7))
 
     # Plot theoretical (exact) energy curve
-    plt.plot(radii, exact_energies, 'bo', label='Exact Theoretical Energy', linewidth=2)
+    plt.plot(radii, exact_energies, "bo", label="Exact Theoretical Energy", linewidth=2)
 
     # Plot noisy VQE simulation results
-    plt.plot(radii, vqe_energies, 'ro', label='Noisy VQE Simulation', markersize=8)
+    plt.plot(radii, vqe_energies, "ro", label="Noisy VQE Simulation", markersize=8)
 
-    plt.xlabel('Internuclear Distance (Å)', fontsize=14)
-    plt.ylabel('Energy (Hartree)', fontsize=14)
-    plt.title('Noisy VQE Simulation of LiH Molecule', fontsize=16)
+    plt.xlabel("Internuclear Distance (Å)", fontsize=14)
+    plt.ylabel("Energy (Hartree)", fontsize=14)
+    plt.title("Noisy VQE Simulation of LiH Molecule", fontsize=16)
     plt.legend(fontsize=12)
-    plt.grid(True, which='both', linestyle='--', linewidth=0.5)
-    plt.savefig('Lih_tapered_4q.png')
+    plt.grid(True, which="both", linestyle="--", linewidth=0.5)
+    plt.savefig("Lih_tapered_4q.png")
     print("\nSimulation complete. Displaying plot.")
     plt.show()
+
 
 if __name__ == "__main__":
     main()

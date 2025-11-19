@@ -1,4 +1,3 @@
-
 from .classical_solution import (
     brute_force_minimize,
     eig_decomp_lanczos,
@@ -32,5 +31,5 @@ __all__ = [
     "pauli_commute",
     "group_commuting_pauli_terms",
     "group_commuting_pauli_terms_openfermion_hybrid",
-    "sparsepauliop_dictionary"
+    "sparsepauliop_dictionary",
 ]

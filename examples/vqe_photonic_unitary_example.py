@@ -12,7 +12,7 @@ import numpy as np
 from qlass.quantum_chemistry import LiH_hamiltonian, brute_force_minimize
 from qlass.vqe import VQE
 
-warnings.simplefilter('ignore')
+warnings.simplefilter("ignore")
 
 
 def photonic_unitary_executor(params):
@@ -45,7 +45,7 @@ def photonic_unitary_executor(params):
 
         # Embed it in the full space
         U_local = np.eye(num_modes, dtype=complex)
-        U_local[i:i+2, i:i+2] = bs
+        U_local[i : i + 2, i : i + 2] = bs
 
         U = U_local @ U
 
@@ -74,7 +74,7 @@ def main():
         hamiltonian=hamiltonian,
         executor=photonic_unitary_executor,
         num_params=num_params,
-        executor_type="photonic_unitary"
+        executor_type="photonic_unitary",
     )
 
     # Run optimization

@@ -15,9 +15,7 @@ def test_resource_aware_compiler():
 
     # Define a hypothetical hardware configuration
     chip_config = HardwareConfig(
-        photon_loss_component_db=0.05,
-        fusion_success_prob=0.11,
-        hom_visibility=0.95
+        photon_loss_component_db=0.05, fusion_success_prob=0.11, hom_visibility=0.95
     )
 
     # Compile the circuit using the resource-aware compiler
@@ -25,5 +23,5 @@ def test_resource_aware_compiler():
     processor = compiler.compile(qc)
 
     # Check if the analysis report is generated correctly
-    assert hasattr(processor, 'analysis_report'), "Processor should have an analysis report."
+    assert hasattr(processor, "analysis_report"), "Processor should have an analysis report."
     assert isinstance(processor.analysis_report, dict), "Analysis report should be a dictionary."

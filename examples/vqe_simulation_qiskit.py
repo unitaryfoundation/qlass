@@ -14,8 +14,8 @@ from qlass.quantum_chemistry import LiH_hamiltonian_tapered, brute_force_minimiz
 from qlass.utils import rotate_qubits
 from qlass.vqe import VQE
 
-warnings.simplefilter('ignore')
-warnings.filterwarnings('ignore')
+warnings.simplefilter("ignore")
+warnings.filterwarnings("ignore")
 
 
 def qiskit_executor(params: np.ndarray, pauli_string: str, shots: int = 4096) -> dict[str, int]:
@@ -33,9 +33,9 @@ def qiskit_executor(params: np.ndarray, pauli_string: str, shots: int = 4096) ->
     num_qubits = len(pauli_string)
 
     # 1. Create the variational ansatz circuit
-    ansatz = TwoLocal(num_qubits, 'ry', 'cx', reps=1, entanglement='linear')
+    ansatz = TwoLocal(num_qubits, "ry", "cx", reps=1, entanglement="linear")
     ansatz_assigned = ansatz.assign_parameters(params)
-    ansatz_transpiled = transpile(ansatz_assigned, basis_gates=['u3', 'cx'], optimization_level=3)
+    ansatz_transpiled = transpile(ansatz_assigned, basis_gates=["u3", "cx"], optimization_level=3)
 
     # 2. Apply basis-change rotations for measuring the Pauli string
     circuit = rotate_qubits(pauli_string, ansatz_transpiled.copy())
@@ -48,9 +48,11 @@ def qiskit_executor(params: np.ndarray, pauli_string: str, shots: int = 4096) ->
     result = simulator.run(circuit, shots=shots).result()
     counts = result.get_counts(0)
 
-    return {'counts': counts}
+    return {"counts": counts}
+
 
 # --- Main Execution ---
+
 
 def main():
     # Define a simple 2-qubit Hamiltonian (e.g., for H2 molecule)
@@ -69,11 +71,7 @@ def main():
     # Initialize the VQE solver with the Qiskit executor
     # For a TwoLocal with 'ry' and 'cx' and reps=1, params = (reps+1)*num_qubits
     num_params = (1 + 1) * num_qubits
-    vqe = VQE(
-        hamiltonian=hamiltonian,
-        executor=qiskit_executor,
-        num_params=num_params
-    )
+    vqe = VQE(hamiltonian=hamiltonian, executor=qiskit_executor, num_params=num_params)
 
     # Run the VQE optimization
     vqe_energy = vqe.run(max_iterations=25, verbose=True)
@@ -87,11 +85,13 @@ def main():
 
     # Plot convergence
     plt.figure(figsize=(10, 6))
-    plt.plot(range(len(vqe.energy_history)), vqe.energy_history, 'o-', label='VQE Energy (Qiskit Sim)')
-    plt.axhline(y=exact_energy, color='r', linestyle='--', label='Exact Energy')
-    plt.xlabel('Iteration')
-    plt.ylabel('Energy')
-    plt.title('VQE Convergence using Qiskit Executor')
+    plt.plot(
+        range(len(vqe.energy_history)), vqe.energy_history, "o-", label="VQE Energy (Qiskit Sim)"
+    )
+    plt.axhline(y=exact_energy, color="r", linestyle="--", label="Exact Energy")
+    plt.xlabel("Iteration")
+    plt.ylabel("Energy")
+    plt.title("VQE Convergence using Qiskit Executor")
     plt.grid(True, alpha=0.3)
     plt.legend()
     plt.show()

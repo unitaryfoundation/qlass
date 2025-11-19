@@ -10,8 +10,8 @@ from perceval.algorithm import Sampler
 from qlass.quantum_chemistry import LiH_hamiltonian, brute_force_minimize
 from qlass.vqe import VQE, le_ansatz
 
-warnings.simplefilter('ignore')
-warnings.filterwarnings('ignore')
+warnings.simplefilter("ignore")
+warnings.filterwarnings("ignore")
 
 
 # Define an executor function that uses the linear entangled ansatz
@@ -23,6 +23,7 @@ def executor(params, pauli_string):
     sampler = Sampler(processor)
     samples = sampler.samples(10_000)
     return samples
+
 
 def main():
     # Number of qubits
@@ -44,15 +45,12 @@ def main():
     vqe = VQE(
         hamiltonian=hamiltonian,
         executor=executor,
-        num_params=2*num_qubits, # Number of parameters in the linear entangled ansatz
+        num_params=2 * num_qubits,  # Number of parameters in the linear entangled ansatz
     )
 
     # Run the VQE optimization
     print("\nRunning VQE optimization...")
-    vqe_energy = vqe.run(
-        max_iterations=10,
-        verbose=True
-    )
+    vqe_energy = vqe.run(max_iterations=10, verbose=True)
 
     # Get the optimal parameters
     optimal_params = vqe.get_optimal_parameters()
@@ -72,15 +70,16 @@ def main():
     print("\nPlotting convergence history...")
     plt.figure(figsize=(10, 6))
     iterations = range(len(vqe.energy_history))
-    plt.plot(iterations, vqe.energy_history, 'o-', label='VQE Energy')
-    plt.axhline(y=exact_energy, color='r', linestyle='--', label='Exact Energy')
-    plt.xlabel('Iteration')
-    plt.ylabel('Energy')
-    plt.title('VQE Convergence')
+    plt.plot(iterations, vqe.energy_history, "o-", label="VQE Energy")
+    plt.axhline(y=exact_energy, color="r", linestyle="--", label="Exact Energy")
+    plt.xlabel("Iteration")
+    plt.ylabel("Energy")
+    plt.title("VQE Convergence")
     plt.legend()
     plt.grid(True, alpha=0.3)
-    plt.savefig('vqe_convergence.png')
+    plt.savefig("vqe_convergence.png")
     print("Convergence plot saved as 'vqe_convergence.png'")
+
 
 if __name__ == "__main__":
     main()
