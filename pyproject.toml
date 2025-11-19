@@ -44,6 +44,9 @@ test = [
 type-check = [
     "mypy>=1.13.0",
 ]
+lint = [
+    "ruff>=0.8.0",
+]
 docs = [
     "sphinx>=7",
     "sphinx-rtd-theme>=3",

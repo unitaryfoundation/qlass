@@ -11,6 +11,23 @@ permissions:
   contents: read
 
 jobs:
+  lint:
+      runs-on: ubuntu-latest
+      steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Run ruff linter
+        run: |
+          uv run --group lint -p 3.12 ruff check .
+
+      - name: Run ruff formatter check
+        run: |
+          uv run --group lint -p 3.12 ruff format --check .
+
   type-check:
     runs-on: ubuntu-latest
     steps:

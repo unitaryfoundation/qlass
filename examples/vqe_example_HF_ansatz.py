@@ -1,19 +1,18 @@
-import numpy as np
-from qlass.vqe import VQE
-from qlass.quantum_chemistry import LiH_hamiltonian, brute_force_minimize
-from perceval.algorithm import Sampler
 import warnings
-import matplotlib.pyplot as plt
+
+from perceval.algorithm import Sampler
+
+from qlass.quantum_chemistry import LiH_hamiltonian, brute_force_minimize
+from qlass.vqe import VQE
 from qlass.vqe.ansatz import hf_ansatz
 
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore")
 
 ham = LiH_hamiltonian(num_electrons=2, num_orbitals=1)
 
 
 # Define an executor function that uses the linear entangled ansatz
 def executor(params, pauli_string):
-
     processors = hf_ansatz(1, 1, params, pauli_string, method="WFT", cost="VQE")
     samplers = Sampler(processors)
     samples = samplers.samples(10_000)
@@ -29,13 +28,7 @@ vqe = VQE(
 )
 
 # Run the VQE optimization
-vqe_energy = vqe.run(
-    max_iterations=50,
-    verbose=True
-)
+vqe_energy = vqe.run(max_iterations=50, verbose=True)
 
 # Calculate the exact ground state energy for comparison
 exact_energy = brute_force_minimize(ham)
-
-
-

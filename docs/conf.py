@@ -7,23 +7,22 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 
-project = 'qlass'
-copyright = '2025, Farrokh Labib, Nathan Shammah'
-author = 'Farrokh Labib, Nathan Shammah'
-release = '0.2.0'
+project = "qlass"
+copyright = "2025, Farrokh Labib, Nathan Shammah"
+author = "Farrokh Labib, Nathan Shammah"
+release = "0.2.0"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = ["sphinx.ext.todo", "sphinx.ext.viewcode", "sphinx.ext.autodoc", "sphinx.ext.napoleon"]
 
-templates_path = ['_templates']
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
-
+templates_path = ["_templates"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'sphinx_rtd_theme'
+html_theme = "sphinx_rtd_theme"
 # html_static_path = ['_static']
