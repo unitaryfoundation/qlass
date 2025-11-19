@@ -1,35 +1,38 @@
-from typing import Optional, Union, Dict, Any
+from typing import Any
+
+import perceval as pcvl
+from perceval.components.unitary_components import BS, PS
 from perceval.converters import QiskitConverter
 from perceval.utils import NoiseModel
-import perceval as pcvl
 from qiskit import QuantumCircuit
-from qlass.compiler.hardware_config import HardwareConfig
-from perceval.components.unitary_components import PS, BS
 
-def compile(circuit: QuantumCircuit, 
-            backend_name: str = "Naive", 
-            use_postselection: bool = True, 
-            input_state: Optional[Union[pcvl.StateVector, pcvl.BasicState]] = None, 
+from qlass.compiler.hardware_config import HardwareConfig
+
+
+def compile(circuit: QuantumCircuit,
+            backend_name: str = "Naive",
+            use_postselection: bool = True,
+            input_state: pcvl.StateVector | pcvl.BasicState | None = None,
             noise_model: NoiseModel = None) -> pcvl.Processor:
     """
     Convert a Qiskit quantum circuit to a Perceval processor.
-    
+
     Args:
         circuit (QuantumCircuit): The Qiskit quantum circuit to convert
         backend_name (str): The backend to use for the Perceval processor
                            Options are: "Naive", "SLOS"
         use_postselection (bool): Whether to use postselection for the processor
-        input_state (Optional[Union[pcvl.StateVector, pcvl.BasicState]]): 
+        input_state (Optional[Union[pcvl.StateVector, pcvl.BasicState]]):
                     The input state for the processor. If None, the |0...0> state is used.
         noise_model (NoiseModel): A perceval NoiseModel object representing the noise model
                                  for the processor.
-    
+
     Returns:
         pcvl.Processor: The quantum circuit as a Perceval processor
     """
     # Initialize the Qiskit converter
     qiskit_converter = QiskitConverter(backend_name=backend_name, noise_model=noise_model)
-    
+
     # Convert the circuit to a Perceval processor
     processor = qiskit_converter.convert(circuit, use_postselection=use_postselection)
 
@@ -38,7 +41,7 @@ def compile(circuit: QuantumCircuit,
         processor.with_input(pcvl.LogicalState([0] * circuit.num_qubits))
     else:
         processor.with_input(input_state)
-    
+
     return processor
 
 
@@ -53,11 +56,11 @@ class ResourceAwareCompiler:
                                     indistinguishability=self.config.indistinguishability,
                                     g2=self.config.g2,
                                     g2_distinguishable=self.config.g2_distinguishable,
-                                    transmittance=self.config.transmittance, 
+                                    transmittance=self.config.transmittance,
                                     phase_imprecision=self.config.phase_imprecision,
                                     phase_error=self.config.phase_error)
         self.qiskit_converter = QiskitConverter(backend_name="Naive", noise_model=self.noise_model)
-        self.analysis_report: Dict[str, Any] = {}
+        self.analysis_report: dict[str, Any] = {}
 
     def _analyze(self, processor: pcvl.Processor, num_cnots: int) -> None:
         """Inspects the compiled Perceval processor and populates the analysis report."""
@@ -67,7 +70,7 @@ class ResourceAwareCompiler:
         # 1. Count components by iterating through the circuit
         num_ps = sum(1 for _, component in circuit if isinstance(component, PS))
         num_bs = sum(1 for _, component in circuit if isinstance(component, BS))
-    
+
         num_components = num_ps + num_bs # Simplified count
         num_modes = processor.m  # Total number of modes in the circuit
 
@@ -123,10 +126,10 @@ class ResourceAwareCompiler:
         # self.generate_report() # Automatically print the report after compilation
 
         # Attach the report to the processor object for programmatic access
-        setattr(processor, 'analysis_report', self.analysis_report)
+        processor.analysis_report = self.analysis_report
         return processor
 
-def generate_report(analysis_report: Dict[str, Any]) -> None:
+def generate_report(analysis_report: dict[str, Any]) -> None:
     """Prints the analysis report in a human-readable format."""
     print("\n--- qlass Resource-Aware Compiler Report ---")
 
@@ -139,7 +142,7 @@ def generate_report(analysis_report: Dict[str, Any]) -> None:
     survival_prob = report['probability_estimation']['photon_survival_prob']
     print(f"  Estimated Circuit Loss: {loss_db:.2f} dB")
     print(f"  Photon Survival Probability (due to loss): {survival_prob:.2%}")
-    
+
     overall_prob = report['probability_estimation']['overall_success_prob']
     print(f"  >> Estimated Overall Success Probability: {overall_prob:.4%}")
     print("     (This is the probability of getting a valid, post-selected result from a single shot)")

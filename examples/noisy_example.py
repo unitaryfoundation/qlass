@@ -5,22 +5,25 @@ simulated energy curve with the theoretical one.
 """
 
 import warnings
-warnings.simplefilter('ignore')
-warnings.filterwarnings('ignore')
 
-import numpy as np
 import matplotlib.pyplot as plt
-from tqdm import tqdm
+import numpy as np
 from perceval import LogicalState
 from perceval.algorithm import Sampler
 from qiskit import transpile
 from qiskit.circuit.library import TwoLocal
+from tqdm import tqdm
+
+from qlass.compiler import HardwareConfig, ResourceAwareCompiler
 
 # Imports from the qlass library
 from qlass.quantum_chemistry import LiH_hamiltonian_tapered, brute_force_minimize
-from qlass.vqe import VQE
-from qlass.compiler import HardwareConfig, ResourceAwareCompiler
 from qlass.utils import rotate_qubits
+from qlass.vqe import VQE
+
+warnings.simplefilter('ignore')
+warnings.filterwarnings('ignore')
+
 
 # Define an executor function that uses the TwoLocal ansatz
 def executor(params, pauli_string):
@@ -31,14 +34,14 @@ def executor(params, pauli_string):
     # Create the TwoLocal ansatz circuit
     num_qubits = len(pauli_string)
     ansatz = TwoLocal(num_qubits, 'ry', 'cx', reps=1)
-    
+
     # Assign parameters to the ansatz
     ansatz_assigned = ansatz.assign_parameters(params)
     ansatz_transpiled = transpile(ansatz_assigned, basis_gates=['u3', 'cx'], optimization_level=3)
-    
+
     # Apply rotation for Pauli measurement
     ansatz_rot = rotate_qubits(pauli_string, ansatz_transpiled.copy())
-    
+
     # Define hardware configuration for the example photonic chip
     chip_config = HardwareConfig(
         brightness=0.09,
@@ -49,14 +52,14 @@ def executor(params, pauli_string):
         phase_imprecision=0.02,
         phase_error=0.02
     )
-    
+
     # Compile with ResourceAwareCompiler
     compiler = ResourceAwareCompiler(config=chip_config)
     processor = compiler.compile(ansatz_rot)
 
     # Set the input state
     processor.with_input(LogicalState([0]*num_qubits))
-    
+
     # Run the sampler
     sampler = Sampler(processor)
     samples = sampler.samples(10_000)
@@ -66,12 +69,12 @@ def main():
     """
     Main function to run the VQE simulation and plot the results.
     """
-    
+
     # 1. Define the range of bond radii to simulate
     radii = np.linspace(0.5, 2.5, 15)
     exact_energies = []
     vqe_energies = []
-    
+
     # The tapered LiH Hamiltonian has 4 qubits
     num_qubits = 4
     # The le_ansatz uses a TwoLocal circuit with reps=1, so num_params = (1+1)*num_qubits
@@ -86,7 +89,7 @@ def main():
         # Calculate the exact ground state energy for the theoretical curve
         exact_energy = brute_force_minimize(hamiltonian)
         exact_energies.append(exact_energy)
-        
+
         # Initialize the VQE solver
         vqe = VQE(
             hamiltonian=hamiltonian,
@@ -104,13 +107,13 @@ def main():
     # 3. Plot the results
     plt.style.use('seaborn-v0_8-whitegrid')
     plt.figure(figsize=(12, 7))
-    
+
     # Plot theoretical (exact) energy curve
     plt.plot(radii, exact_energies, 'bo', label='Exact Theoretical Energy', linewidth=2)
-    
+
     # Plot noisy VQE simulation results
     plt.plot(radii, vqe_energies, 'ro', label='Noisy VQE Simulation', markersize=8)
-    
+
     plt.xlabel('Internuclear Distance (Å)', fontsize=14)
     plt.ylabel('Energy (Hartree)', fontsize=14)
     plt.title('Noisy VQE Simulation of LiH Molecule', fontsize=16)

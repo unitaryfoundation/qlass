@@ -1,9 +1,10 @@
-from typing import List, Dict, Callable, Optional, Any
-import numpy as np
-from scipy.optimize import minimize, OptimizeResult
-import matplotlib.pyplot as plt
+from collections.abc import Callable
 
-from qlass.utils import loss_function, e_vqe_loss_function
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.optimize import OptimizeResult, minimize
+
+from qlass.utils import e_vqe_loss_function, loss_function
 from qlass.utils.utils import DataCollector
 
 
@@ -16,14 +17,14 @@ class VQE:
     """
 
     def __init__(
-        self, 
-        hamiltonian: Dict[str, float],
+        self,
+        hamiltonian: dict[str, float],
         executor: Callable,
         num_params: int,
         optimizer: str = "COBYLA",
         executor_type: str = 'sampling',
-        initial_state: Optional[np.ndarray] = None, # For now only relevant for photonic_unitary,
-        ancillary_modes: Optional[List[int]] = None,
+        initial_state: np.ndarray | None = None, # For now only relevant for photonic_unitary,
+        ancillary_modes: list[int] | None = None,
     ):
         """
         Initialize the VQE solver.
@@ -34,11 +35,11 @@ class VQE:
             executor (Callable): Custom executor function, if None, a default one will be created
             num_params (int): number of parameters that the executor accepts
             optimizer (str): Optimization method to use. Any method supported by scipy.optimize.minimize
-            executor_type (str): Type of executor. 
+            executor_type (str): Type of executor.
                 - "sampling": Uses measurement-based sampling.
                 - "qubit_unitary": For qubit-based simulations (e.g., standard circuit-based quantum computing).
-                - "photonic_unitary": For photonic quantum computing, 
-                where the initial state and ancillary modes may be relevant for post-selection. 
+                - "photonic_unitary": For photonic quantum computing,
+                where the initial state and ancillary modes may be relevant for post-selection.
                 Use this when simulating photonic systems or when post-selection on ancillary modes is required.
             ancillary_modes (List[int], optional): List of ancillary mode indices
                 for post-selection when using 'photonic_unitary' executor.
@@ -60,10 +61,10 @@ class VQE:
             raise ValueError(f"Invalid executor_type: {executor_type}. Must be either sampling, qubit_unitary or photonic_unitary.")
 
         # Results storage
-        self.optimization_result: Optional[OptimizeResult] = None
-        self.energy_history: List[float] = []
-        self.parameter_history: List[np.ndarray] = []
-        self.loss_history: List[float] = []
+        self.optimization_result: OptimizeResult | None = None
+        self.energy_history: list[float] = []
+        self.parameter_history: list[np.ndarray] = []
+        self.loss_history: list[float] = []
         self.energy_collector = DataCollector()
 
     def _callback(self, params: np.ndarray, cost_type: str = "VQE", weight_option: str = "weighted") -> None:
@@ -98,7 +99,7 @@ class VQE:
         self.parameter_history.append(params.copy())
 
 
-    def run(self, initial_params: Optional[np.ndarray] = None, max_iterations: int = 100, verbose: bool = True, weight_option: str = "weighted",
+    def run(self, initial_params: np.ndarray | None = None, max_iterations: int = 100, verbose: bool = True, weight_option: str = "weighted",
             cost: str = "VQE") -> float:
         """
         Run a Variational Quantum Eigensolver (VQE) or ensemble-VQE optimization to find
@@ -210,7 +211,7 @@ class VQE:
 
         if verbose:
             assert self.optimization_result is not None
-            print(f"Optimization complete!")
+            print("Optimization complete!")
             print(f"Final energy: {self.optimization_result.fun:.6f}")
             print(f"Number of iterations: {self.optimization_result.nfev}")
 
@@ -223,7 +224,7 @@ class VQE:
             raise ValueError("VQE optimization has not been run yet.")
         return np.asarray(self.optimization_result.x)
 
-    def plot_convergence(self, exact_energy: Optional[float] = None) -> None:
+    def plot_convergence(self, exact_energy: float | None = None) -> None:
         """
         Plot the energy convergence during the optimization.
 
@@ -247,7 +248,7 @@ class VQE:
         plt.grid(True, alpha=0.3)
         plt.show()
 
-    def compare_with_exact(self, exact_energy: Optional[float] = None) -> Dict[str, float]:
+    def compare_with_exact(self, exact_energy: float | None = None) -> dict[str, float]:
         """
         Compare the VQE result with the exact ground state energy.
 

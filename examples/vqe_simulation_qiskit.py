@@ -3,19 +3,19 @@ VQE simulations of larger Hamiltonians using the VQE class.
 """
 
 import warnings
-warnings.simplefilter('ignore')
-warnings.filterwarnings('ignore')
 
-import numpy as np
 import matplotlib.pyplot as plt
-
-from qlass.quantum_chemistry import LiH_hamiltonian_tapered, brute_force_minimize
-from qlass.vqe import VQE, le_ansatz
-from qlass.utils import rotate_qubits
-
+import numpy as np
 from qiskit import transpile
 from qiskit.circuit.library import TwoLocal
 from qiskit_aer import AerSimulator
+
+from qlass.quantum_chemistry import LiH_hamiltonian_tapered, brute_force_minimize
+from qlass.utils import rotate_qubits
+from qlass.vqe import VQE
+
+warnings.simplefilter('ignore')
+warnings.filterwarnings('ignore')
 
 
 def qiskit_executor(params: np.ndarray, pauli_string: str, shots: int = 4096) -> dict[str, int]:
@@ -31,7 +31,7 @@ def qiskit_executor(params: np.ndarray, pauli_string: str, shots: int = 4096) ->
         Dict[str, int]: A dictionary of measurement counts, e.g., {'01': 2048, '10': 2048}.
     """
     num_qubits = len(pauli_string)
-    
+
     # 1. Create the variational ansatz circuit
     ansatz = TwoLocal(num_qubits, 'ry', 'cx', reps=1, entanglement='linear')
     ansatz_assigned = ansatz.assign_parameters(params)
@@ -42,12 +42,12 @@ def qiskit_executor(params: np.ndarray, pauli_string: str, shots: int = 4096) ->
 
     # 3. Add measurement gates
     circuit.measure_all()
-    
+
     # 4. Run the simulation and get counts
     simulator = AerSimulator()
     result = simulator.run(circuit, shots=shots).result()
     counts = result.get_counts(0)
-    
+
     return {'counts': counts}
 
 # --- Main Execution ---
@@ -57,7 +57,7 @@ def main():
     # hamiltonian = LiH_hamiltonian(num_electrons=2, num_orbitals=2)
     hamiltonian = LiH_hamiltonian_tapered(R=0.1)
     num_qubits = 4
-    
+
     # Calculate exact ground state energy for comparison
     exact_energy = brute_force_minimize(hamiltonian)
 
@@ -68,20 +68,19 @@ def main():
 
     # Initialize the VQE solver with the Qiskit executor
     # For a TwoLocal with 'ry' and 'cx' and reps=1, params = (reps+1)*num_qubits
-    num_params = (1 + 1) * num_qubits 
+    num_params = (1 + 1) * num_qubits
     vqe = VQE(
         hamiltonian=hamiltonian,
         executor=qiskit_executor,
         num_params=num_params
     )
-    
+
     # Run the VQE optimization
     vqe_energy = vqe.run(max_iterations=25, verbose=True)
-    
+
     # Get and print results
-    optimal_params = vqe.get_optimal_parameters()
     comparison = vqe.compare_with_exact(exact_energy)
-    
+
     print("\n--- Qiskit VQE Results ---")
     print(f"Final VQE energy: {vqe_energy:.6f}")
     print(f"Energy difference: {comparison['absolute_error']:.6f}")

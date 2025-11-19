@@ -1,20 +1,19 @@
-from perceval.converters import QiskitConverter
+import numpy as np
+import perceval as pcvl
+from perceval.components import Processor
 from perceval.utils import NoiseModel
-from qiskit import transpile, QuantumCircuit
+from qiskit import QuantumCircuit, transpile
 from qiskit.circuit.library import n_local
 from qiskit.quantum_info import Statevector
-import perceval as pcvl
-import numpy as np
-from perceval.components import Processor
-from qlass.utils import rotate_qubits
+
 from qlass.compiler import compile
-from typing import List, Optional, Union
+from qlass.utils import rotate_qubits
 
 
-def le_ansatz(lp: np.ndarray, pauli_string: str, noise_model: Optional[NoiseModel] = None) -> Processor:
+def le_ansatz(lp: np.ndarray, pauli_string: str, noise_model: NoiseModel | None = None) -> Processor:
     """
     Creates Perceval quantum processor for the Linear Entangled Ansatz.
-    This ansatz consists of a layer of parametrized rotations, followed by 
+    This ansatz consists of a layer of parametrized rotations, followed by
     a layer of CNOT gates, and finally another layer of parametrized rotations.
 
     Args:
@@ -32,17 +31,17 @@ def le_ansatz(lp: np.ndarray, pauli_string: str, noise_model: Optional[NoiseMode
     ansatz_transpiled = transpile(ansatz_assigned, basis_gates=['u3', 'cx'], optimization_level=3)
 
     ansatz_rot = rotate_qubits(pauli_string, ansatz_transpiled.copy())
-    processor = compile(ansatz_rot, input_state=pcvl.LogicalState([0]*num_qubits), noise_model=noise_model)  
+    processor = compile(ansatz_rot, input_state=pcvl.LogicalState([0]*num_qubits), noise_model=noise_model)
 
     return processor
 
-def custom_unitary_ansatz(lp: np.ndarray, 
-                          pauli_string: str, 
-                          U: np.ndarray, 
-                          noise_model: Optional[NoiseModel] = None) -> Processor:
+def custom_unitary_ansatz(lp: np.ndarray,
+                          pauli_string: str,
+                          U: np.ndarray,
+                          noise_model: NoiseModel | None = None) -> Processor:
     """
     Creates Perceval quantum processor that directly implements a given unitary matrix.
-    This function serves as a custom ansatz that bypasses circuit construction and instead 
+    This function serves as a custom ansatz that bypasses circuit construction and instead
     loads a full unitary matrix representing the quantum operation.
 
     The unitary is embedded in a Qiskit QuantumCircuit, converted to Perceval format,
@@ -75,7 +74,7 @@ def custom_unitary_ansatz(lp: np.ndarray,
     return processor
 
 
-def list_of_ones(computational_basis_state: int, n_qubits: int) -> List[int]:
+def list_of_ones(computational_basis_state: int, n_qubits: int) -> list[int]:
     """
     Return the indices of ones in the binary expansion of an integer, in big-endian order.
 
@@ -104,7 +103,7 @@ def list_of_ones(computational_basis_state: int, n_qubits: int) -> List[int]:
 
 
 
-def hf_ansatz(layers: int, n_orbs: int, lp: np.ndarray, pauli_string: str, method: str, cost: str = "VQE", noise_model: Optional[NoiseModel] = None) -> Union[Processor, List[Processor]]:
+def hf_ansatz(layers: int, n_orbs: int, lp: np.ndarray, pauli_string: str, method: str, cost: str = "VQE", noise_model: NoiseModel | None = None) -> Processor | list[Processor]:
     """
         Build a Hartree–Fock-based variational ansatz using Qiskit's ``n_local`` circuit,
         combined with initial reference states and compiled into Perceval processors.
@@ -159,7 +158,8 @@ def hf_ansatz(layers: int, n_orbs: int, lp: np.ndarray, pauli_string: str, metho
 
     initial_circuits = []
 
-    for i in range(n_occ): initial_circuits += [QuantumCircuit(num_qubits)]
+    for _i in range(n_occ):
+        initial_circuits += [QuantumCircuit(num_qubits)]
     '''Intial states'''
     for state in range(n_occ):  # binarystring representation of the integer
         for i in list_of_ones(state, num_qubits):
@@ -196,7 +196,7 @@ def hf_ansatz(layers: int, n_orbs: int, lp: np.ndarray, pauli_string: str, metho
 
     ansatz_rot = [rotate_qubits(pauli_string, at.copy()) for at in ansatz_transpiled]
 
-    processors = [compile(ar, input_state=st, noise_model=noise_model) for ar, st in zip(ansatz_rot, intial_states)]
+    processors = [compile(ar, input_state=st, noise_model=noise_model) for ar, st in zip(ansatz_rot, intial_states, strict=False)]
     if cost == "VQE":
         return processors[0]
     elif cost == "e-VQE":

@@ -1,9 +1,9 @@
-import numpy as np
-from qlass.vqe import VQE
-from qlass.quantum_chemistry import LiH_hamiltonian, brute_force_minimize
-from perceval.algorithm import Sampler
 import warnings
-import matplotlib.pyplot as plt
+
+from perceval.algorithm import Sampler
+
+from qlass.quantum_chemistry import LiH_hamiltonian, brute_force_minimize
+from qlass.vqe import VQE
 from qlass.vqe.ansatz import hf_ansatz
 
 warnings.filterwarnings('ignore')
@@ -36,6 +36,3 @@ vqe_energy = vqe.run(
 
 # Calculate the exact ground state energy for comparison
 exact_energy = brute_force_minimize(ham)
-
-
-

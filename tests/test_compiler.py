@@ -1,5 +1,7 @@
-from qlass.compiler import ResourceAwareCompiler, HardwareConfig
 from qiskit import QuantumCircuit
+
+from qlass.compiler import HardwareConfig, ResourceAwareCompiler
+
 
 def test_resource_aware_compiler():
     """
