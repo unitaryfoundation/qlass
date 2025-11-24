@@ -7,8 +7,6 @@ from qlass.vqe.ansatz import hf_ansatz
 from perceval.algorithm import Sampler
 warnings.filterwarnings('ignore')
 
-warnings.filterwarnings('ignore')
-
 ham = Hchain_hamiltonian_WFT(2, 0.741)
 
 print("Printing Hamiltonian",ham)
