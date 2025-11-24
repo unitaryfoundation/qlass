@@ -1,44 +1,45 @@
-from qlass.quantum_chemistry import (
-    LiH_hamiltonian,
-    generate_random_hamiltonian,
-    LiH_hamiltonian_tapered,
-    pauli_string_to_matrix,
-    hamiltonian_matrix,
-    Hchain_KS_hamiltonian,
-    transformation_Hmatrix_Hqubit,
-    brute_force_minimize,
-    eig_decomp_lanczos,
-    lanczos,
-    group_commuting_pauli_terms_openfermion_hybrid,
-    pauli_commute
-)
-import numpy as np
-from typing import Dict
-import pytest
-from openfermion import QubitOperator
 import warnings
 
-warnings.simplefilter('ignore')
-warnings.filterwarnings('ignore')
+import numpy as np
+import pytest
+from openfermion import QubitOperator
+
+from qlass.quantum_chemistry import (
+    Hchain_KS_hamiltonian,
+    LiH_hamiltonian,
+    LiH_hamiltonian_tapered,
+    brute_force_minimize,
+    eig_decomp_lanczos,
+    generate_random_hamiltonian,
+    group_commuting_pauli_terms_openfermion_hybrid,
+    hamiltonian_matrix,
+    lanczos,
+    pauli_commute,
+    pauli_string_to_matrix,
+    transformation_Hmatrix_Hqubit,
+)
+
+warnings.simplefilter("ignore")
+warnings.filterwarnings("ignore")
 
 
 def test_pauli_string_to_matrix():
     """
     Tests the conversion of Pauli strings to their matrix representations.
     """
-    I = np.eye(2, dtype=complex)
+    I_pauli = np.eye(2, dtype=complex)
     X = np.array([[0, 1], [1, 0]], dtype=complex)
     Y = np.array([[0, -1j], [1j, 0]], dtype=complex)
     Z = np.array([[1, 0], [0, -1]], dtype=complex)
 
     # Test single-qubit operators
-    assert np.allclose(pauli_string_to_matrix("I"), I)
+    assert np.allclose(pauli_string_to_matrix("I"), I_pauli)
     assert np.allclose(pauli_string_to_matrix("X"), X)
     assert np.allclose(pauli_string_to_matrix("Y"), Y)
     assert np.allclose(pauli_string_to_matrix("Z"), Z)
 
     # Test two-qubit operators (tensor product)
-    assert np.allclose(pauli_string_to_matrix("IX"), np.kron(I, X))
+    assert np.allclose(pauli_string_to_matrix("IX"), np.kron(I_pauli, X))
     assert np.allclose(pauli_string_to_matrix("ZY"), np.kron(Z, Y))
     assert np.allclose(pauli_string_to_matrix("XX"), np.kron(X, X))
 
@@ -73,10 +74,7 @@ def test_brute_force_minimize():
     # Eigenvalues of XX are +1, +1, -1, -1
     # Eigenvalues of IZ are +1, -1, +1, -1
     # This Hamiltonian's ground state energy is known to be approx -0.5385
-    hamiltonian_2q = {
-        "XX": 0.5,
-        "IZ": 0.2
-    }
+    hamiltonian_2q = {"XX": 0.5, "IZ": 0.2}
     # Using numpy to get the exact value for comparison
     exact_min_eig = np.min(np.linalg.eigvalsh(hamiltonian_matrix(hamiltonian_2q)))
 
@@ -119,12 +117,9 @@ def test_lanczos_tridiagonalization():
     """
     # 1. Set up a sample Hermitian matrix and initial vector
     dim = 4
-    A = np.array([
-        [2, -1, 0, 0],
-        [-1, 2, -1, 0],
-        [0, -1, 2, -1],
-        [0, 0, -1, 2]
-    ], dtype=np.complex128)
+    A = np.array(
+        [[2, -1, 0, 0], [-1, 2, -1, 0], [0, -1, 2, -1], [0, 0, -1, 2]], dtype=np.complex128
+    )
 
     v_init = np.random.rand(dim).astype(np.complex128)
     m = dim  # Use full number of iterations for a complete basis
@@ -173,7 +168,7 @@ def test_lanczos_early_exit():
     assert np.count_nonzero(T) == 1
 
 
-def check_hamiltonian_structure(hamiltonian: Dict[str, float], expected_num_qubits: int):
+def check_hamiltonian_structure(hamiltonian: dict[str, float], expected_num_qubits: int):
     """
     Internal helper function to check common properties of a Hamiltonian dictionary.
     """
@@ -188,10 +183,12 @@ def check_hamiltonian_structure(hamiltonian: Dict[str, float], expected_num_qubi
         # If pauli_string is empty, it's an identity term, length check might not apply or num_qubits is 0.
         # The sparsepauliop_dictionary creates 'I'*num_qubits for empty OpenFermion terms.
         # So, the length should always match expected_num_qubits IF sparsepauliop_dictionary worked as intended.
-        assert len(pauli_string) == expected_num_qubits, \
+        assert len(pauli_string) == expected_num_qubits, (
             f"Pauli string '{pauli_string}' has incorrect length. Expected {expected_num_qubits}, got {len(pauli_string)}."
-        assert all(c in 'IXYZ' for c in pauli_string), \
+        )
+        assert all(c in "IXYZ" for c in pauli_string), (
             f"Pauli string '{pauli_string}' contains invalid characters."
+        )
         assert isinstance(coeff, float), f"Coefficient for '{pauli_string}' should be a float."
 
 
@@ -206,15 +203,18 @@ def test_LiH_hamiltonian_generation_and_properties():
     expected_qubits1 = num_orbitals1 * 2
     hamiltonian1 = LiH_hamiltonian(R=R1, num_electrons=num_electrons1, num_orbitals=num_orbitals1)
     check_hamiltonian_structure(hamiltonian1, expected_qubits1)
-    assert any(key.count('I') == expected_qubits1 for key in hamiltonian1.keys()), "Identity term usually present."
+    assert any(key.count("I") == expected_qubits1 for key in hamiltonian1), (
+        "Identity term usually present."
+    )
 
     # Test case 2: Minimal active space (2 electrons, 1 orbital -> 2 qubits)
     num_electrons2, num_orbitals2 = 2, 1
     expected_qubits2 = num_orbitals2 * 2
     hamiltonian2 = LiH_hamiltonian(R=R1, num_electrons=num_electrons2, num_orbitals=num_orbitals2)
     check_hamiltonian_structure(hamiltonian2, expected_qubits2)
-    assert any(
-        key != 'I' * expected_qubits2 for key in hamiltonian2.keys()), "Hamiltonian should contain non-Identity terms."
+    assert any(key != "I" * expected_qubits2 for key in hamiltonian2), (
+        "Hamiltonian should contain non-Identity terms."
+    )
 
     # Test case 3: Different bond length with minimal active space
     R2 = 2.0
@@ -228,7 +228,9 @@ def test_LiH_hamiltonian_generation_and_properties():
             if not np.isclose(hamiltonian2[key], hamiltonian3[key], atol=1e-6):
                 all_coeffs_same = False
                 break
-        assert not all_coeffs_same, "Hamiltonian coefficients should differ for different bond lengths."
+        assert not all_coeffs_same, (
+            "Hamiltonian coefficients should differ for different bond lengths."
+        )
     # else: if keys are different, hamiltonians are different, which is fine.
 
 
@@ -240,8 +242,9 @@ def test_generate_random_hamiltonian_structure():
         hamiltonian = generate_random_hamiltonian(num_qubits=num_qubits_test)
         check_hamiltonian_structure(hamiltonian, num_qubits_test)
         # Expect 4^num_qubits terms as all Pauli strings are generated
-        assert len(hamiltonian) == 4 ** num_qubits_test, \
-            f"Expected {4 ** num_qubits_test} terms for {num_qubits_test} qubits, got {len(hamiltonian)}."
+        assert len(hamiltonian) == 4**num_qubits_test, (
+            f"Expected {4**num_qubits_test} terms for {num_qubits_test} qubits, got {len(hamiltonian)}."
+        )
 
 
 def test_LiH_hamiltonian_tapered_structure():
@@ -255,14 +258,18 @@ def test_LiH_hamiltonian_tapered_structure():
         assert hamiltonian, "Tapered Hamiltonian should not be empty."
         actual_num_qubits = len(next(iter(hamiltonian.keys())))
         check_hamiltonian_structure(hamiltonian, actual_num_qubits)
-        assert actual_num_qubits in [4, 6], \
+        assert actual_num_qubits in [4, 6], (
             f"Tapered Hamiltonian has unexpected qubit count: {actual_num_qubits}. Expected 4 or 6."
+        )
     except Exception as e:
         # This might occur if PySCF/OpenFermion encounters issues with the specific active space.
         # For CI purposes, this might be treated as a skip or warning rather than outright failure
         # if the issue is confirmed to be external library setup or specific molecular configuration.
-        warnings.warn(f"LiH_hamiltonian_tapered raised an exception during test: {e}. "
-                      "This might indicate an issue with PySCF/OpenFermion setup or the chosen active space for LiH STO-3G.")
+        warnings.warn(
+            f"LiH_hamiltonian_tapered raised an exception during test: {e}. "
+            "This might indicate an issue with PySCF/OpenFermion setup or the chosen active space for LiH STO-3G.",
+            stacklevel=2,
+        )
         # Depending on strictness, you might assert False here or pass with warning.
         # For now, let's pass with a warning to avoid test failures due to complex QM calculations.
         pass
@@ -274,7 +281,9 @@ def check_groups(groups):
         terms = list(group.keys())
         for i in range(len(terms)):
             for j in range(i + 1, len(terms)):
-                assert pauli_commute(terms[i], terms[j]), f"{terms[i]} and {terms[j]} do not commute"
+                assert pauli_commute(terms[i], terms[j]), (
+                    f"{terms[i]} and {terms[j]} do not commute"
+                )
 
 
 def test_hybrid_grouping_openfermion_success():
@@ -287,7 +296,7 @@ def test_hybrid_grouping_openfermion_success():
         "ZI": -1.0,
         "ZZ": 0.5,  # This group can be measured in the Z-basis
         "XX": 0.2,  # This group requires a change to the X-basis
-        "XI": -0.3  # This also requires a change to the X-basis
+        "XI": -0.3,  # This also requires a change to the X-basis
     }
 
     groups = group_commuting_pauli_terms_openfermion_hybrid(hamiltonian)
@@ -313,7 +322,7 @@ def test_Hchain_KS_hamiltonian(monkeypatch):
 
     # Basic checks
     assert isinstance(H_qubit_dic, dict)
-    assert all(isinstance(k, str) for k in H_qubit_dic.keys())
+    assert all(isinstance(k, str) for k in H_qubit_dic)
     assert all(np.isreal(v) or np.iscomplex(v) for v in H_qubit_dic.values())
 
     assert isinstance(mo_energy, (list, np.ndarray))
@@ -337,7 +346,7 @@ def test_transformation_Hmatrix_Hqubit():
     terms = list(H_qubit.terms.items())
     assert len(terms) == 1
     pauli_term, coeff = terms[0]
-    assert pauli_term == ((0, 'Z'),)
+    assert pauli_term == ((0, "Z"),)
     assert np.isclose(coeff.real, 1.0, atol=1e-12)
     assert np.isclose(coeff.imag, 0.0, atol=1e-12)
 
@@ -348,8 +357,8 @@ def test_hybrid_grouping_fallback_behavior(mocker):
     """
     # Mock the OpenFermion import to trigger the fallback to the custom implementation
     mocker.patch(
-        'openfermion.measurements.group_into_tensor_product_basis_sets',
-        side_effect=ImportError("Simulating OpenFermion not found")
+        "openfermion.measurements.group_into_tensor_product_basis_sets",
+        side_effect=ImportError("Simulating OpenFermion not found"),
     )
 
     # Define a Hamiltonian. The custom grouper will find all mutually commuting terms.
@@ -357,7 +366,7 @@ def test_hybrid_grouping_fallback_behavior(mocker):
         "XX": 1.0,
         "YY": 1.0,  # XX and YY commute
         "XI": 0.5,  # XI does not commute with YY
-        "IZ": -0.5  # IZ commutes with all of the above
+        "IZ": -0.5,  # IZ commutes with all of the above
     }
 
     groups = group_commuting_pauli_terms_openfermion_hybrid(hamiltonian)
