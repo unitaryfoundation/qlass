@@ -1,6 +1,11 @@
+# Standard library
 import warnings
+
+# Third-party packages
 import numpy as np
 import matplotlib.pyplot as plt
+
+# Local or project-specific imports
 from qlass.quantum_chemistry.hamiltonians import Hchain_hamiltonian_WFT, hamiltonian_matrix
 from qlass.vqe import VQE
 from qlass.vqe.ansatz import hf_ansatz
