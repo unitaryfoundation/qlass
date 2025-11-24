@@ -570,11 +570,7 @@ Construct the qubit Hamiltonian for a linear hydrogen chain (Hₙ) using
 
     """
 
-    # Create geometry in OpenFermion format
-    from pyscf import gto, scf
     geometry = []
-    numberof_qubits = int(np.log2(n_hydrogens))
-
     for d in range(n_hydrogens // 2):
         geometry.append(('H', (0.0, 0.0, - (R / 2. + d * R))))
         geometry.append(('H', (0.0, 0.0, + (R / 2. + d * R))))
@@ -595,7 +591,6 @@ Construct the qubit Hamiltonian for a linear hydrogen chain (Hₙ) using
 
     # Apply active space transformation
     # Calculate core orbitals to freeze
-    total_electrons = molecule.n_electrons
     n_core_orbitals = 0
     occupied_indices = list(range(n_core_orbitals))
 
