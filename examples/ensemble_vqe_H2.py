@@ -1,7 +1,6 @@
 import numpy as np
-from qlass.quantum_chemistry.hamiltonians import Hchain_hamiltonian_WFT
+from qlass.quantum_chemistry.hamiltonians import Hchain_hamiltonian_WFT, hamiltonian_matrix
 from qlass.vqe import VQE
-from qlass.quantum_chemistry import LiH_hamiltonian, brute_force_minimize, Hchain_KS_hamiltonian, hamiltonian_matrix
 from perceval.algorithm import Sampler
 import warnings
 import matplotlib.pyplot as plt
