@@ -2,14 +2,15 @@
 import warnings
 
 # Third-party packages
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 # Local or project-specific imports
+from perceval.algorithm import Sampler
 from qlass.quantum_chemistry.hamiltonians import Hchain_hamiltonian_WFT, hamiltonian_matrix
 from qlass.vqe import VQE
 from qlass.vqe.ansatz import hf_ansatz
-from perceval.algorithm import Sampler
+
 warnings.filterwarnings('ignore')
 
 ham = Hchain_hamiltonian_WFT(2, 0.741)
