@@ -3,7 +3,6 @@ import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
-
 from perceval.algorithm import Sampler
 
 from qlass.quantum_chemistry.hamiltonians import Hchain_hamiltonian_WFT, hamiltonian_matrix
