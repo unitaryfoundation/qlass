@@ -386,6 +386,7 @@ def test_hybrid_grouping_fallback_behavior(mocker):
 
 def test_Hchain_hamiltonian_WFT():
     from qlass.quantum_chemistry.hamiltonians import Hchain_hamiltonian_WFT
+
     ham = Hchain_hamiltonian_WFT(2, 0.741)
     # Basic checks
     assert isinstance(ham, dict)

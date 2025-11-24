@@ -522,69 +522,75 @@ def transformation_Hmatrix_Hqubit(Hmatrix: np.ndarray, nqubits: int) -> QubitOpe
     return H_qubit
 
 
-def Hchain_hamiltonian_WFT(n_hydrogens: int = 2, R: float = 0.8, charge: int = 0, spin: int = 0, num_electrons: int = 2, num_orbitals: int = 2) -> dict[str, float]:
+def Hchain_hamiltonian_WFT(
+    n_hydrogens: int = 2,
+    R: float = 0.8,
+    charge: int = 0,
+    spin: int = 0,
+    num_electrons: int = 2,
+    num_orbitals: int = 2,
+) -> dict[str, float]:
     """
-Construct the qubit Hamiltonian for a linear hydrogen chain (Hₙ) using
-    wavefunction-based methods.
+    Construct the qubit Hamiltonian for a linear hydrogen chain (Hₙ) using
+        wavefunction-based methods.
 
-    This function builds the molecular geometry, performs a PySCF electronic
-    structure calculation through OpenFermion, extracts an active-space molecular
-    Hamiltonian, and maps it to a qubit Hamiltonian.
+        This function builds the molecular geometry, performs a PySCF electronic
+        structure calculation through OpenFermion, extracts an active-space molecular
+        Hamiltonian, and maps it to a qubit Hamiltonian.
 
-    Nuclear repulsion energy is included manually. The resulting Hamiltonian is
-    returned as a dictionary mapping Pauli strings to coefficients.
+        Nuclear repulsion energy is included manually. The resulting Hamiltonian is
+        returned as a dictionary mapping Pauli strings to coefficients.
 
-    Parameters
-    ----------
-    n_hydrogens : int, optional
-        Number of hydrogen atoms in the linear chain. Must be even, as atoms
-        are paired symmetrically about the origin. Default is ``2``.
-    R : float, optional
-        Bond length between adjacent hydrogens in ångström. Default is ``0.8``.
-    charge : int, optional
-        Total molecular charge. Default is ``0``.
-    spin : int, optional
-        Spin multiplicity parameter such that multiplicity = ``2S + 1``.
-        For example, ``spin=0`` corresponds to a singlet. Default is ``0``.
-    num_electrons : int, optional
-        Number of electrons.
-        Default is ``2``.
-    num_orbitals : int, optional
-        Number of spatial molecular orbitals.
-        Default is ``2``.
+        Parameters
+        ----------
+        n_hydrogens : int, optional
+            Number of hydrogen atoms in the linear chain. Must be even, as atoms
+            are paired symmetrically about the origin. Default is ``2``.
+        R : float, optional
+            Bond length between adjacent hydrogens in ångström. Default is ``0.8``.
+        charge : int, optional
+            Total molecular charge. Default is ``0``.
+        spin : int, optional
+            Spin multiplicity parameter such that multiplicity = ``2S + 1``.
+            For example, ``spin=0`` corresponds to a singlet. Default is ``0``.
+        num_electrons : int, optional
+            Number of electrons.
+            Default is ``2``.
+        num_orbitals : int, optional
+            Number of spatial molecular orbitals.
+            Default is ``2``.
 
-    Returns
-    -------
-    Dict[str, float]
-        A dictionary representing the qubit Hamiltonian, where keys are
-        Pauli strings (e.g., ``"XIZY"``) and values are real coefficients.
+        Returns
+        -------
+        Dict[str, float]
+            A dictionary representing the qubit Hamiltonian, where keys are
+            Pauli strings (e.g., ``"XIZY"``) and values are real coefficients.
 
-    Notes
-    -----
-    - Geometry is generated as a symmetric linear chain along the z-axis.
-    - PySCF is used to compute SCF and FCI energies through OpenFermion.
-    - Active-space selection freezes no core orbitals.
-    - The Hamiltonian is mapped to qubits using the symmetry-conserving
-      Bravyi–Kitaev transformation rather than Jordan–Wigner.
-    - Nuclear repulsion energy is included explicitly.
+        Notes
+        -----
+        - Geometry is generated as a symmetric linear chain along the z-axis.
+        - PySCF is used to compute SCF and FCI energies through OpenFermion.
+        - Active-space selection freezes no core orbitals.
+        - The Hamiltonian is mapped to qubits using the symmetry-conserving
+          Bravyi–Kitaev transformation rather than Jordan–Wigner.
+        - Nuclear repulsion energy is included explicitly.
 
     """
 
     geometry = []
     for d in range(n_hydrogens // 2):
-        geometry.append(('H', (0.0, 0.0, - (R / 2. + d * R))))
-        geometry.append(('H', (0.0, 0.0, + (R / 2. + d * R))))
+        geometry.append(("H", (0.0, 0.0, -(R / 2.0 + d * R))))
+        geometry.append(("H", (0.0, 0.0, +(R / 2.0 + d * R))))
 
     # molecule = gto.M(atom=geometry, basis='sto-3g')
 
     # Create molecular data object
     molecule = MolecularData(
         geometry=geometry,
-        basis='sto-3g',
+        basis="sto-3g",
         multiplicity=spin + 1,  # OpenFermion uses multiplicity = 2S + 1
-        charge=charge
+        charge=charge,
     )
-
 
     # Run PySCF calculation
     molecule = run_pyscf(molecule, run_scf=True, run_fci=True)
@@ -599,31 +605,31 @@ Construct the qubit Hamiltonian for a linear hydrogen chain (Hₙ) using
 
     # Get molecular Hamiltonian in active space
     molecular_hamiltonian = molecule.get_molecular_hamiltonian(
-        occupied_indices=occupied_indices,
-        active_indices=active_indices
+        occupied_indices=occupied_indices, active_indices=active_indices
     )
     E_nuc = 0.0
     for i in range(n_hydrogens):
         for j in range(i + 1, n_hydrogens):
-            distance = (j - i) * (R/0.529177)
+            distance = (j - i) * (R / 0.529177)
             E_nuc += 1.0 / distance
 
-
     from openfermion.ops import InteractionOperator
+
     molecular_hamiltonian_with_nuclear = InteractionOperator(
         constant=E_nuc,
         one_body_tensor=molecular_hamiltonian.one_body_tensor,
-        two_body_tensor=molecular_hamiltonian.two_body_tensor
+        two_body_tensor=molecular_hamiltonian.two_body_tensor,
     )
-
 
     # Convert to fermionic operator
     active_orbitals = num_electrons * 2
     fermionic_op = get_fermion_operator(molecular_hamiltonian_with_nuclear)
     from openfermion.transforms import symmetry_conserving_bravyi_kitaev
-    # H_qubit_full = jordan_wigner(fermionic_op)
-    H_qubit = symmetry_conserving_bravyi_kitaev(fermionic_op, active_orbitals=active_orbitals, active_fermions=num_electrons)
 
+    # H_qubit_full = jordan_wigner(fermionic_op)
+    H_qubit = symmetry_conserving_bravyi_kitaev(
+        fermionic_op, active_orbitals=active_orbitals, active_fermions=num_electrons
+    )
 
     # Convert to dictionary format
     return sparsepauliop_dictionary(H_qubit)
