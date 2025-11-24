@@ -1,9 +1,10 @@
-from typing import List, Dict, Callable, Optional, Any
-import numpy as np
-from scipy.optimize import minimize, OptimizeResult
-import matplotlib.pyplot as plt
+from collections.abc import Callable
 
-from qlass.utils import loss_function, e_vqe_loss_function
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.optimize import OptimizeResult, minimize
+
+from qlass.utils import e_vqe_loss_function, loss_function
 from qlass.utils.utils import DataCollector
 
 
@@ -16,14 +17,14 @@ class VQE:
     """
 
     def __init__(
-        self, 
-        hamiltonian: Dict[str, float],
+        self,
+        hamiltonian: dict[str, float],
         executor: Callable,
         num_params: int,
         optimizer: str = "COBYLA",
-        executor_type: str = 'sampling',
-        initial_state: Optional[np.ndarray] = None, # For now only relevant for photonic_unitary,
-        ancillary_modes: Optional[List[int]] = None,
+        executor_type: str = "sampling",
+        initial_state: np.ndarray | None = None,  # For now only relevant for photonic_unitary,
+        ancillary_modes: list[int] | None = None,
     ):
         """
         Initialize the VQE solver.
@@ -34,11 +35,11 @@ class VQE:
             executor (Callable): Custom executor function, if None, a default one will be created
             num_params (int): number of parameters that the executor accepts
             optimizer (str): Optimization method to use. Any method supported by scipy.optimize.minimize
-            executor_type (str): Type of executor. 
+            executor_type (str): Type of executor.
                 - "sampling": Uses measurement-based sampling.
                 - "qubit_unitary": For qubit-based simulations (e.g., standard circuit-based quantum computing).
-                - "photonic_unitary": For photonic quantum computing, 
-                where the initial state and ancillary modes may be relevant for post-selection. 
+                - "photonic_unitary": For photonic quantum computing,
+                where the initial state and ancillary modes may be relevant for post-selection.
                 Use this when simulating photonic systems or when post-selection on ancillary modes is required.
             ancillary_modes (List[int], optional): List of ancillary mode indices
                 for post-selection when using 'photonic_unitary' executor.
@@ -57,16 +58,20 @@ class VQE:
         if executor_type in ["sampling", "qubit_unitary", "photonic_unitary"]:
             self.executor_type = executor_type
         else:
-            raise ValueError(f"Invalid executor_type: {executor_type}. Must be either sampling, qubit_unitary or photonic_unitary.")
+            raise ValueError(
+                f"Invalid executor_type: {executor_type}. Must be either sampling, qubit_unitary or photonic_unitary."
+            )
 
         # Results storage
-        self.optimization_result: Optional[OptimizeResult] = None
-        self.energy_history: List[float] = []
-        self.parameter_history: List[np.ndarray] = []
-        self.loss_history: List[float] = []
+        self.optimization_result: OptimizeResult | None = None
+        self.energy_history: list[float] = []
+        self.parameter_history: list[np.ndarray] = []
+        self.loss_history: list[float] = []
         self.energy_collector = DataCollector()
 
-    def _callback(self, params: np.ndarray, cost_type: str = "VQE", weight_option: str = "weighted") -> None:
+    def _callback(
+        self, params: np.ndarray, cost_type: str = "VQE", weight_option: str = "weighted"
+    ) -> None:
         """Callback function to record optimization progress."""
         if cost_type == "e-VQE":
             # Ensemble-VQE mode
@@ -75,18 +80,23 @@ class VQE:
                 self.hamiltonian,
                 self.executor,
                 self.energy_collector,
-                weight_option=weight_option
+                weight_option=weight_option,
             )
             self.loss_history.append(cost)
         else:
             # Standard VQE mode
             if self.executor_type == "qubit_unitary":
                 from qlass.utils import loss_function_matrix
+
                 energy = loss_function_matrix(params, self.hamiltonian, self.executor)
             elif self.executor_type == "photonic_unitary":
                 from qlass.utils import loss_function_photonic_unitary
+
                 energy = loss_function_photonic_unitary(
-                    params, self.hamiltonian, self.executor, self.initial_state,
+                    params,
+                    self.hamiltonian,
+                    self.executor,
+                    self.initial_state,
                     self.ancillary_modes,
                 )
             else:
@@ -97,9 +107,14 @@ class VQE:
             # Always record parameters
         self.parameter_history.append(params.copy())
 
-
-    def run(self, initial_params: Optional[np.ndarray] = None, max_iterations: int = 100, verbose: bool = True, weight_option: str = "weighted",
-            cost: str = "VQE") -> float:
+    def run(
+        self,
+        initial_params: np.ndarray | None = None,
+        max_iterations: int = 100,
+        verbose: bool = True,
+        weight_option: str = "weighted",
+        cost: str = "VQE",
+    ) -> float:
         """
         Run a Variational Quantum Eigensolver (VQE) or ensemble-VQE optimization to find
         the ground state energy of a given Hamiltonian.
@@ -163,34 +178,40 @@ class VQE:
         if cost == "VQE":
             if self.executor_type == "qubit_unitary":
                 from qlass.utils import loss_function_matrix
+
                 self.optimization_result = minimize(
                     loss_function_matrix,
                     initial_params,
                     args=(self.hamiltonian, self.executor),
                     method=self.optimizer,
                     callback=lambda p: self._callback(p, cost_type="VQE"),
-                    options={'maxiter': max_iterations}
+                    options={"maxiter": max_iterations},
                 )
             elif self.executor_type == "photonic_unitary":
                 from qlass.utils import loss_function_photonic_unitary
+
                 self.optimization_result = minimize(
                     loss_function_photonic_unitary,
                     initial_params,
-                    args=(self.hamiltonian, self.executor, self.initial_state, self.ancillary_modes),
+                    args=(
+                        self.hamiltonian,
+                        self.executor,
+                        self.initial_state,
+                        self.ancillary_modes,
+                    ),
                     method=self.optimizer,
                     callback=lambda p: self._callback(p, cost_type="VQE"),
-                    options={'maxiter': max_iterations}
+                    options={"maxiter": max_iterations},
                 )
 
             elif self.executor_type == "sampling":
-
                 self.optimization_result = minimize(
                     loss_function,
                     initial_params,
                     args=(self.hamiltonian, self.executor),
                     method=self.optimizer,
                     callback=lambda p: self._callback(p, cost_type="VQE"),
-                    options={'maxiter': max_iterations}
+                    options={"maxiter": max_iterations},
                 )
 
         elif cost == "e-VQE":
@@ -200,8 +221,10 @@ class VQE:
                     initial_params,
                     args=(self.hamiltonian, self.executor, self.energy_collector, weight_option),
                     method=self.optimizer,
-                    callback=lambda p: self._callback(p, cost_type="e-VQE", weight_option=weight_option),
-                    options={'maxiter': max_iterations}
+                    callback=lambda p: self._callback(
+                        p, cost_type="e-VQE", weight_option=weight_option
+                    ),
+                    options={"maxiter": max_iterations},
                 )
             else:
                 raise ValueError("option: e-VQE takes only executor_type: sampling")
@@ -210,7 +233,7 @@ class VQE:
 
         if verbose:
             assert self.optimization_result is not None
-            print(f"Optimization complete!")
+            print("Optimization complete!")
             print(f"Final energy: {self.optimization_result.fun:.6f}")
             print(f"Number of iterations: {self.optimization_result.nfev}")
 
@@ -223,7 +246,7 @@ class VQE:
             raise ValueError("VQE optimization has not been run yet.")
         return np.asarray(self.optimization_result.x)
 
-    def plot_convergence(self, exact_energy: Optional[float] = None) -> None:
+    def plot_convergence(self, exact_energy: float | None = None) -> None:
         """
         Plot the energy convergence during the optimization.
 
@@ -235,19 +258,19 @@ class VQE:
 
         plt.figure(figsize=(10, 6))
         iterations = range(len(self.energy_history))
-        plt.plot(iterations, self.energy_history, 'o-', label='VQE Energy')
+        plt.plot(iterations, self.energy_history, "o-", label="VQE Energy")
 
         if exact_energy is not None:
-            plt.axhline(y=exact_energy, color='r', linestyle='--', label='Exact Energy')
+            plt.axhline(y=exact_energy, color="r", linestyle="--", label="Exact Energy")
 
-        plt.xlabel('Iteration')
-        plt.ylabel('Energy')
-        plt.title('VQE Convergence')
+        plt.xlabel("Iteration")
+        plt.ylabel("Energy")
+        plt.title("VQE Convergence")
         plt.legend()
         plt.grid(True, alpha=0.3)
         plt.show()
 
-    def compare_with_exact(self, exact_energy: Optional[float] = None) -> Dict[str, float]:
+    def compare_with_exact(self, exact_energy: float | None = None) -> dict[str, float]:
         """
         Compare the VQE result with the exact ground state energy.
 
@@ -262,17 +285,18 @@ class VQE:
 
         if exact_energy is None:
             from qlass.quantum_chemistry.classical_solution import brute_force_minimize
+
             exact_energy = brute_force_minimize(self.hamiltonian)
 
         vqe_energy = self.optimization_result.fun
         absolute_error = abs(vqe_energy - exact_energy)
-        relative_error = absolute_error / abs(exact_energy) if exact_energy != 0 else float('inf')
+        relative_error = absolute_error / abs(exact_energy) if exact_energy != 0 else float("inf")
 
         comparison = {
-            'vqe_energy': vqe_energy,
-            'exact_energy': exact_energy,
-            'absolute_error': absolute_error,
-            'relative_error': relative_error
+            "vqe_energy": vqe_energy,
+            "exact_energy": exact_energy,
+            "absolute_error": absolute_error,
+            "relative_error": relative_error,
         }
 
         return comparison

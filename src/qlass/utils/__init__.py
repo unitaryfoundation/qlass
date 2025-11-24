@@ -1,22 +1,19 @@
-
 from .utils import (
-    loss_function,
-    e_vqe_loss_function,
-    rotate_qubits,
     compute_energy,
-    get_probabilities,
-    qubit_state_marginal,
-    is_qubit_state,
-    normalize_samples,
-    linear_circuit_to_unitary,
     compute_expectation_value_from_unitary,
-    loss_function_matrix,
-    permanent,
+    e_vqe_loss_function,
+    get_probabilities,
+    is_qubit_state,
+    linear_circuit_to_unitary,
     logical_state_to_modes,
-    photon_to_qubit_unitary,
+    loss_function,
+    loss_function_matrix,
     loss_function_photonic_unitary,
-
-    
+    normalize_samples,
+    permanent,
+    photon_to_qubit_unitary,
+    qubit_state_marginal,
+    rotate_qubits,
 )
 
 __all__ = [
@@ -35,5 +32,4 @@ __all__ = [
     "logical_state_to_modes",
     "photon_to_qubit_unitary",
     "loss_function_photonic_unitary",
-
 ]

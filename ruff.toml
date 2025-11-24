@@ -1,0 +1,42 @@
+# Exclude common directories
+extend-exclude = [
+    ".venv",
+    "build",
+    "dist",
+]
+
+# Line length to match your formatter
+line-length = 100
+
+[lint]
+# Enable these rule groups
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort (import sorting)
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "SIM", # flake8-simplify
+    "C4",  # flake8-comprehensions
+]
+
+# Ignore specific rules
+ignore = [
+    "E501",  # Line too long (handled by formatter)
+]
+
+# Allow autofix for specific rules
+fixable = ["ALL"]
+unfixable = []
+
+[lint.per-file-ignores]
+# Ignore certain rules in test files
+"tests/**" = ["S101"]  # Allow assert statements in tests
+
+[format]
+# Use double quotes
+quote-style = "double"
+
+# Indent with spaces
+indent-style = "space"
