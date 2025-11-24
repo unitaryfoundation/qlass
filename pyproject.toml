@@ -50,6 +50,7 @@ lint = [
 docs = [
     "sphinx>=7",
     "sphinx-rtd-theme>=3",
+    "sphinxcontrib-bibtex",
 ]
 dev = [
     {include-group = "test"},

@@ -15,11 +15,17 @@ release = "0.2.0"
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ["sphinx.ext.todo", "sphinx.ext.viewcode", "sphinx.ext.autodoc", "sphinx.ext.napoleon", 'sphinxcontrib.bibtex']
+extensions = [
+    "sphinx.ext.todo",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",
+    "sphinxcontrib.bibtex",
+]
 
 # BibTeX configuration
-bibtex_bibfiles = ['refs.bib']
-bibtex_default_style = 'alpha'
+bibtex_bibfiles = ["refs.bib"]
+bibtex_default_style = "alpha"
 
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
