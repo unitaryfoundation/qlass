@@ -522,7 +522,7 @@ def transformation_Hmatrix_Hqubit(Hmatrix: np.ndarray, nqubits: int) -> QubitOpe
     return H_qubit
 
 
-def Hchain_hamiltonian_WFT(n_hydrogens=2, R=0.8, charge=0, spin=0, num_electrons=2, num_orbitals=2) -> dict[str, float]:
+def Hchain_hamiltonian_WFT(n_hydrogens: int = 2, R: float = 0.8, charge: int = 0, spin: int = 0, num_electrons: int = 2, num_orbitals: int = 2) -> dict[str, float]:
     """
 Construct the qubit Hamiltonian for a linear hydrogen chain (Hₙ) using
     wavefunction-based methods.
