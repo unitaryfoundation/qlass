@@ -389,5 +389,5 @@ def test_Hchain_hamiltonian_WFT():
     ham = Hchain_hamiltonian_WFT(2, 0.741)
     # Basic checks
     assert isinstance(ham, dict)
-    assert all(isinstance(k, str) for k in ham.keys())
+    assert all(isinstance(k, str) for k in ham)
     assert all(np.isreal(v) or np.iscomplex(v) for v in ham.values())
