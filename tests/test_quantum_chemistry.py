@@ -17,8 +17,10 @@ from typing import Dict
 import pytest
 from openfermion import QubitOperator
 import warnings
+
 warnings.simplefilter('ignore')
 warnings.filterwarnings('ignore')
+
 
 def test_pauli_string_to_matrix():
     """
@@ -40,22 +42,24 @@ def test_pauli_string_to_matrix():
     assert np.allclose(pauli_string_to_matrix("ZY"), np.kron(Z, Y))
     assert np.allclose(pauli_string_to_matrix("XX"), np.kron(X, X))
 
+
 def test_hamiltonian_matrix():
     """
     Tests the conversion of a Hamiltonian dictionary to its matrix representation.
     """
     X = np.array([[0, 1], [1, 0]], dtype=complex)
     Z = np.array([[1, 0], [0, -1]], dtype=complex)
-    
+
     hamiltonian_dict = {"X": 0.5, "Z": -0.5}
-    
+
     # Expected matrix: 0.5 * X + (-0.5) * Z
     expected_matrix = 0.5 * X - 0.5 * Z
-    
+
     result_matrix = hamiltonian_matrix(hamiltonian_dict)
-    
+
     assert np.allclose(result_matrix, expected_matrix)
     assert result_matrix.shape == (2, 2)
+
 
 def test_brute_force_minimize():
     """
@@ -75,8 +79,9 @@ def test_brute_force_minimize():
     }
     # Using numpy to get the exact value for comparison
     exact_min_eig = np.min(np.linalg.eigvalsh(hamiltonian_matrix(hamiltonian_2q)))
-    
+
     assert np.isclose(brute_force_minimize(hamiltonian_2q), exact_min_eig)
+
 
 def test_eig_decomp_lanczos():
     """
@@ -88,21 +93,22 @@ def test_eig_decomp_lanczos():
     np.random.seed(42)
     random_real_matrix = np.random.rand(dim, dim)
     hermitian_matrix = (random_real_matrix + random_real_matrix.T.conj()) / 2
-    
+
     # Convert the matrix to complex type to match the vector type in Lanczos
     hermitian_matrix_complex = hermitian_matrix.astype(np.complex128)
 
     # Get exact eigenvalues from NumPy
     exact_eigenvalues = np.linalg.eigvalsh(hermitian_matrix_complex)
-    
+
     # Get eigenvalues from Lanczos implementation
     lanczos_eigenvalues = eig_decomp_lanczos(hermitian_matrix_complex)
-    
+
     # Sort both sets of eigenvalues for comparison
     exact_eigenvalues.sort()
     lanczos_eigenvalues.sort()
-    
+
     assert np.allclose(exact_eigenvalues[0], lanczos_eigenvalues[0], atol=1e-3)
+
 
 def test_lanczos_tridiagonalization():
     """
@@ -139,6 +145,7 @@ def test_lanczos_tridiagonalization():
     rhs = V.T @ T
     assert np.allclose(lhs, rhs), "Tridiagonal matrix T does not satisfy the Lanczos relation"
 
+
 def test_lanczos_early_exit():
     """
     Tests the early exit condition of the lanczos function when beta becomes zero.
@@ -151,7 +158,7 @@ def test_lanczos_early_exit():
     # An initial vector that is an eigenvector of A.
     # The Krylov subspace will be 1-dimensional, forcing beta to be zero on the second iteration.
     v_init = np.array([0, 0, 1, 0], dtype=np.complex128)
-    
+
     # We expect the loop to break after the first iteration (j=1)
     m = dim
     T, V = lanczos(A, v_init, m=m)
@@ -160,19 +167,20 @@ def test_lanczos_early_exit():
     # We expect only T[0,0] to be populated (with the eigenvalue 3.0).
     # All other betas (T[1,0], T[2,1], etc.) should be zero because the loop broke.
     assert np.isclose(T[0, 0], 3.0)
-    assert np.isclose(T[1, 0], 0.0) # This confirms beta was ~0
-    
+    assert np.isclose(T[1, 0], 0.0)  # This confirms beta was ~0
+
     # The rest of the T matrix should also be zero
     assert np.count_nonzero(T) == 1
+
 
 def check_hamiltonian_structure(hamiltonian: Dict[str, float], expected_num_qubits: int):
     """
     Internal helper function to check common properties of a Hamiltonian dictionary.
     """
     assert isinstance(hamiltonian, dict), "Hamiltonian should be a dictionary."
-    if expected_num_qubits > 0 : # A 0-qubit hamiltonian might be just {'': coeff}
+    if expected_num_qubits > 0:  # A 0-qubit hamiltonian might be just {'': coeff}
         assert len(hamiltonian) > 0, "Hamiltonian should not be empty for >0 qubits."
-    else: # For 0 qubits, it could be {'': val} or just empty if constant is 0
+    else:  # For 0 qubits, it could be {'': val} or just empty if constant is 0
         pass
 
     for pauli_string, coeff in hamiltonian.items():
@@ -185,6 +193,7 @@ def check_hamiltonian_structure(hamiltonian: Dict[str, float], expected_num_qubi
         assert all(c in 'IXYZ' for c in pauli_string), \
             f"Pauli string '{pauli_string}' contains invalid characters."
         assert isinstance(coeff, float), f"Coefficient for '{pauli_string}' should be a float."
+
 
 def test_LiH_hamiltonian_generation_and_properties():
     """
@@ -204,7 +213,8 @@ def test_LiH_hamiltonian_generation_and_properties():
     expected_qubits2 = num_orbitals2 * 2
     hamiltonian2 = LiH_hamiltonian(R=R1, num_electrons=num_electrons2, num_orbitals=num_orbitals2)
     check_hamiltonian_structure(hamiltonian2, expected_qubits2)
-    assert any(key != 'I'*expected_qubits2 for key in hamiltonian2.keys()), "Hamiltonian should contain non-Identity terms."
+    assert any(
+        key != 'I' * expected_qubits2 for key in hamiltonian2.keys()), "Hamiltonian should contain non-Identity terms."
 
     # Test case 3: Different bond length with minimal active space
     R2 = 2.0
@@ -221,16 +231,18 @@ def test_LiH_hamiltonian_generation_and_properties():
         assert not all_coeffs_same, "Hamiltonian coefficients should differ for different bond lengths."
     # else: if keys are different, hamiltonians are different, which is fine.
 
+
 def test_generate_random_hamiltonian_structure():
     """
     Test the structure and term count of a randomly generated Hamiltonian.
     """
-    for num_qubits_test in [1, 2]: # Test for 1 and 2 qubits
+    for num_qubits_test in [1, 2]:  # Test for 1 and 2 qubits
         hamiltonian = generate_random_hamiltonian(num_qubits=num_qubits_test)
         check_hamiltonian_structure(hamiltonian, num_qubits_test)
         # Expect 4^num_qubits terms as all Pauli strings are generated
-        assert len(hamiltonian) == 4**num_qubits_test, \
-            f"Expected {4**num_qubits_test} terms for {num_qubits_test} qubits, got {len(hamiltonian)}."
+        assert len(hamiltonian) == 4 ** num_qubits_test, \
+            f"Expected {4 ** num_qubits_test} terms for {num_qubits_test} qubits, got {len(hamiltonian)}."
+
 
 def test_LiH_hamiltonian_tapered_structure():
     """
@@ -255,6 +267,7 @@ def test_LiH_hamiltonian_tapered_structure():
         # For now, let's pass with a warning to avoid test failures due to complex QM calculations.
         pass
 
+
 def check_groups(groups):
     """Helper function to validate that all terms within each group mutually commute."""
     for group in groups:
@@ -262,6 +275,7 @@ def check_groups(groups):
         for i in range(len(terms)):
             for j in range(i + 1, len(terms)):
                 assert pauli_commute(terms[i], terms[j]), f"{terms[i]} and {terms[j]} do not commute"
+
 
 def test_hybrid_grouping_openfermion_success():
     """
@@ -271,17 +285,17 @@ def test_hybrid_grouping_openfermion_success():
     hamiltonian = {
         "IZ": 1.0,
         "ZI": -1.0,
-        "ZZ": 0.5, # This group can be measured in the Z-basis
-        "XX": 0.2, # This group requires a change to the X-basis
-        "XI": -0.3 # This also requires a change to the X-basis
+        "ZZ": 0.5,  # This group can be measured in the Z-basis
+        "XX": 0.2,  # This group requires a change to the X-basis
+        "XI": -0.3  # This also requires a change to the X-basis
     }
 
     groups = group_commuting_pauli_terms_openfermion_hybrid(hamiltonian)
-    
+
     # OpenFermion's `group_into_tensor_product_basis_sets` will group by measurement basis.
     # We expect two groups: one for Z-basis terms and one for X-basis terms.
     assert len(groups) == 2, "Expected two measurement groups (Z-basis and X-basis)"
-    
+
     # Verify that the terms within each group are mutually commuting
     check_groups(groups)
 
@@ -313,7 +327,7 @@ def test_Hchain_KS_hamiltonian(monkeypatch):
 
 
 def test_transformation_Hmatrix_Hqubit():
-        # Pauli-Z Hamiltonian
+    # Pauli-Z Hamiltonian
     H = np.array([[1, 0], [0, -1]], dtype=complex)
     H_qubit = transformation_Hmatrix_Hqubit(H, nqubits=1)
 
@@ -328,32 +342,31 @@ def test_transformation_Hmatrix_Hqubit():
     assert np.isclose(coeff.imag, 0.0, atol=1e-12)
 
 
-
 def test_hybrid_grouping_fallback_behavior(mocker):
     """
     Tests the fallback mechanism of the hybrid function by mocking an ImportError.
     """
     # Mock the OpenFermion import to trigger the fallback to the custom implementation
     mocker.patch(
-        'openfermion.measurements.group_into_tensor_product_basis_sets', 
+        'openfermion.measurements.group_into_tensor_product_basis_sets',
         side_effect=ImportError("Simulating OpenFermion not found")
     )
-    
+
     # Define a Hamiltonian. The custom grouper will find all mutually commuting terms.
     hamiltonian = {
         "XX": 1.0,
-        "YY": 1.0, # XX and YY commute
-        "XI": 0.5, # XI does not commute with YY
-        "IZ": -0.5 # IZ commutes with all of the above
+        "YY": 1.0,  # XX and YY commute
+        "XI": 0.5,  # XI does not commute with YY
+        "IZ": -0.5  # IZ commutes with all of the above
     }
 
     groups = group_commuting_pauli_terms_openfermion_hybrid(hamiltonian)
-    
+
     # The custom fallback grouper is greedy. The expected grouping is:
     # Group 1: {"XX", "YY", "IZ"}
     # Group 2: {"XI"}
     assert len(groups) == 2, "Expected 2 groups from the fallback implementation"
-    
+
     # Verify that the terms within each group are mutually commuting
     check_groups(groups)
 
@@ -361,3 +374,11 @@ def test_hybrid_grouping_fallback_behavior(mocker):
     all_grouped_terms = {term for group in groups for term in group}
     assert all_grouped_terms == set(hamiltonian.keys())
 
+
+def test_Hchain_hamiltonian_WFT():
+    from qlass.quantum_chemistry.hamiltonians import Hchain_hamiltonian_WFT
+    ham = Hchain_hamiltonian_WFT(2, 0.741)
+    # Basic checks
+    assert isinstance(ham, dict)
+    assert all(isinstance(k, str) for k in ham.keys())
+    assert all(np.isreal(v) or np.iscomplex(v) for v in ham.values())
