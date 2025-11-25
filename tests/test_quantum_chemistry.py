@@ -382,3 +382,13 @@ def test_hybrid_grouping_fallback_behavior(mocker):
     # Check that all original terms are present in the final groups
     all_grouped_terms = {term for group in groups for term in group}
     assert all_grouped_terms == set(hamiltonian.keys())
+
+
+def test_Hchain_hamiltonian_WFT():
+    from qlass.quantum_chemistry.hamiltonians import Hchain_hamiltonian_WFT
+
+    ham = Hchain_hamiltonian_WFT(2, 0.741)
+    # Basic checks
+    assert isinstance(ham, dict)
+    assert all(isinstance(k, str) for k in ham)
+    assert all(np.isreal(v) or np.iscomplex(v) for v in ham.values())
