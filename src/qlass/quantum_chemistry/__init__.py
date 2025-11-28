@@ -15,6 +15,7 @@ from .hamiltonians import (
     pauli_commute,
     sparsepauliop_dictionary,
     transformation_Hmatrix_Hqubit,
+    Hchain_hamiltonian_WFT,
 )
 
 __all__ = [
@@ -32,4 +33,5 @@ __all__ = [
     "group_commuting_pauli_terms",
     "group_commuting_pauli_terms_openfermion_hybrid",
     "sparsepauliop_dictionary",
+    "Hchain_hamiltonian_WFT",
 ]
