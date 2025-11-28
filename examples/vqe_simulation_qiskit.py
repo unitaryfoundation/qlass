@@ -4,7 +4,6 @@ VQE simulations of larger Hamiltonians using the VQE class.
 
 import warnings
 
-import matplotlib.pyplot as plt
 import numpy as np
 from qiskit import transpile
 from qiskit.circuit.library import TwoLocal
@@ -84,17 +83,17 @@ def main():
     print(f"Energy difference: {comparison['absolute_error']:.6f}")
 
     # Plot convergence
-    plt.figure(figsize=(10, 6))
-    plt.plot(
-        range(len(vqe.energy_history)), vqe.energy_history, "o-", label="VQE Energy (Qiskit Sim)"
-    )
-    plt.axhline(y=exact_energy, color="r", linestyle="--", label="Exact Energy")
-    plt.xlabel("Iteration")
-    plt.ylabel("Energy")
-    plt.title("VQE Convergence using Qiskit Executor")
-    plt.grid(True, alpha=0.3)
-    plt.legend()
-    plt.show()
+    # plt.figure(figsize=(10, 6))
+    # plt.plot(
+    #     range(len(vqe.energy_history)), vqe.energy_history, "o-", label="VQE Energy (Qiskit Sim)"
+    # )
+    # plt.axhline(y=exact_energy, color="r", linestyle="--", label="Exact Energy")
+    # plt.xlabel("Iteration")
+    # plt.ylabel("Energy")
+    # plt.title("VQE Convergence using Qiskit Executor")
+    # plt.grid(True, alpha=0.3)
+    # plt.legend()
+    # plt.show()
 
 
 if __name__ == "__main__":

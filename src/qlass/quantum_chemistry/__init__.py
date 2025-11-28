@@ -6,6 +6,7 @@ from .classical_solution import (
     pauli_string_to_matrix,
 )
 from .hamiltonians import (
+    Hchain_hamiltonian_WFT,
     Hchain_KS_hamiltonian,
     LiH_hamiltonian,
     LiH_hamiltonian_tapered,
@@ -32,4 +33,5 @@ __all__ = [
     "group_commuting_pauli_terms",
     "group_commuting_pauli_terms_openfermion_hybrid",
     "sparsepauliop_dictionary",
+    "Hchain_hamiltonian_WFT",
 ]

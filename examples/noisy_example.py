@@ -17,7 +17,7 @@ from tqdm import tqdm
 from qlass.compiler import HardwareConfig, ResourceAwareCompiler
 
 # Imports from the qlass library
-from qlass.quantum_chemistry import LiH_hamiltonian_tapered, brute_force_minimize
+from qlass.quantum_chemistry import LiH_hamiltonian, brute_force_minimize
 from qlass.utils import rotate_qubits
 from qlass.vqe import VQE
 
@@ -72,12 +72,12 @@ def main():
     """
 
     # 1. Define the range of bond radii to simulate
-    radii = np.linspace(0.5, 2.5, 15)
+    radii = np.linspace(0.5, 2.5, 10)
     exact_energies = []
     vqe_energies = []
 
-    # The tapered LiH Hamiltonian has 4 qubits
-    num_qubits = 4
+    # The tapered LiH Hamiltonian has 2 qubits
+    num_qubits = 2
     # The le_ansatz uses a TwoLocal circuit with reps=1, so num_params = (1+1)*num_qubits
     num_params = 2 * num_qubits
 
@@ -85,7 +85,7 @@ def main():
     print("Running VQE simulations for different bond radii...")
     for r in tqdm(radii, desc="Simulating Radii"):
         # Generate the tapered Hamiltonian for the current radius
-        hamiltonian = LiH_hamiltonian_tapered(R=r)
+        hamiltonian = LiH_hamiltonian(R=r, num_electrons=2, num_orbitals=1)
 
         # Calculate the exact ground state energy for the theoretical curve
         exact_energy = brute_force_minimize(hamiltonian)
@@ -97,7 +97,7 @@ def main():
         # Run the VQE optimization
         vqe_energy = vqe.run(
             max_iterations=25,  # More iterations for better convergence
-            verbose=True,  # Turn off verbose output for the loop
+            verbose=False,  # Turn off verbose output for the loop
         )
         vqe_energies.append(vqe_energy)
 
