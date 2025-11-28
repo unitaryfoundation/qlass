@@ -6,6 +6,7 @@ from .classical_solution import (
     pauli_string_to_matrix,
 )
 from .hamiltonians import (
+    Hchain_hamiltonian_WFT,
     Hchain_KS_hamiltonian,
     LiH_hamiltonian,
     LiH_hamiltonian_tapered,
@@ -15,7 +16,6 @@ from .hamiltonians import (
     pauli_commute,
     sparsepauliop_dictionary,
     transformation_Hmatrix_Hqubit,
-    Hchain_hamiltonian_WFT,
 )
 
 __all__ = [
