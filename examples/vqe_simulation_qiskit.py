@@ -4,7 +4,6 @@ VQE simulations of larger Hamiltonians using the VQE class.
 
 import warnings
 
-import matplotlib.pyplot as plt
 import numpy as np
 from qiskit import transpile
 from qiskit.circuit.library import TwoLocal

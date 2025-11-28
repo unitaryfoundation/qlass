@@ -4,7 +4,6 @@ Example demonstrating the use of the VQE class.
 
 import warnings
 
-import matplotlib.pyplot as plt
 from perceval.algorithm import Sampler
 
 from qlass.quantum_chemistry import LiH_hamiltonian, brute_force_minimize

@@ -4,7 +4,6 @@ Example demonstrating the use of the VQE class.
 
 import warnings
 
-import matplotlib.pyplot as plt
 from perceval.converters import QiskitConverter
 from qiskit.circuit.library import n_local
 
