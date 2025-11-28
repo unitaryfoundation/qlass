@@ -1,10 +1,6 @@
 name: Run example scripts
 
 on:
-  push:
-    paths:
-      - 'examples/*.py'
-      - '.github/workflows/examples.yml'
   pull_request:
     paths:
       - 'examples/*.py'

@@ -4,7 +4,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from perceval.algorithm import Sampler
 
-from qlass.quantum_chemistry.hamiltonians import Hchain_hamiltonian_WFT, hamiltonian_matrix
+from qlass.quantum_chemistry import (
+    Hchain_hamiltonian_WFT,
+    hamiltonian_matrix,
+)
 from qlass.vqe import VQE
 from qlass.vqe.ansatz import hf_ansatz
 
