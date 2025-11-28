@@ -28,7 +28,7 @@ vqe = VQE(
 )
 
 # Run the VQE optimization
-vqe_energy = vqe.run(max_iterations=50, verbose=True)
+vqe_energy = vqe.run(max_iterations=20, verbose=True)
 
 # Calculate the exact ground state energy for comparison
 exact_energy = brute_force_minimize(ham)

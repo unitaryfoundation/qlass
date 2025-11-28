@@ -90,8 +90,8 @@ def main():
     print(f"Relative Error: {comparison['relative_error']:.2%}")
 
     # Plot convergence
-    print("\nPlotting convergence...")
-    vqe.plot_convergence(exact_energy=exact_energy)
+    # print("\nPlotting convergence...")
+    # vqe.plot_convergence(exact_energy=exact_energy)
 
     # Additional information about post-selection
     print("\n=== Photonic Implementation Notes ===")
