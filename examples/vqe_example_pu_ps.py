@@ -80,7 +80,7 @@ def main():
     print(f"Exact ground state energy: {exact_energy:.6f}")
     print(f"Energy difference: {comparison['absolute_error']:.6f}")
 
-    # Plot the convergence
+    # Uncomment the following block to show a plot of the result
     # print("\nPlotting convergence history...")
     # plt.figure(figsize=(10, 6))
     # iterations = range(len(vqe.energy_history))

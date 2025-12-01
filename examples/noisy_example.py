@@ -101,24 +101,25 @@ def main():
         )
         vqe_energies.append(vqe_energy)
 
+    # Uncomment the following block to show a plot of the result
     # 3. Plot the results
-    plt.style.use("seaborn-v0_8-whitegrid")
-    plt.figure(figsize=(12, 7))
+    # plt.style.use("seaborn-v0_8-whitegrid")
+    # plt.figure(figsize=(12, 7))
 
-    # Plot theoretical (exact) energy curve
-    plt.plot(radii, exact_energies, "bo", label="Exact Theoretical Energy", linewidth=2)
+    # # Plot theoretical (exact) energy curve
+    # plt.plot(radii, exact_energies, "bo", label="Exact Theoretical Energy", linewidth=2)
 
-    # Plot noisy VQE simulation results
-    plt.plot(radii, vqe_energies, "ro", label="Noisy VQE Simulation", markersize=8)
+    # # Plot noisy VQE simulation results
+    # plt.plot(radii, vqe_energies, "ro", label="Noisy VQE Simulation", markersize=8)
 
-    plt.xlabel("Internuclear Distance (Å)", fontsize=14)
-    plt.ylabel("Energy (Hartree)", fontsize=14)
-    plt.title("Noisy VQE Simulation of LiH Molecule", fontsize=16)
-    plt.legend(fontsize=12)
-    plt.grid(True, which="both", linestyle="--", linewidth=0.5)
-    plt.savefig("Lih_tapered_4q.png")
-    print("\nSimulation complete. Displaying plot.")
-    plt.show()
+    # plt.xlabel("Internuclear Distance (Å)", fontsize=14)
+    # plt.ylabel("Energy (Hartree)", fontsize=14)
+    # plt.title("Noisy VQE Simulation of LiH Molecule", fontsize=16)
+    # plt.legend(fontsize=12)
+    # plt.grid(True, which="both", linestyle="--", linewidth=0.5)
+    # plt.savefig("Lih_tapered_4q.png")
+    # print("\nSimulation complete. Displaying plot.")
+    # plt.show()
 
 
 if __name__ == "__main__":

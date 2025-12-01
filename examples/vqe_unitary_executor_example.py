@@ -65,7 +65,7 @@ def main():
     print(f"Absolute Error: {comparison['absolute_error']:.6f}")
     print(f"Relative Error: {comparison['relative_error']:.2%}")
 
-    # Plot convergence
+    # Uncomment the following block to show a plot of the result
     # vqe.plot_convergence(exact_energy=exact_energy)
 
 

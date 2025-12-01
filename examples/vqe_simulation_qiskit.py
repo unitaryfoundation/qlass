@@ -82,7 +82,7 @@ def main():
     print(f"Final VQE energy: {vqe_energy:.6f}")
     print(f"Energy difference: {comparison['absolute_error']:.6f}")
 
-    # Plot convergence
+    # Uncomment the following block to show a plot of the result
     # plt.figure(figsize=(10, 6))
     # plt.plot(
     #     range(len(vqe.energy_history)), vqe.energy_history, "o-", label="VQE Energy (Qiskit Sim)"

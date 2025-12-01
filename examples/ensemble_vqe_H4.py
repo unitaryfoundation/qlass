@@ -36,6 +36,8 @@ vqe_energy = vqe.run(max_iterations=20, verbose=True, weight_option="weighted", 
 # Calculate the exact energies for comparison
 H_matrix = hamiltonian_matrix(ham)
 exact_energy = np.sort(np.linalg.eigvals(H_matrix))
+
+# Uncomment the following block to show a plot of the result
 # plt.figure(figsize=(10, 6))
 
 # plt.plot(vqe.energy_collector.loss_data, label="Cost")
