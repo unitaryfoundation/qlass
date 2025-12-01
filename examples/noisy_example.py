@@ -6,7 +6,6 @@ simulated energy curve with the theoretical one.
 
 import warnings
 
-import matplotlib.pyplot as plt
 import numpy as np
 from perceval import LogicalState
 from perceval.algorithm import Sampler
@@ -103,6 +102,7 @@ def main():
 
     # Uncomment the following block to show a plot of the result
     # 3. Plot the results
+    # import matplotlib.pyplot as plt
     # plt.style.use("seaborn-v0_8-whitegrid")
     # plt.figure(figsize=(12, 7))
 

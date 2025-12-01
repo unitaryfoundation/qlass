@@ -81,6 +81,7 @@ def main():
     print(f"Energy difference: {comparison['absolute_error']:.6f}")
 
     # Uncomment the following block to show a plot of the result
+    # import matplotlib.pyplot as plt
     # print("\nPlotting convergence history...")
     # plt.figure(figsize=(10, 6))
     # iterations = range(len(vqe.energy_history))

@@ -41,6 +41,7 @@ exact_energy = np.sort(np.linalg.eigvals(H_matrix))
 print(f"energy from exact diag: {exact_energy}")
 
 # Uncomment the following block to show a plot of the result
+# import matplotlib.pyplot as plt
 # plt.figure(figsize=(10, 6))
 
 # plt.plot(vqe.energy_collector.loss_data, label="cost")

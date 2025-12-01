@@ -83,6 +83,7 @@ def main():
     print(f"Energy difference: {comparison['absolute_error']:.6f}")
 
     # Uncomment the following block to show a plot of the result
+    # import matplotlib.pyplot as plt
     # plt.figure(figsize=(10, 6))
     # plt.plot(
     #     range(len(vqe.energy_history)), vqe.energy_history, "o-", label="VQE Energy (Qiskit Sim)"
