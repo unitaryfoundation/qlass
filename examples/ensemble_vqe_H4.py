@@ -1,6 +1,5 @@
 import warnings
 
-import matplotlib.pyplot as plt
 import numpy as np
 from perceval.algorithm import Sampler
 
@@ -32,22 +31,25 @@ vqe = VQE(
 )
 
 # Run the VQE optimization
-vqe_energy = vqe.run(max_iterations=50, verbose=True, weight_option="weighted", cost="e-VQE")
+vqe_energy = vqe.run(max_iterations=20, verbose=True, weight_option="weighted", cost="e-VQE")
 
 # Calculate the exact energies for comparison
 H_matrix = hamiltonian_matrix(ham)
 exact_energy = np.sort(np.linalg.eigvals(H_matrix))
-plt.figure(figsize=(10, 6))
 
-plt.plot(vqe.energy_collector.loss_data, label="Cost")
-plt.plot(vqe.energy_collector.energy_data[0], ls=":", color="blue", label="E_A")
-plt.plot(vqe.energy_collector.energy_data[1], ls=":", color="green", label="E_B")
-plt.axhline(y=exact_energy[0], color="b", linestyle="--", label="E_0")
-plt.axhline(y=exact_energy[1], color="g", linestyle="--", label="E_1")
-plt.xlabel("Iteration")
-plt.ylabel("Energy (Hartree)")
-plt.title("ensemble VQE Convergence")
-plt.legend()
-plt.tight_layout()
-plt.savefig("vqe_convergence_DFT.png")
-plt.show()
+# Uncomment the following block to show a plot of the result
+# import matplotlib.pyplot as plt
+# plt.figure(figsize=(10, 6))
+
+# plt.plot(vqe.energy_collector.loss_data, label="Cost")
+# plt.plot(vqe.energy_collector.energy_data[0], ls=":", color="blue", label="E_A")
+# plt.plot(vqe.energy_collector.energy_data[1], ls=":", color="green", label="E_B")
+# plt.axhline(y=exact_energy[0], color="b", linestyle="--", label="E_0")
+# plt.axhline(y=exact_energy[1], color="g", linestyle="--", label="E_1")
+# plt.xlabel("Iteration")
+# plt.ylabel("Energy (Hartree)")
+# plt.title("ensemble VQE Convergence")
+# plt.legend()
+# plt.tight_layout()
+# plt.savefig("vqe_convergence_DFT.png")
+# plt.show()

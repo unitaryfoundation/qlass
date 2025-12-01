@@ -6,7 +6,6 @@ simulated energy curve with the theoretical one.
 
 import warnings
 
-import matplotlib.pyplot as plt
 import numpy as np
 from perceval import LogicalState
 from perceval.algorithm import Sampler
@@ -17,7 +16,7 @@ from tqdm import tqdm
 from qlass.compiler import HardwareConfig, ResourceAwareCompiler
 
 # Imports from the qlass library
-from qlass.quantum_chemistry import LiH_hamiltonian_tapered, brute_force_minimize
+from qlass.quantum_chemistry import LiH_hamiltonian, brute_force_minimize
 from qlass.utils import rotate_qubits
 from qlass.vqe import VQE
 
@@ -72,12 +71,12 @@ def main():
     """
 
     # 1. Define the range of bond radii to simulate
-    radii = np.linspace(0.5, 2.5, 15)
+    radii = np.linspace(0.5, 2.5, 10)
     exact_energies = []
     vqe_energies = []
 
-    # The tapered LiH Hamiltonian has 4 qubits
-    num_qubits = 4
+    # The LiH Hamiltonian (with num_orbitals=1) has 2 qubits
+    num_qubits = 2
     # The le_ansatz uses a TwoLocal circuit with reps=1, so num_params = (1+1)*num_qubits
     num_params = 2 * num_qubits
 
@@ -85,7 +84,7 @@ def main():
     print("Running VQE simulations for different bond radii...")
     for r in tqdm(radii, desc="Simulating Radii"):
         # Generate the tapered Hamiltonian for the current radius
-        hamiltonian = LiH_hamiltonian_tapered(R=r)
+        hamiltonian = LiH_hamiltonian(R=r, num_electrons=2, num_orbitals=1)
 
         # Calculate the exact ground state energy for the theoretical curve
         exact_energy = brute_force_minimize(hamiltonian)
@@ -97,28 +96,30 @@ def main():
         # Run the VQE optimization
         vqe_energy = vqe.run(
             max_iterations=25,  # More iterations for better convergence
-            verbose=True,  # Turn off verbose output for the loop
+            verbose=False,  # Turn off verbose output for the loop
         )
         vqe_energies.append(vqe_energy)
 
+    # Uncomment the following block to show a plot of the result
     # 3. Plot the results
-    plt.style.use("seaborn-v0_8-whitegrid")
-    plt.figure(figsize=(12, 7))
+    # import matplotlib.pyplot as plt
+    # plt.style.use("seaborn-v0_8-whitegrid")
+    # plt.figure(figsize=(12, 7))
 
-    # Plot theoretical (exact) energy curve
-    plt.plot(radii, exact_energies, "bo", label="Exact Theoretical Energy", linewidth=2)
+    # # Plot theoretical (exact) energy curve
+    # plt.plot(radii, exact_energies, "bo", label="Exact Theoretical Energy", linewidth=2)
 
-    # Plot noisy VQE simulation results
-    plt.plot(radii, vqe_energies, "ro", label="Noisy VQE Simulation", markersize=8)
+    # # Plot noisy VQE simulation results
+    # plt.plot(radii, vqe_energies, "ro", label="Noisy VQE Simulation", markersize=8)
 
-    plt.xlabel("Internuclear Distance (Å)", fontsize=14)
-    plt.ylabel("Energy (Hartree)", fontsize=14)
-    plt.title("Noisy VQE Simulation of LiH Molecule", fontsize=16)
-    plt.legend(fontsize=12)
-    plt.grid(True, which="both", linestyle="--", linewidth=0.5)
-    plt.savefig("Lih_tapered_4q.png")
-    print("\nSimulation complete. Displaying plot.")
-    plt.show()
+    # plt.xlabel("Internuclear Distance (Å)", fontsize=14)
+    # plt.ylabel("Energy (Hartree)", fontsize=14)
+    # plt.title("Noisy VQE Simulation of LiH Molecule", fontsize=16)
+    # plt.legend(fontsize=12)
+    # plt.grid(True, which="both", linestyle="--", linewidth=0.5)
+    # plt.savefig("Lih_tapered_4q.png")
+    # print("\nSimulation complete. Displaying plot.")
+    # plt.show()
 
 
 if __name__ == "__main__":

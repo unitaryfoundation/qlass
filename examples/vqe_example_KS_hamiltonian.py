@@ -29,7 +29,7 @@ vqe = VQE(
 
 # Run the VQE optimization
 vqe_energy = vqe.run(
-    max_iterations=50,
+    max_iterations=20,
     verbose=True,
 )
 

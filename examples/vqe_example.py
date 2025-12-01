@@ -4,7 +4,6 @@ Example demonstrating the use of the VQE class.
 
 import warnings
 
-import matplotlib.pyplot as plt
 from perceval.algorithm import Sampler
 
 from qlass.quantum_chemistry import LiH_hamiltonian, brute_force_minimize
@@ -66,19 +65,20 @@ def main():
     print(f"Exact ground state energy: {exact_energy:.6f}")
     print(f"Energy difference: {comparison['absolute_error']:.6f}")
 
-    # Plot the convergence
-    print("\nPlotting convergence history...")
-    plt.figure(figsize=(10, 6))
-    iterations = range(len(vqe.energy_history))
-    plt.plot(iterations, vqe.energy_history, "o-", label="VQE Energy")
-    plt.axhline(y=exact_energy, color="r", linestyle="--", label="Exact Energy")
-    plt.xlabel("Iteration")
-    plt.ylabel("Energy")
-    plt.title("VQE Convergence")
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-    plt.savefig("vqe_convergence.png")
-    print("Convergence plot saved as 'vqe_convergence.png'")
+    # Uncomment the following block to show a plot of the result
+    # import matplotlib.pyplot as plt
+    # print("\nPlotting convergence history...")
+    # plt.figure(figsize=(10, 6))
+    # iterations = range(len(vqe.energy_history))
+    # plt.plot(iterations, vqe.energy_history, "o-", label="VQE Energy")
+    # plt.axhline(y=exact_energy, color="r", linestyle="--", label="Exact Energy")
+    # plt.xlabel("Iteration")
+    # plt.ylabel("Energy")
+    # plt.title("VQE Convergence")
+    # plt.legend()
+    # plt.grid(True, alpha=0.3)
+    # plt.savefig("vqe_convergence.png")
+    # print("Convergence plot saved as 'vqe_convergence.png'")
 
 
 if __name__ == "__main__":
