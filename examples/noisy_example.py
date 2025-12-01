@@ -75,7 +75,7 @@ def main():
     exact_energies = []
     vqe_energies = []
 
-    # The tapered LiH Hamiltonian has 2 qubits
+    # The LiH Hamiltonian (with num_orbitals=1) has 2 qubits
     num_qubits = 2
     # The le_ansatz uses a TwoLocal circuit with reps=1, so num_params = (1+1)*num_qubits
     num_params = 2 * num_qubits
