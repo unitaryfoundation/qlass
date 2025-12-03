@@ -16,10 +16,10 @@ project funded by the European Union.
 
 ## Installing `qlass`
 
+
 ### Stable release (PyPI)
 
-
-To install the latest stable release of `qlass` from [PyPI](https://pypi.org/project/qlass/):
+To install the latest stable release of `qlass` from [PyPI](https://pypi.org/project/qlass/) using [uv](https://github.com/astral-sh/uv):
 
 ```bash
 pip install qlass
@@ -30,7 +30,13 @@ pip install qlass
 To install the development version, set the working directory to the top level of the repository and run:
 
 ```bash
-pip install -e .
+uv sync --all-groups
+```
+
+If you don't have `uv` installed, you can install it via pip:
+
+```bash
+pip install uv
 ```
 
 `qlass` builds upon open-source scientific software packages in Python: `scipy` for numerical optimization, `pyscf` and `openfermion` for quantum chemistry, `qiskit` for quantum computing, and `perceval` for quantum photonics compilation.

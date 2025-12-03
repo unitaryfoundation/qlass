@@ -13,7 +13,7 @@ Before installing ``qlass``, ensure you have the following:
 Stable install from PyPI
 -----------------------
 
-To install the latest stable release of ``qlass`` from PyPI:
+To install the latest stable release of ``qlass`` from PyPI using `uv`:
 
 .. code-block:: bash
 
@@ -34,10 +34,16 @@ To install the development version from source:
    # Navigate to the repository directory
    cd qlass
 
-   # Install the package in development mode
-   pip install -e .
+   # Install the package in development mode using uv
+   uv sync --all-groups
 
-This will install ``qlass`` and all its dependencies.
+This will install ``qlass`` and all its dependencies necessary for development and testing.
+
+If you don't have `uv` installed, you can install it via pip:
+
+.. code-block:: bash
+
+   pip install uv
 
 Dependencies
 -----------
