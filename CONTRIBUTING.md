@@ -56,8 +56,19 @@ uv run --group test pytest --cov
 make check-examples
 ```
 Running make check-examples might take some time as we are running all the example scripts.
-## Code Standards
+## Documentation
+### API Doc
+If you add new modules, functions or classes, make sure they are picked up in the documentation API-doc.  
+### Contributing to the User Guide
+If the user guide would benefit from an update, please consider adding it a description in the corresponding file in the [docs](https://github.com/unitaryfoundation/qlass/tree/main/docs) folder.  
 
+### Contributing to Examples as Scripts
+You can contribute to the python examples scripts adding a new `.py` file in the [examples](https://github.com/unitaryfoundation/qlass/tree/main/examples) folder. 
+ 
+### Contributing to Examples in the Documentation 
+You can contribute to small code snippets as examples in the documentation, in the  [docs/examples.rst](https://github.com/unitaryfoundation/qlass/blob/main/docs/examples.rst) file.
+
+## Code Standards
 - **Python version**: 3.10+
 - **Type hints**: Required for all functions (enforced by mypy)
 - **Formatting**: Handled by ruff (100 character line length, double quotes)
