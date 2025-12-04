@@ -13,6 +13,7 @@ While you can use qlass distribution from PyPI, in order to contribute to qlass,
 ## Development Workflow
 We recommend the following development workflow, in order to do some checks locally and facilitate the code review. 
 ### Running Tests
+Please add tests if you edit or add new code to the source code. You can then check the results simply with
 ```bash
 uv run pytest
 ```
