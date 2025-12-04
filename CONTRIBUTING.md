@@ -24,7 +24,7 @@ uv run --group test pytest --cov
 ```
 
 ### Code Quality Checks
-
+We run code coverage tests in the continuous integration (CI) pipeline of qlass. Please do some preliminarily code quality checks locally. The `format` option helps you fix them locally by rewriting code automatically where doable.  
 **Linting:**
 ```bash
 uv run --group lint ruff check .
