@@ -3,7 +3,7 @@
 Thanks for your interest in contributing to qlass! This guide will help you get started.
 
 ## Quick Start
-
+While you can use qlass distribution from PyPI, in order to contribute to qlass, you need to install the development version from Github to be sure that there are no breaking changes with respect to the current `main` version.  
 1. **Fork and clone** the repository
 2. **Install dependencies** using [uv](https://docs.astral.sh/uv/):
    ```bash
