@@ -72,4 +72,4 @@ Running make check-examples might take some time as we are running all the examp
 
 ## Questions?
 
-Feel free to open an issue for questions or discussions.
+Feel free to open [an issue](https://github.com/unitaryfoundation/qlass/issues/new) for questions or discussions.
