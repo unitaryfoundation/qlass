@@ -33,7 +33,8 @@ To install the development version, set the working directory to the top level o
 uv sync --all-groups
 ```
 
-If you don't have `uv` installed, you can install it via pip:
+If you don't have `uv` installed, you can checkout the installation instructions [here](https://docs.astral.sh/uv/getting-started/installation/).
+Or, you can install it via pip:
 
 ```bash
 pip install uv
