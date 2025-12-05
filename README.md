@@ -123,5 +123,7 @@ The main functions of the package are commented using the Google style format an
 
 You can join the UF [Discord server](http://discord.unitary.fund) for community support.
 
+For a guide to opening a PR, checkout the [contributing guide](https://github.com/unitaryfoundation/qlass/blob/contributing/CONTRIBUTING.md).
+
 ## Funding
 Funded by the European Union. Views and opinions expressed are however those of the authors only and do not necessarily reflect those of the European Union. Neither the European Union nor the granting authority can be held responsible for them.
