@@ -39,7 +39,7 @@ To install the development version from source:
 
 This will install ``qlass`` and all its dependencies necessary for development and testing.
 
-If you don't have `uv` installed, you can checkout the installation instructions [here](https://docs.astral.sh/uv/getting-started/installation/). 
+If you don't have `uv` installed, you can checkout the installation instructions at https://docs.astral.sh/uv/getting-started/installation/. 
 Or, you can install it via pip:
 
 .. code-block:: bash
