@@ -604,7 +604,7 @@ def Hchain_hamiltonian_WFT(
         H_qubit = symmetry_conserving_bravyi_kitaev(
             fermionic_op, active_orbitals=num_electrons * 2, active_fermions=num_electrons
         )
-    elif tampering == False:
+    if not tampering:
         from openfermion.transforms import jordan_wigner
 
         H_qubit = jordan_wigner(fermionic_op)

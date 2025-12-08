@@ -151,7 +151,7 @@ def test_invalid_cost_type():
 
     # Define an executor function that uses the linear entangled ansatz
     def executor(params, pauli_string):
-        processors = hf_ansatz(1, n_orbs, params, pauli_string, method="DFT", cost="e-VQE")
+        processors = Bitstring_initial_states(1, 2, params, pauli_string, cost="e-VQE")
         samplers = [Sampler(p) for p in processors]
         samples = [sampler.samples(5) for sampler in samplers]
 
@@ -578,9 +578,8 @@ def test_CSF_initial_states_excitation():
     from qlass.vqe.ansatz import CSF_initial_states
 
     with pytest.raises(
-        ValueError, match="Singlet excitation requested but missing required parameters k and l."
-    ):
-        proc = CSF_initial_states(
+        ValueError, match="Singlet excitation requested but missing required parameters k and l."):
+        CSF_initial_states(
             num_spatial_orbitals=1,
             num_electrons=(1, 1),
             initial_parameters=np.array(
