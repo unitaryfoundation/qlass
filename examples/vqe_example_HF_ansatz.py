@@ -2,14 +2,12 @@ import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
-
 from perceval.algorithm import Sampler
 
 from qlass.quantum_chemistry import hamiltonian_matrix
 from qlass.quantum_chemistry.hamiltonians import Hchain_hamiltonian_WFT
 from qlass.vqe import VQE
 from qlass.vqe.ansatz import CSF_initial_states
-
 
 warnings.filterwarnings("ignore")
 
@@ -34,7 +32,7 @@ vqe = VQE(
 )
 
 # Run the VQE optimization
-vqe_energy = vqe.run(max_iterations=3, verbose=True, cost="VQE")
+vqe_energy = vqe.run(max_iterations=50, verbose=True, cost="VQE")
 
 H_matrix = hamiltonian_matrix(ham)
 exact_energy = np.sort(np.linalg.eigvals(H_matrix))

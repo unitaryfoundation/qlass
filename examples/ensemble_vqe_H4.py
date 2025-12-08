@@ -2,7 +2,6 @@ import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
-
 from perceval.algorithm import Sampler
 
 from qlass.quantum_chemistry import Hchain_KS_hamiltonian, hamiltonian_matrix
