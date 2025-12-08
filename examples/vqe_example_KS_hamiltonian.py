@@ -4,7 +4,7 @@ from perceval.algorithm import Sampler
 
 from qlass.quantum_chemistry import Hchain_KS_hamiltonian, brute_force_minimize
 from qlass.vqe import VQE
-from qlass.vqe.ansatz import hf_ansatz
+from qlass.vqe.ansatz import Bitstring_initial_states
 
 warnings.filterwarnings("ignore")
 
@@ -13,7 +13,7 @@ ham, scf_mo_energy, n_orbs = Hchain_KS_hamiltonian(4, 1.2)
 
 # Define an executor function that uses the linear entangled ansatz
 def executor(params, pauli_string):
-    processors = hf_ansatz(1, n_orbs, params, pauli_string, method="DFT", cost="VQE")
+    processors = Bitstring_initial_states(1, n_orbs, params, pauli_string, cost="VQE")
     samplers = Sampler(processors)
     samples = samplers.samples(10_000)
 

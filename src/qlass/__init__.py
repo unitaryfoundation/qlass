@@ -17,7 +17,7 @@ from .quantum_chemistry.hamiltonians import (
 from .utils.utils import e_vqe_loss_function, loss_function, rotate_qubits
 
 # export from vqe module
-from .vqe.ansatz import custom_unitary_ansatz, hf_ansatz, le_ansatz
+from .vqe.ansatz import custom_unitary_ansatz, le_ansatz
 
 # Define the public API exposed directly under 'qlass'
 __all__ = [
@@ -32,7 +32,6 @@ __all__ = [
     "sparsepauliop_dictionary",
     "le_ansatz",
     "custom_unitary_ansatz",
-    "hf_ansatz",
     "loss_function",
     "e_vqe_loss_function",
     "rotate_qubits",

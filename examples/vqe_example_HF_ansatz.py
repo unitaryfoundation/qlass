@@ -1,20 +1,23 @@
-import warnings
-
-from perceval.algorithm import Sampler
-
-from qlass.quantum_chemistry import LiH_hamiltonian, brute_force_minimize
+import numpy as np
+from qlass.quantum_chemistry.hamiltonians import Hchain_hamiltonian_WFT
 from qlass.vqe import VQE
-from qlass.vqe.ansatz import hf_ansatz
+from qlass.quantum_chemistry import hamiltonian_matrix
+from perceval.algorithm import Sampler
+import warnings
+import matplotlib.pyplot as plt
+from qlass.vqe.ansatz import CSF_initial_states
+
 
 warnings.filterwarnings("ignore")
 
-ham = LiH_hamiltonian(num_electrons=2, num_orbitals=1)
+ham = Hchain_hamiltonian_WFT(2, 0.741, tampering=False)
+print("Printing Hamiltonian", ham)
 
 
-# Define an executor function that uses the linear entangled ansatz
 def executor(params, pauli_string):
-    processors = hf_ansatz(1, 1, params, pauli_string, method="WFT", cost="VQE")
-    samplers = Sampler(processors)
+    # for VQE
+    processor = CSF_initial_states(1, (1, 1), params, pauli_string)
+    samplers = Sampler(processor)
     samples = samplers.samples(10_000)
 
     return samples
@@ -24,11 +27,21 @@ def executor(params, pauli_string):
 vqe = VQE(
     hamiltonian=ham,
     executor=executor,
-    num_params=4,  # Number of parameters in the linear entangled ansatz
+    num_params=8,  # Number of parameters in the linear entangled ansatz
 )
 
 # Run the VQE optimization
-vqe_energy = vqe.run(max_iterations=20, verbose=True)
+vqe_energy = vqe.run(max_iterations=3, verbose=True, cost="VQE")
 
-# Calculate the exact ground state energy for comparison
-exact_energy = brute_force_minimize(ham)
+H_matrix = hamiltonian_matrix(ham)
+exact_energy = np.sort(np.linalg.eigvals(H_matrix))
+print(f"energy from exact diag: {exact_energy[0]}")
+plt.figure(figsize=(10, 6))
+plt.plot(vqe.energy_history, label="Ground state from VQE")
+plt.axhline(y=exact_energy[0], color="b", linestyle="--", label="Ground state from exact")
+plt.xlabel("Iteration")
+plt.ylabel("Energy (Hartee)")
+plt.title("VQE Convergence")
+plt.legend()
+plt.tight_layout()
+plt.show()

@@ -108,33 +108,156 @@ def list_of_ones(computational_basis_state: int, n_qubits: int) -> list[int]:
     return [abs(j - n_qubits + 1) for j in range(len(bitstring)) if bitstring[j] == "1"]
 
 
-def hf_ansatz(
-    layers: int,
-    n_orbs: int,
-    lp: np.ndarray,
+def CSF_initial_states(
+    num_spatial_orbitals: int,
+    num_electrons: [int, int],
+    initial_parameters: np.ndarray,
     pauli_string: str,
-    method: str,
-    cost: str = "VQE",
+    singlet_excitation: bool = False,
+    k: int | None = None,
+    l: int | None = None,
     noise_model: NoiseModel | None = None,
 ) -> Processor | list[Processor]:
     """
-    Build a Hartree–Fock-based variational ansatz using Qiskit's ``n_local`` circuit,
+    Generate a Hartree-Fock initial state quantum circuit and optionally apply a singlet excitation.
+
+    This function constructs a Hartree-Fock initial state for a given number of electrons
+    and spatial orbitals, applies a parameterized ansatz, and prepares the circuit for
+    simulation on a quantum processor. Optionally, it can include a singlet excitation
+    between specified orbitals.
+
+    Parameters
+    ----------
+    num_spatial_orbitals : int
+        Number of spatial orbitals in the system.
+    num_electrons : list of int
+        Number of alpha and beta electrons, given as [num_alpha, num_beta].
+    initial_parameters : np.ndarray
+        Initial values for the parameterized ansatz.
+    pauli_string : str
+        Pauli string used to rotate the qubits after the ansatz.
+    singlet_excitation : bool, optional
+        If True, apply a singlet excitation to the Hartree-Fock state using the specified
+        orbitals `i` and `j`. Default is False.
+    i : int or None, optional
+        Index of the occupied orbital for singlet excitation. Required if `singlet_excitation=True`.
+    j : int or None, optional
+        Index of the unoccupied orbital for singlet excitation. Required if `singlet_excitation=True`.
+    noise_model : NoiseModel or None, optional
+        Optional noise model for simulating the quantum processor. Default is None.
+
+    Returns
+    -------
+    Processor or list of Processor
+        - If `singlet_excitation=False`, returns a single `Processor` object representing the
+          Hartree-Fock initial state with the ansatz applied.
+        - If `singlet_excitation=True`, returns a list `[Processor_HF, Processor_SC]` containing
+          the Hartree-Fock processor and the singlet-excited processor.
+
+    Raises
+    ------
+    ValueError
+        If `singlet_excitation=True` but either `k` or `l` is not provided.
+
+    Notes
+    -----
+    - The Hartree-Fock state is created by initializing qubits corresponding to spin orbitals.
+    - Do not use tampered Hamiltonian on this function.
+    - The ansatz used is a `n_local` circuit with 'ry' rotations and linear 'cx' entanglement.
+    - The circuit is transpiled using basis gates ['u3', 'cx'] and optimized to level 3.
+    - The `rotate_qubits` function is applied to align with the specified Pauli string.
+    - This function integrates with Perceval's `LogicalState` and `compile` functions to
+      produce a processor-ready quantum circuit.
+    """
+    # Generating Hartree Fock initial state
+    num_spin_orbitals = sum(num_electrons) * 2
+    bitstring_alpha = [0] * (num_spin_orbitals // 2)
+    bitstring_beta = [0] * (num_spin_orbitals // 2)
+    for i in range(num_electrons[0]):
+        bitstring_alpha[i] = 1
+    for j in range(num_electrons[1]):
+        bitstring_beta[j] = 1
+    bitstring = bitstring_beta + bitstring_beta
+    bitstring = bitstring[::-1]
+    num_qubits = len(bitstring)
+    hfc = QuantumCircuit(num_qubits)
+    # Apply X gates to occupied orbitals
+    for i, b in enumerate(bitstring):
+        if b == True:
+            hfc.x(i)
+
+    ansatz = n_local(
+        num_qubits=num_qubits,
+        rotation_blocks="ry",
+        entanglement_blocks="cx",
+        entanglement="linear",
+        reps=1,
+        insert_barriers=False,
+    )
+
+    hfc.compose(ansatz, inplace=True)
+    ansatz_assigned = hfc.assign_parameters(initial_parameters)
+    photonic_circuit = pcvl.LogicalState(bitstring)
+    ansatz_transpiled = transpile(ansatz_assigned, basis_gates=["u3", "cx"], optimization_level=3)
+    ansatz_rot = rotate_qubits(pauli_string, ansatz_transpiled.copy())
+    processor_HF = compile(ansatz_rot, input_state=photonic_circuit, noise_model=noise_model)
+
+    # singlet state
+    processor_sc = None
+    if singlet_excitation:
+        if k is None or l is None:
+            raise ValueError(
+                "Singlet excitation requested but missing required parameters k and l."
+            )
+        sbs = bitstring.copy()[::-1]
+        k = k - 1
+        l = l - 1
+        sbs[l] = 1
+        sbs[k] = 0
+        sbs = sbs[::-1]
+        sc = QuantumCircuit(num_qubits)
+        # Apply X gates to occupied orbitals
+        for i, b in enumerate(sbs):
+            if b == True:
+                sc.x(i)
+        sc.compose(ansatz, inplace=True)
+        sc_assigned_ansatz = sc.assign_parameters(initial_parameters)
+        ph_sc = pcvl.LogicalState(sbs)
+        sc_ansatz_transpiled = transpile(
+            sc_assigned_ansatz, basis_gates=["u3", "cx"], optimization_level=3
+        )
+        sc_ansatz_rot = rotate_qubits(pauli_string, sc_ansatz_transpiled.copy())
+        processor_sc = compile(sc_ansatz_rot, input_state=ph_sc, noise_model=noise_model)
+
+    if singlet_excitation:
+        return [processor_HF, processor_sc]
+    else:
+        return processor_HF
+
+
+def Bitstring_initial_states(
+    layers: int,
+    n_states: int,
+    lp: np.ndarray,
+    pauli_string: str,
+    cost: str = "VQE",
+    noise_model: NoiseModel | None = None,
+) -> Processor | list[Processor]:
+    initial_circuits = []
+    """
+    Build a Bitstring-based variational ansatz using Qiskit's ``n_local`` circuit,
     combined with initial reference states and compiled into Perceval processors.
 
     Parameters
     ----------
     layers : int
         Number of circuit layers (repetitions) in the ansatz.
-    n_orbs : int
-        Number of orbitals.
+    n_states : int
+        Number of states.
     lp : np.ndarray
         Array of parameter values for the ansatz circuit.
     pauli_string : str
         Pauli operator string defining the measurement basis.
-    method : str
-        Mapping method. One of:
-            - ``"WFT"`` : Wavefunction theory mapping (spin orbitals → qubits)
-            - ``"DFT"`` : Density functional mapping (spatial orbitals → qubits)
     cost : str, optional
         Type of cost function to prepare. One of:
             - ``"VQE"`` : Return only the ground-state processor (default)
@@ -146,7 +269,7 @@ def hf_ansatz(
     -------
     Processor or list of Processor
         If ``cost="VQE"``, returns a single Perceval ``Processor`` instance.
-        If ``cost="e-VQE"``, returns a list of processors based on method. One of: "WFT", "DFT".
+        If ``cost="e-VQE"``, returns a list of processors.
 
     Raises
     ------
@@ -155,31 +278,19 @@ def hf_ansatz(
 
     Notes
     -----
-    - The ansatz is constructed by composing the initial Hartree–Fock reference circuit
-      with a parameterized ``n_local`` circuit (Ry–CX entangling pattern).
+    - The ansatz is constructed by Bitstrings with a parameterized ``n_local`` circuit (Ry–CX entangling pattern).
     - See `https://scipost.org/SciPostPhys.14.3.055` for details on the DFT mapping.
     """
-
-    """Circuit implementation"""
-    num_qubits = len(pauli_string)
-    if method == "WFT":
-        n_occ = n_orbs * 2  # number of spin orbitals
-    elif method == "DFT":
-        n_occ = n_orbs // 2  # number of spatial orbitals
-    else:
-        raise ValueError("Invalid method. Use 'WFT' or 'DFT'.")
-
-    initial_circuits = []
-
-    for _i in range(n_occ):
+    num_qubits = len(lp) // 2
+    for _i in range(n_states):
         initial_circuits += [QuantumCircuit(num_qubits)]
     """Intial states"""
-    for state in range(n_occ):  # binarystring representation of the integer
+    for state in range(n_states):  # binarystring representation of the integer
         for i in list_of_ones(state, num_qubits):
             initial_circuits[state].x(i)
 
     circuits = []
-    for state in range(n_occ):
+    for state in range(n_states):
         ansatz = n_local(
             num_qubits=num_qubits,
             rotation_blocks="ry",
