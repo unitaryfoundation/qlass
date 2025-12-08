@@ -19,7 +19,7 @@ project funded by the European Union.
 
 ### Stable release (PyPI)
 
-To install the latest stable release of `qlass` from [PyPI](https://pypi.org/project/qlass/) using [uv](https://github.com/astral-sh/uv):
+To install the latest stable release of `qlass` from [PyPI](https://pypi.org/project/qlass/):
 
 ```bash
 pip install qlass
