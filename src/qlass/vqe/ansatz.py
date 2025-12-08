@@ -210,8 +210,8 @@ def CSF_initial_states(
                 "Singlet excitation requested but missing required parameters k and l."
             )
         sbs = bitstring.copy()[::-1]
-        sbs[l_index-1] = 1
-        sbs[k_index-1] = 0
+        sbs[l_index - 1] = 1
+        sbs[k_index - 1] = 0
         sbs = sbs[::-1]
         sc = QuantumCircuit(num_qubits)
         # Apply X gates to occupied orbitals

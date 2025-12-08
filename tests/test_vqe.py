@@ -578,7 +578,8 @@ def test_CSF_initial_states_excitation():
     from qlass.vqe.ansatz import CSF_initial_states
 
     with pytest.raises(
-        ValueError, match="Singlet excitation requested but missing required parameters k and l."):
+        ValueError, match="Singlet excitation requested but missing required parameters k and l."
+    ):
         CSF_initial_states(
             num_spatial_orbitals=1,
             num_electrons=(1, 1),
