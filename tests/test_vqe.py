@@ -607,8 +607,8 @@ def test_CSF_initial_states_excitation():
         ),
         pauli_string="II",
         singlet_excitation=True,
-        k=1,
-        l=2,
+        k_index=1,
+        l_index=2,
         noise_model=None,
     )
     assert isinstance(procs, list)

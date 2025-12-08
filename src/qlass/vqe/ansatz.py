@@ -110,12 +110,12 @@ def list_of_ones(computational_basis_state: int, n_qubits: int) -> list[int]:
 
 def CSF_initial_states(
     num_spatial_orbitals: int,
-    num_electrons: tuple(int, int),
+    num_electrons: tuple[int, int],
     initial_parameters: np.ndarray,
     pauli_string: str,
     singlet_excitation: bool = True,
-    k: int | None = None,
-    l: int | None = None,
+    k_index: int | None = None,
+    l_index: int | None = None,
     noise_model: NoiseModel | None = None,
 ) -> Processor | list[Processor]:
     """
@@ -205,13 +205,13 @@ def CSF_initial_states(
     # singlet state
     processor_sc = None
     if singlet_excitation:
-        if k is None or l is None:
+        if k_index is None or l_index is None:
             raise ValueError(
                 "Singlet excitation requested but missing required parameters k and l."
             )
         sbs = bitstring.copy()[::-1]
-        sbs[l-1] = 1
-        sbs[k-1] = 0
+        sbs[l_index-1] = 1
+        sbs[k_index-1] = 0
         sbs = sbs[::-1]
         sc = QuantumCircuit(num_qubits)
         # Apply X gates to occupied orbitals
