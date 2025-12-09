@@ -560,7 +560,7 @@ def Hchain_hamiltonian_WFT(
         num_orbitals : int, optional
             Number of spatial molecular orbitals.
             Default is ``2``.
-        symmetry: bool, optional
+        tampering: bool, optional
             if True, symmetry-conserving Bravyi–Kitaev transformed Hamiltonian
             if False, Full Hamiltonian transformed using JW
 

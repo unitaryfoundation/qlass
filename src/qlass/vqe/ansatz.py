@@ -139,9 +139,9 @@ def CSF_initial_states(
     singlet_excitation : bool, optional
         If True, apply a singlet excitation to the Hartree-Fock state using the specified
         orbitals `i` and `j`. Default is False.
-    i : int or None, optional
+    k_index : int or None, optional
         Index of the occupied orbital for singlet excitation. Required if `singlet_excitation=True`.
-    j : int or None, optional
+    l_index : int or None, optional
         Index of the unoccupied orbital for singlet excitation. Required if `singlet_excitation=True`.
     noise_model : NoiseModel or None, optional
         Optional noise model for simulating the quantum processor. Default is None.
@@ -177,7 +177,7 @@ def CSF_initial_states(
         bitstring_alpha[i] = 1
     for j in range(num_electrons[1]):
         bitstring_beta[j] = 1
-    bitstring = bitstring_beta + bitstring_beta
+    bitstring = bitstring_alpha + bitstring_beta
     bitstring = bitstring[::-1]
     num_qubits = len(bitstring)
     hfc = QuantumCircuit(num_qubits)
@@ -241,7 +241,7 @@ def Bitstring_initial_states(
     cost: str = "VQE",
     noise_model: NoiseModel | None = None,
 ) -> Processor | list[Processor]:
-    initial_circuits = []
+
     """
     Build a Bitstring-based variational ansatz using Qiskit's ``n_local`` circuit,
     combined with initial reference states and compiled into Perceval processors.
@@ -279,10 +279,11 @@ def Bitstring_initial_states(
     - The ansatz is constructed by Bitstrings with a parameterized ``n_local`` circuit (Ry–CX entangling pattern).
     - See `https://scipost.org/SciPostPhys.14.3.055` for details on the DFT mapping.
     """
+    initial_circuits = []
     num_qubits = len(lp) // 2
     for _i in range(n_states):
         initial_circuits += [QuantumCircuit(num_qubits)]
-    """Intial states"""
+    """Initial states"""
     for state in range(n_states):  # binarystring representation of the integer
         for i in list_of_ones(state, num_qubits):
             initial_circuits[state].x(i)
