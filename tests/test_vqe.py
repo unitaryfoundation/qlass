@@ -6,7 +6,8 @@ import pytest
 from perceval.algorithm import Sampler
 
 from qlass.quantum_chemistry import Hchain_KS_hamiltonian, LiH_hamiltonian
-from qlass.vqe import VQE, custom_unitary_ansatz, hf_ansatz, le_ansatz
+from qlass.vqe import VQE, custom_unitary_ansatz, le_ansatz
+from qlass.vqe.ansatz import Bitstring_initial_states
 
 warnings.simplefilter("ignore")
 warnings.filterwarnings("ignore")
@@ -124,7 +125,7 @@ def test_vqe_pipeline():
 def test_evqe_pipeline():
     # Define an executor function that uses the linear entangled ansatz
     def executor(params, pauli_string):
-        processors = hf_ansatz(1, n_orbs, params, pauli_string, method="DFT", cost="e-VQE")
+        processors = Bitstring_initial_states(1, n_orbs, params, pauli_string, cost="e-VQE")
         samplers = [Sampler(p) for p in processors]
         samples = [sampler.samples(5) for sampler in samplers]
 
@@ -150,7 +151,7 @@ def test_invalid_cost_type():
 
     # Define an executor function that uses the linear entangled ansatz
     def executor(params, pauli_string):
-        processors = hf_ansatz(1, n_orbs, params, pauli_string, method="DFT", cost="e-VQE")
+        processors = Bitstring_initial_states(1, 2, params, pauli_string, cost="e-VQE")
         samplers = [Sampler(p) for p in processors]
         samples = [sampler.samples(5) for sampler in samplers]
 
@@ -219,39 +220,6 @@ def test_custom_unitary_ansatz():
 
     assert 0.45 <= prob_0 <= 0.55, f"Unexpected probability for |0⟩: {prob_0}"
     assert 0.45 <= prob_1 <= 0.55, f"Unexpected probability for |1⟩: {prob_1}"
-
-
-def test_hf_ansatz_vqe():
-    proc = hf_ansatz(
-        layers=1,
-        n_orbs=1,
-        lp=np.array([0.45674329, 0.91022972, 0.94590395, 0.58386885]),
-        pauli_string="II",
-        method="WFT",
-        cost="VQE",
-        noise_model=None,
-    )
-    # Check that the returned object is not None
-    assert proc is not None
-    # Basic attribute check for Perceval processor
-    assert isinstance(proc, pcvl.Processor)
-
-
-def test_hf_ansatz_e_vqe():
-    procs = hf_ansatz(
-        layers=1,
-        n_orbs=1,
-        lp=np.array([0.45674329, 0.91022972, 0.94590395, 0.58386885]),
-        pauli_string="II",
-        method="WFT",
-        cost="e-VQE",
-        noise_model=None,
-    )
-    assert isinstance(procs, list)
-    assert len(procs) > 0
-    # Each element should look like a processor
-    for p in procs:
-        assert isinstance(p, pcvl.Processor)
 
 
 def test_plot_convergence(simple_vqe, mocker):
@@ -538,3 +506,114 @@ def test_vqe_compare_executor_types():
 
     # For identity operators and |00⟩ state, all should give similar results
     assert np.isclose(energy_unitary, energy_photonic, atol=0.1)
+
+
+def test_Bitstring_initial_states():
+    procs = Bitstring_initial_states(
+        layers=1,
+        n_states=2,
+        lp=np.array([0.45674329, 0.91022972, 0.94590395, 0.58386885]),
+        pauli_string="II",
+        cost="e-VQE",
+        noise_model=None,
+    )
+    assert isinstance(procs, list)
+    assert len(procs) > 0
+    # Each element should look like a processor
+    for p in procs:
+        assert isinstance(p, pcvl.Processor)
+
+    proc = Bitstring_initial_states(
+        layers=1,
+        n_states=1,
+        lp=np.array([0.45674329, 0.91022972, 0.94590395, 0.58386885]),
+        pauli_string="II",
+        cost="VQE",
+        noise_model=None,
+    )
+    # Check that the returned object is not None
+    assert proc is not None
+    # Basic attribute check for Perceval processor
+    assert isinstance(proc, pcvl.Processor)
+    with pytest.raises(ValueError, match="Invalid cost option. Use 'VQE' or 'e-VQE'."):
+        proc = Bitstring_initial_states(
+            layers=1,
+            n_states=1,
+            lp=np.array([0.45674329, 0.91022972, 0.94590395, 0.58386885]),
+            pauli_string="II",
+            cost="VQEL",
+            noise_model=None,
+        )
+
+
+def test_CSF_initial_states():
+    from qlass.vqe.ansatz import CSF_initial_states
+
+    proc = CSF_initial_states(
+        num_spatial_orbitals=1,
+        num_electrons=(1, 1),
+        initial_parameters=np.array(
+            [
+                0.45674329,
+                0.91022972,
+                0.94590395,
+                0.58386885,
+                0.45674329,
+                0.91022972,
+                0.94590395,
+                0.58386885,
+            ]
+        ),
+        pauli_string="II",
+        singlet_excitation=False,
+        noise_model=None,
+    )
+    # Check that the returned object is not None
+    assert proc is not None
+    # Basic attribute check for Perceval processor
+    assert isinstance(proc, pcvl.Processor)
+
+
+def test_CSF_initial_states_excitation():
+    from qlass.vqe.ansatz import CSF_initial_states
+
+    with pytest.raises(
+        ValueError, match="Singlet excitation requested but missing required parameters k and l."
+    ):
+        CSF_initial_states(
+            num_spatial_orbitals=1,
+            num_electrons=(1, 1),
+            initial_parameters=np.array(
+                [
+                    0.45674329,
+                    0.91022972,
+                    0.94590395,
+                    0.58386885,
+                    0.345,
+                    0.232,
+                    0.45674329,
+                    0.91022972,
+                ]
+            ),
+            pauli_string="II",
+            singlet_excitation=True,
+            noise_model=None,
+        )
+
+    procs = CSF_initial_states(
+        num_spatial_orbitals=1,
+        num_electrons=(1, 1),
+        initial_parameters=np.array(
+            [0.45674329, 0.91022972, 0.94590395, 0.58386885, 0.345, 0.232, 0.45674329, 0.91022972]
+        ),
+        pauli_string="II",
+        singlet_excitation=True,
+        k_index=1,
+        l_index=2,
+        noise_model=None,
+    )
+    assert isinstance(procs, list)
+    assert len(procs) > 0
+    # Each element should look like a processor
+    for p in procs:
+        assert isinstance(p, pcvl.Processor)

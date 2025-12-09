@@ -529,6 +529,7 @@ def Hchain_hamiltonian_WFT(
     spin: int = 0,
     num_electrons: int = 2,
     num_orbitals: int = 2,
+    tampering: bool = False,
 ) -> dict[str, float]:
     """
     Construct the qubit Hamiltonian for a linear hydrogen chain (Hₙ) using
@@ -559,6 +560,9 @@ def Hchain_hamiltonian_WFT(
         num_orbitals : int, optional
             Number of spatial molecular orbitals.
             Default is ``2``.
+        tampering: bool, optional
+            if True, symmetry-conserving Bravyi–Kitaev transformed Hamiltonian
+            if False, Full Hamiltonian transformed using JW
 
         Returns
         -------
@@ -571,10 +575,8 @@ def Hchain_hamiltonian_WFT(
         - Geometry is generated as a symmetric linear chain along the z-axis.
         - PySCF is used to compute SCF and FCI energies through OpenFermion.
         - Active-space selection freezes no core orbitals.
-        - The Hamiltonian is mapped to qubits using the symmetry-conserving
-          Bravyi–Kitaev transformation rather than Jordan–Wigner.
-        - Nuclear repulsion energy is included explicitly.
-
+        - If symmetry is True, the Hamiltonian is mapped to qubits using the symmetry-conserving
+          Bravyi–Kitaev transformation else Full Hamiltonian using Jordan–Wigner mapping.
     """
 
     geometry = []
@@ -594,42 +596,17 @@ def Hchain_hamiltonian_WFT(
 
     # Run PySCF calculation
     molecule = run_pyscf(molecule, run_scf=True, run_fci=True)
+    fermionic_op = get_fermion_operator(molecule.get_molecular_hamiltonian())
+    if tampering:
+        from openfermion.transforms import symmetry_conserving_bravyi_kitaev
 
-    # Apply active space transformation
-    # Calculate core orbitals to freeze
-    n_core_orbitals = 0
-    occupied_indices = list(range(n_core_orbitals))
+        # H_qubit_full = jordan_wigner(fermionic_op)
+        H_qubit = symmetry_conserving_bravyi_kitaev(
+            fermionic_op, active_orbitals=num_electrons * 2, active_fermions=num_electrons
+        )
+    if not tampering:
+        from openfermion.transforms import jordan_wigner
 
-    # Calculate active orbital indices
-    active_indices = list(range(n_core_orbitals, n_core_orbitals + num_orbitals))
-
-    # Get molecular Hamiltonian in active space
-    molecular_hamiltonian = molecule.get_molecular_hamiltonian(
-        occupied_indices=occupied_indices, active_indices=active_indices
-    )
-    E_nuc = 0.0
-    for i in range(n_hydrogens):
-        for j in range(i + 1, n_hydrogens):
-            distance = (j - i) * (R / 0.529177)
-            E_nuc += 1.0 / distance
-
-    from openfermion.ops import InteractionOperator
-
-    molecular_hamiltonian_with_nuclear = InteractionOperator(
-        constant=E_nuc,
-        one_body_tensor=molecular_hamiltonian.one_body_tensor,
-        two_body_tensor=molecular_hamiltonian.two_body_tensor,
-    )
-
-    # Convert to fermionic operator
-    active_orbitals = num_electrons * 2
-    fermionic_op = get_fermion_operator(molecular_hamiltonian_with_nuclear)
-    from openfermion.transforms import symmetry_conserving_bravyi_kitaev
-
-    # H_qubit_full = jordan_wigner(fermionic_op)
-    H_qubit = symmetry_conserving_bravyi_kitaev(
-        fermionic_op, active_orbitals=active_orbitals, active_fermions=num_electrons
-    )
-
+        H_qubit = jordan_wigner(fermionic_op)
     # Convert to dictionary format
     return sparsepauliop_dictionary(H_qubit)

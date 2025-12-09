@@ -1,22 +1,21 @@
 import warnings
 
+import matplotlib.pyplot as plt
 import numpy as np
 from perceval.algorithm import Sampler
 
-from qlass.quantum_chemistry import (
-    Hchain_KS_hamiltonian,
-    hamiltonian_matrix,
-)
+from qlass.quantum_chemistry import Hchain_KS_hamiltonian, hamiltonian_matrix
 from qlass.vqe import VQE
-from qlass.vqe.ansatz import hf_ansatz
+from qlass.vqe.ansatz import Bitstring_initial_states
 
 warnings.filterwarnings("ignore")
 
-ham, scf_mo_energy, n_orbs = Hchain_KS_hamiltonian(4, 1.2)
+ham, scf_mo_energy, n_orbs = Hchain_KS_hamiltonian(4, 0.784)
+print("Printing Hamiltonian", ham)
 
 
 def executor(params, pauli_string):
-    processors = hf_ansatz(1, n_orbs, params, pauli_string, method="DFT", cost="e-VQE")
+    processors = Bitstring_initial_states(1, n_orbs, params, pauli_string, cost="e-VQE")
     samplers = [Sampler(p) for p in processors]
     samples = [sampler.samples(10_000) for sampler in samplers]
 
@@ -27,29 +26,40 @@ def executor(params, pauli_string):
 vqe = VQE(
     hamiltonian=ham,
     executor=executor,
+    executor_type="sampling",
     num_params=4,  # Number of parameters in the linear entangled ansatz
 )
 
 # Run the VQE optimization
-vqe_energy = vqe.run(max_iterations=20, verbose=True, weight_option="weighted", cost="e-VQE")
+vqe_energy = vqe.run(max_iterations=50, verbose=True, weight_option="weighted", cost="e-VQE")
 
 # Calculate the exact energies for comparison
 H_matrix = hamiltonian_matrix(ham)
 exact_energy = np.sort(np.linalg.eigvals(H_matrix))
-
-# Uncomment the following block to show a plot of the result
-# import matplotlib.pyplot as plt
-# plt.figure(figsize=(10, 6))
-
-# plt.plot(vqe.energy_collector.loss_data, label="Cost")
-# plt.plot(vqe.energy_collector.energy_data[0], ls=":", color="blue", label="E_A")
-# plt.plot(vqe.energy_collector.energy_data[1], ls=":", color="green", label="E_B")
-# plt.axhline(y=exact_energy[0], color="b", linestyle="--", label="E_0")
-# plt.axhline(y=exact_energy[1], color="g", linestyle="--", label="E_1")
-# plt.xlabel("Iteration")
-# plt.ylabel("Energy (Hartree)")
-# plt.title("ensemble VQE Convergence")
-# plt.legend()
-# plt.tight_layout()
-# plt.savefig("vqe_convergence_DFT.png")
-# plt.show()
+fig, ax = plt.subplots(2, 1, figsize=(10, 6))
+print(f"Exact ground state: {exact_energy[0]}, first excited state: {exact_energy[1]}")
+VQE_T = np.add(vqe.energy_collector.energy_data[0], vqe.energy_collector.energy_data[1])
+EX_T = exact_energy[0] + exact_energy[1]
+error_T = VQE_T - EX_T
+error_EA = vqe.energy_collector.energy_data[0] - exact_energy[0]
+error_EB = vqe.energy_collector.energy_data[1] - exact_energy[1]
+ax[0].plot(vqe.energy_collector.loss_data, color="red", label="cost")
+ax[0].plot(vqe.energy_collector.energy_data[0], ls=":", color="blue", label="$E_A$")
+ax[0].plot(vqe.energy_collector.energy_data[1], ls=":", color="green", label="$E_B$")
+ax[0].axhline(y=exact_energy[0], color="b", linestyle="--", label="$E_0$")
+ax[0].axhline(y=exact_energy[1], color="g", linestyle="--", label="$E_1$")
+ax[1].plot(error_T, color="black", ls="-", label="$E_T$")
+ax[1].plot(error_EA, color="b", ls=":", label="E_A")
+ax[1].plot(error_EB, color="g", ls=":", label="E_B")
+ax[1].set_yscale("log")
+ax[0].set_ylabel("Energy (hartree)", fontsize=16)
+ax[1].set_ylabel("Error (hartree)", fontsize=16)
+ax[1].set_xlabel("Iteration", fontsize=16)
+ax[0].tick_params(axis="x", which="both", bottom=True, top=False, labelbottom=False)
+ax[1].tick_params(axis="both", labelsize=16)
+ax[0].tick_params(axis="y", labelsize=16)
+ax[1].tick_params(axis="y", labelsize=16)
+ax[0].set_title("ensemble VQE Convergence", fontsize=16)
+ax[0].legend(fontsize=16, ncol=4, labelspacing=0.02, columnspacing=0.1)
+ax[1].legend(fontsize=16)
+plt.show()
