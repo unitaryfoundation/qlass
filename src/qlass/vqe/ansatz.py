@@ -241,7 +241,6 @@ def Bitstring_initial_states(
     cost: str = "VQE",
     noise_model: NoiseModel | None = None,
 ) -> Processor | list[Processor]:
-
     """
     Build a Bitstring-based variational ansatz using Qiskit's ``n_local`` circuit,
     combined with initial reference states and compiled into Perceval processors.
