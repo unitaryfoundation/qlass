@@ -234,7 +234,14 @@ class VQE:
         if verbose:
             assert self.optimization_result is not None
             print("Optimization complete!")
-            print(f"Final energy: {self.optimization_result.fun:.6f}")
+            if cost == "VQE":
+                print(f"Final energy: {self.optimization_result.fun:.6f}")
+            else:
+                print(f"Final cost: {self.optimization_result.fun:.6f}")
+                last_entries = [
+                    float(f"{vals[-1]:.6f}") for vals in self.energy_collector.energy_data.values()
+                ]
+                print(f"Final energies: {last_entries}")
             print(f"Number of iterations: {self.optimization_result.nfev}")
 
         assert self.optimization_result is not None
