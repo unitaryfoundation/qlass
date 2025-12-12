@@ -25,6 +25,7 @@ dependencies = [
     "numpy>=1.22",
     "qiskit_aer>=0.17.0",
     "perceval-quandela>=0.13.2,<1.0.0",
+    "piquasso>=7.1.0",
     "openfermionpyscf>=0.5",
     "tqdm>=4.67.1",
     "numba>=0.59.0; python_version < '3.13'",
