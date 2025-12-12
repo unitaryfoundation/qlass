@@ -23,7 +23,6 @@ warnings.simplefilter("ignore")
 warnings.filterwarnings("ignore")
 
 
-
 def le_ansatz_piquasso(lp: np.ndarray, pauli_string: str) -> pq.Program:
     """
     Creates Piquasso quantum program for the Linear Entangled Ansatz.
