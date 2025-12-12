@@ -3,28 +3,25 @@ Example demonstrating the use of the VQE class using Piquasso for simulation.
 """
 
 import time
-
 import warnings
 
 import matplotlib.pyplot as plt
+import numpy as np
+import piquasso as pq
+from piquasso.dual_rail_encoding import (
+    dual_rail_encode_from_qiskit,
+    get_bosonic_qubit_samples,
+)
+from qiskit import transpile
+from qiskit.circuit.library import n_local
 
 from qlass.quantum_chemistry import LiH_hamiltonian, brute_force_minimize
+from qlass.utils import rotate_qubits
 from qlass.vqe import VQE
 
 warnings.simplefilter("ignore")
 warnings.filterwarnings("ignore")
 
-import numpy as np
-import piquasso as pq
-
-from qiskit import transpile
-from qlass.utils import rotate_qubits
-from qiskit.circuit.library import n_local
-
-from piquasso.dual_rail_encoding import (
-    dual_rail_encode_from_qiskit,
-    get_bosonic_qubit_samples,
-)
 
 
 def le_ansatz_piquasso(lp: np.ndarray, pauli_string: str) -> pq.Program:
@@ -44,9 +41,7 @@ def le_ansatz_piquasso(lp: np.ndarray, pauli_string: str) -> pq.Program:
     ansatz = n_local(num_qubits, "ry", "cx", reps=1, entanglement="linear")
 
     ansatz_assigned = ansatz.assign_parameters(lp)
-    ansatz_transpiled = transpile(
-        ansatz_assigned, basis_gates=["u3", "cx"], optimization_level=3
-    )
+    ansatz_transpiled = transpile(ansatz_assigned, basis_gates=["u3", "cx"], optimization_level=3)
 
     ansatz_rot = rotate_qubits(pauli_string, ansatz_transpiled.copy())
     program = dual_rail_encode_from_qiskit(ansatz_rot)
@@ -111,8 +106,7 @@ def main():
     vqe = VQE(
         hamiltonian=hamiltonian,
         executor=executor,
-        num_params=2
-        * num_qubits,  # Number of parameters in the linear entangled ansatz
+        num_params=2 * num_qubits,  # Number of parameters in the linear entangled ansatz
     )
 
     # Run the VQE optimization
