@@ -18,7 +18,7 @@ jobs:
           uv run -p 3.12 --no-dev --group docs -m sphinx -T -b html -d docs/_build/doctrees docs docs/_build/html
           
       - name: Upload documentation
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: documentation
           path: docs/_build/html/  
