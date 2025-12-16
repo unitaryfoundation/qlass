@@ -15,6 +15,7 @@ What is qlass?
 3. **Hardware-specific resource estimation and compilation** from quantum circuits (Qiskit) to linear optics layout of photonic processors (Perceval), including the analysis of circuits against realistic hardware constraints such as photon loss, detector efficiency, and fusion gate success rates.
 
 The package is particularly valuable for researchers working at the intersection of quantum algorithms and photonic quantum computing, as it provides the necessary tools to evaluate algorithm performance under realistic hardware conditions and optimize implementations for photonic architectures.
+
 Key Features
 -----------
 
@@ -45,3 +46,6 @@ Project Background
 
 The ``qlass`` package is developed by Unitary Foundation as part of the Quantum Glass-based Photonic Integrated Circuits (QLASS) project, 
 which aims to develop quantum technologies based on photonic integrated circuits. The project is funded by the European Union.
+
+.. bibliography:: refs.bib
+   :filter: docname in docnames
