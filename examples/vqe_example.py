@@ -2,6 +2,7 @@
 Example demonstrating the use of the VQE class.
 """
 
+import time
 import warnings
 
 from perceval.algorithm import Sampler
@@ -49,7 +50,10 @@ def main():
 
     # Run the VQE optimization
     print("\nRunning VQE optimization...")
+    start_time = time.time()
     vqe_energy = vqe.run(max_iterations=10, verbose=True)
+    end_time = time.time()
+    print(f"VQE optimization took {end_time - start_time:.2f} seconds.")
 
     # Get the optimal parameters
     optimal_params = vqe.get_optimal_parameters()

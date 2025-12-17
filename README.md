@@ -40,7 +40,7 @@ Or, you can install it via pip:
 pip install uv
 ```
 
-`qlass` builds upon open-source scientific software packages in Python: `scipy` for numerical optimization, `pyscf` and `openfermion` for quantum chemistry, `qiskit` for quantum computing, and `perceval` for quantum photonics compilation.
+`qlass` builds upon open-source scientific software packages in Python: `scipy` for numerical optimization, `pyscf` and `openfermion` for quantum chemistry, `qiskit` for quantum computing, and `perceval` for quantum photonics compilation. Optionally, one can also use the [`piquasso`](https://piquasso.readthedocs.io/) package for quantum optics simulations, which can offer improved performance compared to `perceval` in certain regimes.
 
 ## Getting started
 You can use [this demo notebook on the variational quantum eigensolver (VQE)](https://github.com/unitaryfoundation/qlass/blob/main/notebooks/demo.ipynb) to get started with the `qlass` package, or check out the [example script](https://github.com/unitaryfoundation/qlass/blob/main/examples/vqe_example.py).
