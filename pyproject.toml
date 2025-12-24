@@ -2,7 +2,7 @@
 
 [project]
 name = "qlass"
-version = "0.2.0"
+version = "0.2.1"
 description = "VQE on linear optical circuits"
 authors = [{name = "Farrokh Labib", email = "farrokh@unitary.foundation"}]
 requires-python = ">=3.10"
