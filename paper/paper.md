@@ -11,6 +11,12 @@ authors:
   - name: Farrokh Labib
     orcid: 0009-0005-3729-9602
     affiliation: "1, 2"
+  - name: Akilan Rajamani
+    orcid: 0000-0002-9083-6770
+    affiliation: "3"
+  - name: Bruno Senjean
+    orcid: 0000-0003-1706-015X
+    affiliation: "3"
   - name: Nathan Shammah
     orcid: 0000-0002-8775-3667
     affiliation: "1, 2"
@@ -19,8 +25,10 @@ affiliations:
    index: 1
  - name: Unitary Foundation, San Francisco, USA
    index: 2
+ - name: ICGM, Univ Montpellier, CNRS, ENSCM, Montpellier, France
+   index: 3
 
-date: 24 September 2025
+date: 14 January 2026
 bibliography: paper.bib
 ---
 
@@ -95,6 +103,6 @@ The package is actively maintained by the Unitary Foundation as part of the QLAS
 
 # Acknowledgements
 
-We acknowledge support from the European Union through the QLASS project (EU Horizon Europe grant agreement 101135876). Views and opinions expressed are however those of the authors only and do not necessarily reflect those of the European Union. Neither the European Union nor the granting authority can be held responsible for them. We thank the contributors to the open-source quantum computing ecosystem, particularly the developers of Qiskit, Perceval, OpenFermion, and PySCF. We would like to thank Bruno Senjean, Jean-Sébastien Filhol, and Francesco Malaspina for their valuable insight and the GitHub users Kitsunp and Qubit1718 for their code contributions.
+We acknowledge support from the European Union through the QLASS project (EU Horizon Europe grant agreement 101135876). Views and opinions expressed are however those of the authors only and do not necessarily reflect those of the European Union. Neither the European Union nor the granting authority can be held responsible for them. We thank the contributors to the open-source quantum computing ecosystem, particularly the developers of Qiskit, Perceval, OpenFermion, and PySCF. We would like to thank Jean-Sébastien Filhol and Francesco Malaspina for their valuable insight and the GitHub users Kitsunp and Qubit1718 for their code contributions.
 
 # References
