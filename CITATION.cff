@@ -1,0 +1,46 @@
+cff-version: "1.2.0"
+authors:
+- family-names: Labib
+  given-names: Farrokh
+  orcid: "https://orcid.org/0009-0005-3729-9602"
+- family-names: Rajamani
+  given-names: Akilan
+  orcid: "https://orcid.org/0000-0002-9083-6770"
+- family-names: Senjean
+  given-names: Bruno
+  orcid: "https://orcid.org/0000-0003-1706-015X"
+- family-names: Shammah
+  given-names: Nathan
+  orcid: "https://orcid.org/0000-0002-8775-3667"
+doi: 10.5281/zenodo.18245793
+message: If you use this software, please cite our article in the
+  Journal of Open Source Software.
+preferred-citation:
+  authors:
+  - family-names: Labib
+    given-names: Farrokh
+    orcid: "https://orcid.org/0009-0005-3729-9602"
+  - family-names: Rajamani
+    given-names: Akilan
+    orcid: "https://orcid.org/0000-0002-9083-6770"
+  - family-names: Senjean
+    given-names: Bruno
+    orcid: "https://orcid.org/0000-0003-1706-015X"
+  - family-names: Shammah
+    given-names: Nathan
+    orcid: "https://orcid.org/0000-0002-8775-3667"
+  date-published: 2026-01-15
+  doi: 10.21105/joss.09316
+  issn: 2475-9066
+  issue: 117
+  journal: Journal of Open Source Software
+  publisher:
+    name: Open Journals
+  start: 9316
+  title: "qlass: A Python Package for Variational Quantum Algorithms on
+    Photonic Devices"
+  type: article
+  url: "https://joss.theoj.org/papers/10.21105/joss.09316"
+  volume: 11
+title: "qlass: A Python Package for Variational Quantum Algorithms on
+  Photonic Devices"
