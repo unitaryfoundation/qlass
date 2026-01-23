@@ -7,7 +7,10 @@
 [![PyPI version](https://badge.fury.io/py/qlass.svg)](https://badge.fury.io/py/qlass)
 [![Downloads](https://static.pepy.tech/personalized-badge/qlass?period=total&units=international_system&left_color=black&right_color=green&left_text=Downloads)](https://www.pepy.tech/projects/qlass)
 [![License](https://img.shields.io/github/license/unitaryfoundation/qlass)](https://github.com/unitaryfoundation/qlass/blob/main/LICENSE)
-[![Discord Chat](https://img.shields.io/badge/dynamic/json?color=blue&label=Discord&query=approximate_presence_count&suffix=%20online.&url=https%3A%2F%2Fdiscord.com%2Fapi%2Finvites%2FJqVGmpkP96%3Fwith_counts%3Dtrue)](http://discord.unitary.fund)
+[![Discord Chat](https://img.shields.io/badge/dynamic/json?color=blue&label=Discord&query=approximate_presence_count&suffix=%20online.&url=https%3A%2F%2Fdiscord.com%2Fapi%2Finvites%2FJqVGmpkP96%3Fwith_counts%3Dtrue)](http://discord.unitary.foundation)
+[![Zenodo DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18245793.svg)](https://doi.org/10.5281/zenodo.18245793)
+[![DOI](https://joss.theoj.org/papers/10.21105/joss.09316/status.svg)](https://doi.org/10.21105/joss.09316)
+
 
 # qlass
 `qlass` is a package to compile quantum algorithms on photonic devices. Part of the Quantum Glass-based Photonic Integrated Circuits ([QLASS](https://www.qlass-project.eu/))
