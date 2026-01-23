@@ -6,8 +6,8 @@ import pytest
 from perceval.algorithm import Sampler
 
 from qlass.quantum_chemistry import (
-    Hchain_KS_hamiltonian,
     Hchain_hamiltonian_WFT,
+    Hchain_KS_hamiltonian,
     LiH_hamiltonian,
 )
 from qlass.vqe import VQE, custom_unitary_ansatz, le_ansatz

@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -216,7 +217,8 @@ class VQE:
 
             elif self.executor_type == "sampling":
                 if jacobian == "parameter_shift":
-                    def jac_fun(p, *args):
+
+                    def jac_fun(p: np.ndarray, *args: Any) -> Any:
                         return self.parametershift_grad(loss_function, p, *args)
                 elif jacobian is None:
                     pass
@@ -238,7 +240,8 @@ class VQE:
             if self.executor_type == "sampling":
                 arguments = (self.hamiltonian, self.executor, self.energy_collector, weight_option)
                 if jacobian == "parameter_shift":
-                    def jac_fun(p, *args):
+
+                    def jac_fun(p: np.ndarray, *args: Any) -> Any:
                         return self.parametershift_grad(loss_function, p, *args)
                 elif jacobian is None:
                     pass
@@ -340,7 +343,7 @@ class VQE:
         return comparison
 
     def parametershift_grad(
-        self, vqefunction: Callable, param: np.ndarray, *args
+        self, vqefunction: Callable, param: np.ndarray, *args: Any
     ) -> np.ndarray:
         """
         Compute the gradient of a variational quantum function using
