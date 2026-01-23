@@ -242,7 +242,7 @@ class VQE:
                 if jacobian == "parameter_shift":
 
                     def jac_fun(p: np.ndarray, *args: Any) -> Any:
-                        return self.parametershift_grad(loss_function, p, *args)
+                        return self.parametershift_grad(e_vqe_loss_function, p, *args)
                 elif jacobian is None:
                     pass
                 else:

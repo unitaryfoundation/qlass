@@ -660,7 +660,7 @@ def test_parametershift_grad():
     )
 
 
-def test_parametershift_grad_pipline():
+def test_parametershift_grad_pipline_vqe():
     ham = Hchain_hamiltonian_WFT(2, 0.741, tampering=True)
 
     def executor(params, pauli_string):
@@ -688,3 +688,31 @@ def test_parametershift_grad_pipline():
         ValueError, match="Wrong keyward for Jacobian. It should be None or parameter_shift"
     ):
         vqe_energy = vqe.run(max_iterations=1, verbose=True, cost="VQE", jacobian="paramtershift")
+
+
+def test_parametershift_grad_pipline_evqe():
+    ham, scf_mo_energy, n_orbs = Hchain_KS_hamiltonian(4, 0.784)
+
+    def executor(params, pauli_string):
+        processors = Bitstring_initial_states(1, n_orbs, params, pauli_string, cost="e-VQE")
+        samplers = [Sampler(p) for p in processors]
+        samples = [sampler.samples(100) for sampler in samplers]
+
+        return samples
+
+    # Initialize the VQE solver
+    vqe = VQE(
+        hamiltonian=ham,
+        executor=executor,
+        executor_type="sampling",
+        num_params=4,  # Number of parameters in the linear entangled ansatz
+        optimizer="SLSQP",
+    )
+
+    # Run the VQE optimization
+    vqe_energy = vqe.run(max_iterations=2, verbose=True, cost="e-VQE", jacobian="parameter_shift")
+    assert isinstance(vqe_energy, float)
+    with pytest.raises(
+        ValueError, match="Wrong keyward for Jacobian. It should be None or parameter_shift"
+    ):
+        vqe_energy = vqe.run(max_iterations=1, verbose=True, cost="e-VQE", jacobian="paramtershift")
