@@ -5,7 +5,11 @@ import perceval as pcvl
 import pytest
 from perceval.algorithm import Sampler
 
-from qlass.quantum_chemistry import Hchain_KS_hamiltonian, LiH_hamiltonian, Hchain_hamiltonian_WFT
+from qlass.quantum_chemistry import (
+    Hchain_KS_hamiltonian,
+    Hchain_hamiltonian_WFT,
+    LiH_hamiltonian,
+)
 from qlass.vqe import VQE, custom_unitary_ansatz, le_ansatz
 from qlass.vqe.ansatz import Bitstring_initial_states
 
@@ -645,7 +649,7 @@ def test_parametershift_grad():
     )
 
     # Compute gradient using parameter shift
-    grad_estimated = vqe.parametershift_grad(vqefunction=simple_function, intialparam=theta)
+    grad_estimated = vqe.parametershift_grad(vqefunction=simple_function, param=theta)
 
     # Compute analytical gradient: df/dtheta0 = cos(theta0), df/dtheta1 = -sin(theta1)
     grad_expected = np.array([np.cos(theta[0]), -np.sin(theta[1])])
@@ -678,9 +682,9 @@ def test_parametershift_grad_pipline():
     # Run the VQE optimization
     vqe_energy = vqe.run(max_iterations=2, verbose=True, cost="VQE", jacobian=None)
     assert isinstance(vqe_energy, float)
-    vqe_energy1 = vqe.run(max_iterations=2, verbose=True, cost="VQE", jacobian="parameter_shift")
-    assert isinstance(vqe_energy1, float)
+    vqe_energy = vqe.run(max_iterations=2, verbose=True, cost="VQE", jacobian="parameter_shift")
+    assert isinstance(vqe_energy, float)
     with pytest.raises(
         ValueError, match="Wrong keyward for Jacobian. It should be None or parameter_shift"
     ):
-        vqe_energy2 = vqe.run(max_iterations=1, verbose=True, cost="VQE", jacobian="paramtershift")
+        vqe_energy = vqe.run(max_iterations=1, verbose=True, cost="VQE", jacobian="paramtershift")

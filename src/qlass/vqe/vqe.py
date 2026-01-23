@@ -216,8 +216,9 @@ class VQE:
 
             elif self.executor_type == "sampling":
                 if jacobian == "parameter_shift":
-                    jac_fun = lambda p, *args: self.parametershift_grad(loss_function, p, *args)
-                elif jacobian == None:
+                    def jac_fun(p, *args):
+                        return self.parametershift_grad(loss_function, p, *args)
+                elif jacobian is None:
                     pass
                 else:
                     raise ValueError(
@@ -237,10 +238,9 @@ class VQE:
             if self.executor_type == "sampling":
                 arguments = (self.hamiltonian, self.executor, self.energy_collector, weight_option)
                 if jacobian == "parameter_shift":
-                    jac_fun = lambda p, *args: self.parametershift_grad(
-                        e_vqe_loss_function, p, *args
-                    )
-                elif jacobian == None:
+                    def jac_fun(p, *args):
+                        return self.parametershift_grad(loss_function, p, *args)
+                elif jacobian is None:
                     pass
                 else:
                     raise ValueError(
@@ -340,7 +340,7 @@ class VQE:
         return comparison
 
     def parametershift_grad(
-        self, vqefunction: callable, param: np.ndarray, *args
+        self, vqefunction: Callable, param: np.ndarray, *args
     ) -> np.ndarray:
         """
         Compute the gradient of a variational quantum function using
@@ -351,7 +351,7 @@ class VQE:
 
         Parameters
         ----------
-        vqefunction : callable
+        vqefunction : Callable
             A callable that evaluates the variational quantum objective.
             It must accept a parameter array as its first argument and
             return a scalar value.
