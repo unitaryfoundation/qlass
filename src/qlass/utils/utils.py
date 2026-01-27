@@ -236,7 +236,12 @@ def normalize_samples(samples: Any) -> list[exqalibur.FockState | tuple[int, ...
     return normalized
 
 
-def loss_function(lp: np.ndarray, H: dict[str, float], executor: Any) -> float:
+def loss_function(
+    lp: np.ndarray,
+    H: dict[str, float],
+    executor: Any,
+    mitigator: Any | None = None,
+) -> float:
     """
     Compute the loss function for the VQE algorithm with automatic Pauli grouping.
 
@@ -259,6 +264,7 @@ def loss_function(lp: np.ndarray, H: dict[str, float], executor: Any) -> float:
         lp (np.ndarray): Array of parameter values
         H (Dict[str, float]): Hamiltonian dictionary
         executor: A callable function that executes the quantum circuit.
+        mitigator: Optional mitigator object (e.g., M3Mitigator) to correct measurement errors.
 
     Returns:
         float: The computed loss value
@@ -284,16 +290,23 @@ def loss_function(lp: np.ndarray, H: dict[str, float], executor: Any) -> float:
             # For now, we process each term individually but with the grouping organization
             for pauli_string, coefficient in group.items():
                 samples = executor(lp, pauli_string)
-
-                # Handle different executor return formats
                 sample_list = _extract_samples_from_executor_result(samples)
-
-                # Normalize samples to consistent format
                 normalized_samples = normalize_samples(sample_list)
 
-                prob_dist = get_probabilities(normalized_samples)
-                pauli_bin = pauli_string_bin(pauli_string)
+                # --- MITIGATION BLOCK ---
+                if mitigator is not None:
+                    # Convert samples to counts
+                    counts = {}
+                    for s in normalized_samples:
+                        counts[s] = counts.get(s, 0) + 1
+                    
+                    # Mitigate to get probability distribution directly
+                    prob_dist = mitigator.mitigate(counts)
+                else:
+                    prob_dist = get_probabilities(normalized_samples)
+                # ------------------------
 
+                pauli_bin = pauli_string_bin(pauli_string)
                 qubit_state_marg = qubit_state_marginal(prob_dist)
                 expectation = compute_energy(pauli_bin, qubit_state_marg)
                 loss += coefficient * expectation
@@ -301,16 +314,23 @@ def loss_function(lp: np.ndarray, H: dict[str, float], executor: Any) -> float:
         # Fallback to original implementation without grouping
         for pauli_string, coefficient in H.items():
             samples = executor(lp, pauli_string)
-
-            # Handle different executor return formats
             sample_list = _extract_samples_from_executor_result(samples)
-
-            # Normalize samples to consistent format
             normalized_samples = normalize_samples(sample_list)
 
-            prob_dist = get_probabilities(normalized_samples)
-            pauli_bin = pauli_string_bin(pauli_string)
+            # --- MITIGATION BLOCK ---
+            if mitigator is not None:
+                # Convert samples to counts
+                counts = {}
+                for s in normalized_samples:
+                    counts[s] = counts.get(s, 0) + 1
+                
+                # Mitigate
+                prob_dist = mitigator.mitigate(counts)
+            else:
+                prob_dist = get_probabilities(normalized_samples)
+            # ------------------------
 
+            pauli_bin = pauli_string_bin(pauli_string)
             qubit_state_marg = qubit_state_marginal(prob_dist)
             expectation = compute_energy(pauli_bin, qubit_state_marg)
             loss += coefficient * expectation

@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -25,6 +26,7 @@ class VQE:
         executor_type: str = "sampling",
         initial_state: np.ndarray | None = None,  # For now only relevant for photonic_unitary,
         ancillary_modes: list[int] | None = None,
+        mitigator: Any | None = None,
     ):
         """
         Initialize the VQE solver.
@@ -43,6 +45,8 @@ class VQE:
                 Use this when simulating photonic systems or when post-selection on ancillary modes is required.
             ancillary_modes (List[int], optional): List of ancillary mode indices
                 for post-selection when using 'photonic_unitary' executor.
+            mitigator (Any, optional): Data mitigation object (e.g. M3Mitigator) to apply
+                correction to the measured counts. Only used with sampling executors.
         """
         self.hamiltonian = hamiltonian
         self.executor = executor
@@ -50,6 +54,7 @@ class VQE:
         self.optimizer = optimizer
         self.initial_state = initial_state
         self.ancillary_modes = ancillary_modes
+        self.mitigator = mitigator
 
         # Extract number of qubits from the Hamiltonian
         self.num_qubits = len(next(iter(hamiltonian.keys())))
@@ -208,7 +213,7 @@ class VQE:
                 self.optimization_result = minimize(
                     loss_function,
                     initial_params,
-                    args=(self.hamiltonian, self.executor),
+                    args=(self.hamiltonian, self.executor, self.mitigator),
                     method=self.optimizer,
                     callback=lambda p: self._callback(p, cost_type="VQE"),
                     options={"maxiter": max_iterations},
