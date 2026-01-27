@@ -5,7 +5,11 @@ import perceval as pcvl
 import pytest
 from perceval.algorithm import Sampler
 
-from qlass.quantum_chemistry import Hchain_KS_hamiltonian, LiH_hamiltonian
+from qlass.quantum_chemistry import (
+    Hchain_hamiltonian_WFT,
+    Hchain_KS_hamiltonian,
+    LiH_hamiltonian,
+)
 from qlass.vqe import VQE, custom_unitary_ansatz, le_ansatz
 from qlass.vqe.ansatz import Bitstring_initial_states
 
@@ -617,3 +621,98 @@ def test_CSF_initial_states_excitation():
     # Each element should look like a processor
     for p in procs:
         assert isinstance(p, pcvl.Processor)
+
+
+def test_parametershift_grad():
+    # Example VQE-like function: f(theta) = sin(theta[0]) + cos(theta[1])
+    def simple_function(theta):
+        return np.sin(theta[0]) + np.cos(theta[1])
+
+    ham = Hchain_hamiltonian_WFT(2, 0.741, tampering=True)
+    # Initial parameters
+    theta = np.array([np.pi / 4, np.pi / 3])
+
+    def executor(params, pauli_string):
+        # for VQE
+        processor = Bitstring_initial_states(1, 1, params, pauli_string)
+        samplers = Sampler(processor)
+        samples = samplers.samples(100)
+
+        return samples
+
+    # Initialize the VQE solver
+    vqe = VQE(
+        hamiltonian=ham,
+        executor=executor,
+        num_params=4,  # Number of parameters in the linear entangled ansatz
+        optimizer="SLSQP",
+    )
+
+    # Compute gradient using parameter shift
+    grad_estimated = vqe.parametershift_grad(vqefunction=simple_function, param=theta)
+
+    # Compute analytical gradient: df/dtheta0 = cos(theta0), df/dtheta1 = -sin(theta1)
+    grad_expected = np.array([np.cos(theta[0]), -np.sin(theta[1])])
+    # Check if they are close
+    assert isinstance(grad_estimated, np.ndarray)
+    assert np.allclose(grad_estimated, grad_expected, atol=1e-7), (
+        "Parameter shift gradient is incorrect!"
+    )
+
+
+def test_parametershift_grad_pipline_vqe():
+    ham = Hchain_hamiltonian_WFT(2, 0.741, tampering=True)
+
+    def executor(params, pauli_string):
+        # for VQE
+        processor = Bitstring_initial_states(1, 1, params, pauli_string)
+        samplers = Sampler(processor)
+        samples = samplers.samples(100)
+
+        return samples
+
+    # Initialize the VQE solver
+    vqe = VQE(
+        hamiltonian=ham,
+        executor=executor,
+        num_params=4,  # Number of parameters in the linear entangled ansatz
+        optimizer="SLSQP",
+    )
+
+    # Run the VQE optimization
+    vqe_energy = vqe.run(max_iterations=2, verbose=True, cost="VQE", jacobian=None)
+    assert isinstance(vqe_energy, float)
+    vqe_energy = vqe.run(max_iterations=2, verbose=True, cost="VQE", jacobian="parameter_shift")
+    assert isinstance(vqe_energy, float)
+    with pytest.raises(
+        ValueError, match="Wrong keyward for Jacobian. It should be None or parameter_shift"
+    ):
+        vqe_energy = vqe.run(max_iterations=1, verbose=True, cost="VQE", jacobian="paramtershift")
+
+
+def test_parametershift_grad_pipline_evqe():
+    ham, scf_mo_energy, n_orbs = Hchain_KS_hamiltonian(4, 0.784)
+
+    def executor(params, pauli_string):
+        processors = Bitstring_initial_states(1, n_orbs, params, pauli_string, cost="e-VQE")
+        samplers = [Sampler(p) for p in processors]
+        samples = [sampler.samples(100) for sampler in samplers]
+
+        return samples
+
+    # Initialize the VQE solver
+    vqe = VQE(
+        hamiltonian=ham,
+        executor=executor,
+        executor_type="sampling",
+        num_params=4,  # Number of parameters in the linear entangled ansatz
+        optimizer="SLSQP",
+    )
+
+    # Run the VQE optimization
+    vqe_energy = vqe.run(max_iterations=2, verbose=True, cost="e-VQE", jacobian="parameter_shift")
+    assert isinstance(vqe_energy, float)
+    with pytest.raises(
+        ValueError, match="Wrong keyward for Jacobian. It should be None or parameter_shift"
+    ):
+        vqe_energy = vqe.run(max_iterations=1, verbose=True, cost="e-VQE", jacobian="paramtershift")
