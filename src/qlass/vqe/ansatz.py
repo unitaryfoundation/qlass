@@ -113,7 +113,7 @@ def CSF_initial_states(
     num_electrons: tuple[int, int],
     initial_parameters: np.ndarray,
     pauli_string: str,
-    singlet_excitation: bool = True,
+    singlet_excitation: bool = False,
     k_index: int | None = None,
     l_index: int | None = None,
     noise_model: NoiseModel | None = None,

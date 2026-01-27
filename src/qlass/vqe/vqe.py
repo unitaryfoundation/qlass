@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -114,6 +115,7 @@ class VQE:
         verbose: bool = True,
         weight_option: str = "weighted",
         cost: str = "VQE",
+        jacobian: str | None = None,
     ) -> float:
         """
         Run a Variational Quantum Eigensolver (VQE) or ensemble-VQE optimization to find
@@ -145,6 +147,14 @@ class VQE:
             - ``'VQE'`` : standard single-state VQE optimization.
             - ``'e-VQE'`` : ensemble-VQE using multiple states and the specified weights.
             Default is ``'VQE'``.
+        jacobian: {'None', 'parameter_shift'}, optional
+            Method for computing the gradient vector. Only for CG, BFGS, Newton-CG, L-BFGS-B,
+            TNC, SLSQP, dogleg, trust-ncg, trust-krylov, trust-exact and trust-constr.
+            If it is a callable, it should be a function that returns the gradient vector.
+            - ``'None'`` the gradient will be estimated using 2-point finite difference estimation
+            with an absolute step size.
+            - ``'parameter_shift'`` evaluates the gradient of the given variational function
+        with respect to its parameters by shifting each parameter (theta) by ±π/2.
 
         Returns
         -------
@@ -164,7 +174,8 @@ class VQE:
         # Initialize parameters if not provided
         if initial_params is None:
             initial_params = np.random.rand(self.num_params)
-
+        # Initialize gradient method with Finate difference by default
+        jac_fun = None
         # Reset history
         self.energy_history = []
         self.parameter_history = []
@@ -205,22 +216,45 @@ class VQE:
                 )
 
             elif self.executor_type == "sampling":
+                if jacobian == "parameter_shift":
+
+                    def jac_fun(p: np.ndarray, *args: Any) -> Any:
+                        return self.parametershift_grad(loss_function, p, *args)
+                elif jacobian is None:
+                    pass
+                else:
+                    raise ValueError(
+                        "Wrong keyward for Jacobian. It should be None or parameter_shift"
+                    )
                 self.optimization_result = minimize(
                     loss_function,
                     initial_params,
                     args=(self.hamiltonian, self.executor),
                     method=self.optimizer,
+                    jac=jac_fun,
                     callback=lambda p: self._callback(p, cost_type="VQE"),
                     options={"maxiter": max_iterations},
                 )
 
         elif cost == "e-VQE":
             if self.executor_type == "sampling":
+                arguments = (self.hamiltonian, self.executor, self.energy_collector, weight_option)
+                if jacobian == "parameter_shift":
+
+                    def jac_fun(p: np.ndarray, *args: Any) -> Any:
+                        return self.parametershift_grad(e_vqe_loss_function, p, *args)
+                elif jacobian is None:
+                    pass
+                else:
+                    raise ValueError(
+                        "Wrong keyward for Jacobian. It should be None or parameter_shift"
+                    )
                 self.optimization_result = minimize(
                     e_vqe_loss_function,
                     initial_params,
-                    args=(self.hamiltonian, self.executor, self.energy_collector, weight_option),
+                    args=arguments,
                     method=self.optimizer,
+                    jac=jac_fun,
                     callback=lambda p: self._callback(
                         p, cost_type="e-VQE", weight_option=weight_option
                     ),
@@ -307,3 +341,51 @@ class VQE:
         }
 
         return comparison
+
+    def parametershift_grad(
+        self, vqefunction: Callable, param: np.ndarray, *args: Any
+    ) -> np.ndarray:
+        """
+        Compute the gradient of a variational quantum function using
+        the parameter-shift rule.
+
+        This method evaluates the gradient of the given variational function
+        with respect to its parameters by shifting each parameter (theta) by ±π/2.
+
+        Parameters
+        ----------
+        vqefunction : Callable
+            A callable that evaluates the variational quantum objective.
+            It must accept a parameter array as its first argument and
+            return a scalar value.
+        param : numpy.ndarray
+            One-dimensional array of variational parameters at which the
+            gradient is evaluated.
+        *args : tuple
+            Additional positional arguments passed directly to `vqefunction`.
+
+        Returns
+        -------
+        grad : numpy.ndarray
+            Array of the same shape as `intialparam` containing the gradient
+            of `vqefunction` with respect to each parameter.
+
+        Notes
+        -----
+        This implementation uses the standard parameter-shift rule:
+
+        .. math::
+            \\frac{\\partial f(\\theta)}{\\partial \\theta_i}
+            = \\frac{1}{2} [f(\\theta_i + \\frac{\\pi}{2})
+            - f(\\theta_i - \\frac{\\pi}{2})]
+        """
+        shift = np.pi / 2
+        grad = np.zeros_like(param)
+
+        for i in range(len(param)):
+            theta_plus = param.copy()
+            theta_plus[i] += shift
+            theta_minus = param.copy()
+            theta_minus[i] -= shift
+            grad[i] = 0.5 * (vqefunction(theta_plus, *args) - vqefunction(theta_minus, *args))
+        return grad
