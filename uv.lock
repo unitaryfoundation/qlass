@@ -18,6 +18,12 @@ wheels = [
 ]
 
 [[package]]
+name = "antlr4-python3-runtime"
+version = "4.9.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/04/9c/d5ef93dc1e5a862cae004a64d15425c2a1ae8ba967a08f03dfb11aedf7bf/antlr4-python3-runtime-4.9.2.tar.gz", hash = "sha256:31f5abdc7faf16a1a6e9bf2eb31565d004359b821b09944436a34361929ae85a", size = 117220 }
+
+[[package]]
 name = "attrs"
 version = "25.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1527,6 +1533,54 @@ wheels = [
 ]
 
 [[package]]
+name = "piquasso"
+version = "7.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numba" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.3.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "quantum-blackbird" },
+    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "scipy", version = "1.16.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/de/b6/affb2f53527c4896155f8a922145f9a1cabaa2b8088d7479af12e8ad5fdd/piquasso-7.1.0.tar.gz", hash = "sha256:9f6a8e9819c5f4b72141e5d21cf3b88667757f1a91232568a1407c77b98cfe6b", size = 702682 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ba/d7/9c289583326c37f6a2c865893a6eeb7a9f53c80b2b0403e28de6545aa914/piquasso-7.1.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:52bba790f04e2f46fc87230a7229e3dac5c636d17530d8b621be21d6cbdd024a", size = 432383 },
+    { url = "https://files.pythonhosted.org/packages/d2/6f/dc6f65f8ad60cf5aee11cd01b73648402d9dd3c092ea39cae18aba0fe8c3/piquasso-7.1.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:6d16f2a623070c7b73fce4d2f58c62fbcb50ec0bf8108e2b508ef3ef7077caca", size = 416014 },
+    { url = "https://files.pythonhosted.org/packages/8b/ab/1688c1d9c78ec3bbff77ca6e980ac94f7baacbc0e3fe07bf9db999ac3bcd/piquasso-7.1.0-cp310-cp310-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:7795b9455508102fcba84dbf7adb955c7a605996784107971ace33f74cbec578", size = 605385 },
+    { url = "https://files.pythonhosted.org/packages/4f/87/89e9b126a3b53ce628092333e3ad2725635c5b3d69a9dbf7ef5cd5d4a4ed/piquasso-7.1.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0947ad8a2bc6865fc211aef6b38938e1eea305b1167003b220f6485577d0d5be", size = 583572 },
+    { url = "https://files.pythonhosted.org/packages/43/74/ec2041827a8c01cd450fed7471650d1ebb70023c3f8687fa494bb1ad58d7/piquasso-7.1.0-cp310-cp310-musllinux_1_2_i686.whl", hash = "sha256:20112262a029dd4088074d78c3bbd66de06f575c3d37b9aa5e4a0fe25f1d3d01", size = 1731664 },
+    { url = "https://files.pythonhosted.org/packages/58/70/2304879b5327b6a418dad06dca3bb378ddcd49c1e6e2ca232a3b5527efd4/piquasso-7.1.0-cp310-cp310-musllinux_1_2_x86_64.whl", hash = "sha256:3aae13a424f756cf7dedfc532254aab25159be63885db269d79c23bd5a4061a7", size = 1608572 },
+    { url = "https://files.pythonhosted.org/packages/98/31/cf3ceca733f033c808d0e1c62e63ccdb92607a483b273bc1f480f2a682ab/piquasso-7.1.0-cp310-cp310-win32.whl", hash = "sha256:091eaaa190361a89c355dba1b5537b762e302d82931b439aaba38a359cd44d43", size = 675397 },
+    { url = "https://files.pythonhosted.org/packages/51/f9/22989865aa9dc98161e85e365905e636461bdd448484ffb5c663ff2fb2eb/piquasso-7.1.0-cp310-cp310-win_amd64.whl", hash = "sha256:2647299ca3b5fb6924ce48dc0aaf737b18ef6b0fbd52995e5e363f8058fa9049", size = 730122 },
+    { url = "https://files.pythonhosted.org/packages/59/5a/310e655ed1bb1cf458ba9742fccad634621d7bd1b7f404f2c3301cc27887/piquasso-7.1.0-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:98ba9e185091ff5629add2ab74d3ab838e8575cefd6c79e1d6025f799a802d93", size = 436699 },
+    { url = "https://files.pythonhosted.org/packages/d5/fb/cad8f8c05e8330a87b4f004c35599dd4c548bdd717b81506ca24800e8d1a/piquasso-7.1.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:a5fce6c1c7a9e1de547ee51ab068a424981c94f058bb952e6d9182cb91d54f6e", size = 420332 },
+    { url = "https://files.pythonhosted.org/packages/6f/9e/10ddc86abca3785a386f72ad12532502cbc997c108eefaddce5c621fef39/piquasso-7.1.0-cp311-cp311-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:6506574d47a81878d553dae44d7fcdde0da0cd1850719aa5018132e3b5d4b963", size = 610089 },
+    { url = "https://files.pythonhosted.org/packages/c1/41/775a2949e2ddcca18fae58ee778907bf8bf8a13e3e1ae0a66043d8116752/piquasso-7.1.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:7ab97568348727e819db38d79a143ec6362ef7c978ec5714a482f3ea7c56ccd9", size = 588532 },
+    { url = "https://files.pythonhosted.org/packages/27/7d/a5f09ed112f0f89ffab6aa91c6344e82b35e16cfd5f5949e8e1918cfc53b/piquasso-7.1.0-cp311-cp311-musllinux_1_2_i686.whl", hash = "sha256:cb94b24366f3a96455dc6be066fe247bd05543bcc0b2491d50a197c206fa1bc8", size = 1733419 },
+    { url = "https://files.pythonhosted.org/packages/aa/01/83020bc98bd8cd87d911313f5d58084352b83d86e22dbc30a36bd36b1535/piquasso-7.1.0-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:fc246b3652ab5472b4bc1a5163da6231aac74d3fa4a47b72426393f0af95a25b", size = 1610330 },
+    { url = "https://files.pythonhosted.org/packages/14/1c/5567678c08308b02224951eb5bb953ad6bf7e125e1d3c8dc30ee6891514a/piquasso-7.1.0-cp311-cp311-win32.whl", hash = "sha256:cc39c01815469f2c80989fd54c7a54153ac8af0f3959821fd5df2608568f5b4f", size = 678381 },
+    { url = "https://files.pythonhosted.org/packages/f0/0d/a01011e8056462bf002c311b8ea3fe375f255b0a847f98c891e710b3d6b0/piquasso-7.1.0-cp311-cp311-win_amd64.whl", hash = "sha256:8d50b0c83ed1fedd6bc0411afbb6ac5facb1c1fa16d63bd722f15a42c71130c5", size = 732290 },
+    { url = "https://files.pythonhosted.org/packages/23/7d/d359eff24b7ee2fe2fdb891d4bd203dbedd5b203c9fd7f2156e6cb2d8d71/piquasso-7.1.0-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:c6aa6ab58a382dfd65507b29d52a526b8e3418c9d8d7ebb08393404a61475220", size = 437895 },
+    { url = "https://files.pythonhosted.org/packages/eb/c8/472cbc593b8c3a218880de4a901c5dc1cafe59bb9118cbf657eb6f2f98cb/piquasso-7.1.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:91261633d797d558928209234dfb822e8ff0c4bf1c9f593a4ddb1bb549685c96", size = 421292 },
+    { url = "https://files.pythonhosted.org/packages/d4/09/286cff7f5ef501eeaf3b5469dc4aec42aa6941d6d192f8a7e4494137169f/piquasso-7.1.0-cp312-cp312-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:aa840ddf9f8ce58fd55d15818f3607b2a7cdaf2934a07c7d2b368050c24cf1b1", size = 611775 },
+    { url = "https://files.pythonhosted.org/packages/ad/2b/090b9bc5b191bc1355168baa1fe6a7d9abf810f30ab3d35c69c5d80b2ee1/piquasso-7.1.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:476bbddb55cf8ad4ce8280d572bf1f9dd1d320149d0c330f9be4923789e50a68", size = 589164 },
+    { url = "https://files.pythonhosted.org/packages/1a/15/9535609fa692a750876edcbea8beef4797e6ca349057b69d070037cfb3e5/piquasso-7.1.0-cp312-cp312-musllinux_1_2_i686.whl", hash = "sha256:48f0edd386a1833d3407b27730e03d0efb9dbf16b92c6fc42aca75eaffedbd07", size = 1738436 },
+    { url = "https://files.pythonhosted.org/packages/4b/5a/8027271d2f599fbc4629d73258d4a6b5edcf6fbd644596c087910693b30d/piquasso-7.1.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:4a92e7a0bd077b2884ca5a06300be1a58c68d9d3e06170254820bc98bda50a83", size = 1615100 },
+    { url = "https://files.pythonhosted.org/packages/8a/7c/f838a465298a0e77c41a23f8d0ccd5b1b5996f5b06aeba838afc3e146e56/piquasso-7.1.0-cp312-cp312-win32.whl", hash = "sha256:962c9deac29ddc349e21bb96e0b3e2b6f82539dea8bb9f07f98a87cbd923b15e", size = 680370 },
+    { url = "https://files.pythonhosted.org/packages/98/95/f5d3a784ce35e4862ddaee49ca2203b51c45ae39fec4c579c539832ffe24/piquasso-7.1.0-cp312-cp312-win_amd64.whl", hash = "sha256:373badcf2ee9e448df49387b083c8084518ea58fd059e9d094c6addc86f1cac8", size = 736254 },
+    { url = "https://files.pythonhosted.org/packages/12/d0/f06df18b98c487523cb02db9642256ef509bce1cd6386ef8bf7aee76d8b3/piquasso-7.1.0-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:f9463bcdf2cca68721a41e1664972b3e0cbec9eddcf4bcdd376800be4632b7b0", size = 438303 },
+    { url = "https://files.pythonhosted.org/packages/43/18/f95f57c4989c63eb2ed3a8925ac9b0d5d0c6b70d230ad1daaf4441183925/piquasso-7.1.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:366e3022381472a59862488bd39bdf4b0bcc2efdb3fbbffbb7ff071a25d79f4d", size = 421452 },
+    { url = "https://files.pythonhosted.org/packages/cc/f1/6154a245f86b0fd90bcb97492eb9cca892f4fc04e186af4e6748ec8ef99c/piquasso-7.1.0-cp313-cp313-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:9aff149d7370ed812db72c70b13a509962a8365dfc4c8a903e3a40a98a9b737f", size = 612702 },
+    { url = "https://files.pythonhosted.org/packages/49/27/4ef157b5873faf98fb881b02d56b8cf9112635946dcdf48ba6a063d0d718/piquasso-7.1.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a121b213635828240bcfc804d6aeb3b2255c689b095a07a947a4383cde5c7077", size = 589673 },
+    { url = "https://files.pythonhosted.org/packages/fe/35/527236734e05d30ee06990e85355ba40aee227566c560459f720ae71cc68/piquasso-7.1.0-cp313-cp313-musllinux_1_2_i686.whl", hash = "sha256:0a8b0fc81b3070a64fb3253ba39ffa42d6d4fdf33d11aeadb4f65f91240acc3f", size = 1737750 },
+    { url = "https://files.pythonhosted.org/packages/20/b7/7ef84f092b7bc8cac35e32f594efd1d523ad1a1a5cb3b1c570d0a9a105ff/piquasso-7.1.0-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:918aef3fdaa9c312a4df4e55f9abd9e3af55d86ece0762ac9761c143c84f079e", size = 1615452 },
+    { url = "https://files.pythonhosted.org/packages/3c/28/d8aeb6cefe5daeb0f94b44cd4e985da5a6da515143ed96ec0a2280e17117/piquasso-7.1.0-cp313-cp313-win32.whl", hash = "sha256:c8684ee4436802d08ca742cf78e31e57f3cba88511614e5d81bf7fcc2878120c", size = 680317 },
+    { url = "https://files.pythonhosted.org/packages/48/cb/e0723d79cddf7935ab030187469548945ce58f28306eab7f94774d3f2073/piquasso-7.1.0-cp313-cp313-win_amd64.whl", hash = "sha256:b8c5f95a6518fd672f2b12da96ac35036c5281f64f22c2fbde723100fd6bee56", size = 736284 },
+]
+
+[[package]]
 name = "platformdirs"
 version = "4.5.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1862,7 +1916,7 @@ wheels = [
 
 [[package]]
 name = "qlass"
-version = "0.2.0"
+version = "0.2.2"
 source = { editable = "." }
 dependencies = [
     { name = "numba" },
@@ -1870,6 +1924,7 @@ dependencies = [
     { name = "numpy", version = "2.3.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "openfermionpyscf" },
     { name = "perceval-quandela" },
+    { name = "piquasso" },
     { name = "qiskit" },
     { name = "qiskit-aer" },
     { name = "tqdm" },
@@ -1909,6 +1964,7 @@ requires-dist = [
     { name = "numpy", marker = "python_full_version >= '3.13'", specifier = ">=2.1" },
     { name = "openfermionpyscf", specifier = ">=0.5" },
     { name = "perceval-quandela", specifier = ">=0.13.2,<1.0.0" },
+    { name = "piquasso", specifier = ">=7.1.0" },
     { name = "qiskit", specifier = ">=2.0.0" },
     { name = "qiskit-aer", specifier = ">=0.17.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
@@ -1932,6 +1988,23 @@ test = [
     { name = "pytest-mock", specifier = ">=3.15.1" },
 ]
 type-check = [{ name = "mypy", specifier = ">=1.13.0" }]
+
+[[package]]
+name = "quantum-blackbird"
+version = "0.5.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "antlr4-python3-runtime" },
+    { name = "networkx", version = "3.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "networkx", version = "3.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.3.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "sympy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d8/ba/09f536ae48dffad30626c1b26c5dbb401decce95fc130d7bb9bb0e4ca28d/quantum-blackbird-0.5.0.tar.gz", hash = "sha256:065c73bf5263ce8f9b72dcd2b434f3bfbb471f0a6907c97a617ec0c8bde01db3", size = 110281 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/85/08/283084c863a9fed00df1215ef5219192956e8070491fea40efd6ca6bc0ea/quantum_blackbird-0.5.0-py3-none-any.whl", hash = "sha256:2f7898e08b87689b92bd972b97b9b172f65118c6d80180167a35fb2e3bf02fc6", size = 48011 },
+]
 
 [[package]]
 name = "requests"
