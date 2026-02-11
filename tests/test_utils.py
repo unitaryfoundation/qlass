@@ -640,3 +640,29 @@ def test_extract_samples_invalid_format():
     # Input is not a valid type (e.g. an int)
     with pytest.raises(ValueError, match="Executor returned unexpected format"):
         _extract_samples_from_executor_result(123)
+
+
+def test_loss_function_fallback_with_mitigator(mocker):
+    """Test loss function fallback path (no grouping) with mitigator."""
+    from qlass.utils import loss_function
+
+    # Mock modules to simulate missing qlass.quantum_chemistry.hamiltonians
+    with patch.dict(sys.modules, {'qlass.quantum_chemistry.hamiltonians': None}):
+        # Mock executor
+        def mock_executor(params, pauli_string):
+            return {"counts": {"00": 100}}
+
+        # Mock mitigator
+        mitigator = MagicMock()
+        mitigator.mitigate.return_value = {(0, 0): 1.0}
+
+        hamiltonian = {"ZZ": 1.0}
+        params = np.array([0.1])
+
+        # Run with mitigator.
+        # Import error will force use_grouping = False.
+        # mitigator != None will hit the target block.
+        loss = loss_function(params, hamiltonian, mock_executor, mitigator=mitigator)
+
+        assert mitigator.mitigate.called
+        assert np.isclose(loss, 1.0)
