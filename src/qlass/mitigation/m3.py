@@ -64,11 +64,6 @@ class M3Mitigator:
             error_model (PhotonicErrorModel): The calibrated error model for the device.
         """
         self.model = error_model
-        # These will be set during the mitigate call
-        self.noisy_counts: dict[tuple[int, ...], int] = {}
-        self.subspace_states: list[tuple[int, ...]] = []
-        self.subspace_dim: int = 0
-        self.column_normalizations: dict[tuple[int, ...], float] = {}
 
     def _calculate_A_element(self, row_state: tuple[int, ...], col_state: tuple[int, ...]) -> float:
         """
@@ -84,40 +79,20 @@ class M3Mitigator:
             prob *= self.model.get_error_prob(i, r, c)
         return prob
 
-    def _calculate_column_normalizations(self) -> dict[tuple[int, ...], float]:
+    def _calculate_column_normalizations(
+        self, subspace_states: list[tuple[int, ...]]
+    ) -> dict[tuple[int, ...], float]:
         """
         Pre-calculates the sum over the rows in the subspace for each column state.
         This is needed to renormalize A_tilde.
         """
         norms = {}
-        for col_state in self.subspace_states:
+        for col_state in subspace_states:
             norm = 0.0
-            for row_state in self.subspace_states:
+            for row_state in subspace_states:
                 norm += self._calculate_A_element(row_state, col_state)
             norms[col_state] = norm if norm > 1e-9 else 1.0  # Avoid division by zero
         return norms
-
-    def _matvec(self, x: np.ndarray) -> np.ndarray:
-        """
-        The core matrix-free method: computes A_tilde * x.
-        This is the workhorse for the iterative solver.
-
-        Args:
-            x (np.ndarray): A vector in the subspace.
-
-        Returns:
-            np.ndarray: The result of the matrix-vector product.
-        """
-        y = np.zeros_like(x)
-        # x is a vector where x_j corresponds to the j-th state in self.subspace_states
-        # y_i = sum_j (A_tilde_ij * x_j)
-        for i, row_state in enumerate(self.subspace_states):
-            for j, col_state in enumerate(self.subspace_states):
-                # Calculate the renormalized matrix element on the fly
-                a_ij = self._calculate_A_element(row_state, col_state)
-                a_tilde_ij = a_ij / self.column_normalizations[col_state]
-                y[i] += a_tilde_ij * x[j]
-        return y
 
     def mitigate(
         self, noisy_counts: dict[tuple[int, ...], int], tol: float = 1e-5
@@ -133,31 +108,43 @@ class M3Mitigator:
         Returns:
             dict: A dictionary mapping Fock state tuples to their mitigated probabilities.
         """
-        self.noisy_counts = noisy_counts
-
         # The subspace is the set of unique Fock states observed in the measurement.
         # We use a sorted list to ensure a consistent ordering.
         # Use tuple conversion for sorting key to handle objects like exqalibur.FockState
-        self.subspace_states = sorted(self.noisy_counts.keys(), key=lambda x: tuple(x))
-        self.subspace_dim = len(self.subspace_states)
+        subspace_states = sorted(noisy_counts.keys(), key=lambda x: tuple(x))
+        subspace_dim = len(subspace_states)
 
         # Pre-calculate the column normalizations for the reduced matrix A_tilde
-        self.column_normalizations = self._calculate_column_normalizations()
+        column_normalizations = self._calculate_column_normalizations(subspace_states)
+
+        def matvec(x: np.ndarray) -> np.ndarray:
+            """
+            The core matrix-free method: computes A_tilde * x.
+            Defined as a closure to capture local `subspace_states` and `column_normalizations`.
+            """
+            y = np.zeros_like(x)
+            # x is a vector where x_j corresponds to the j-th state in subspace_states
+            # y_i = sum_j (A_tilde_ij * x_j)
+            for i, row_state in enumerate(subspace_states):
+                for j, col_state in enumerate(subspace_states):
+                    # Calculate the renormalized matrix element on the fly
+                    a_ij = self._calculate_A_element(row_state, col_state)
+                    a_tilde_ij = a_ij / column_normalizations[col_state]
+                    y[i] += a_tilde_ij * x[j]
+            return y
 
         # 1. Define the LinearOperator for SciPy's solver
-        A_tilde_op = LinearOperator((self.subspace_dim, self.subspace_dim), matvec=self._matvec)
+        A_tilde_op = LinearOperator((subspace_dim, subspace_dim), matvec=matvec)
 
         # 2. Get the noisy probability vector within the subspace
-        total_shots = sum(self.noisy_counts.values())
-        p_noisy = np.array(
-            [self.noisy_counts[state] / total_shots for state in self.subspace_states]
-        )
+        total_shots = sum(noisy_counts.values())
+        p_noisy = np.array([noisy_counts[state] / total_shots for state in subspace_states])
 
         # 3. Create a Jacobi (diagonal) preconditioner for faster convergence
-        diag_A_tilde = np.zeros(self.subspace_dim)
-        for i, state in enumerate(self.subspace_states):
+        diag_A_tilde = np.zeros(subspace_dim)
+        for i, state in enumerate(subspace_states):
             a_ii = self._calculate_A_element(state, state)
-            diag_A_tilde[i] = a_ii / self.column_normalizations[state]
+            diag_A_tilde[i] = a_ii / column_normalizations[state]
 
         # The preconditioner M should approximate the inverse of A_tilde.
         # A simple choice is the inverse of its diagonal.
@@ -166,9 +153,7 @@ class M3Mitigator:
             M_inv_diag[np.isinf(M_inv_diag)] = 1.0  # Handle division by zero safely if any
 
         M_inv = np.diag(M_inv_diag)
-        preconditioner = LinearOperator(
-            (self.subspace_dim, self.subspace_dim), matvec=lambda x: M_inv @ x
-        )
+        preconditioner = LinearOperator((subspace_dim, subspace_dim), matvec=lambda x: M_inv @ x)
 
         # 4. Solve the linear system A_tilde * p_ideal = p_noisy
         p_ideal_subspace, exit_code = gmres(A_tilde_op, p_noisy, atol=tol, M=preconditioner)
@@ -190,6 +175,6 @@ class M3Mitigator:
             p_ideal_subspace /= p_sum
 
         # 5. Map the mitigated probability vector back to the Fock state representation
-        mitigated_distribution = dict(zip(self.subspace_states, p_ideal_subspace, strict=True))
+        mitigated_distribution = dict(zip(subspace_states, p_ideal_subspace, strict=True))
 
         return mitigated_distribution
