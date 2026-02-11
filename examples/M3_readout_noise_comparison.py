@@ -1,4 +1,3 @@
-
 import warnings
 
 import exqalibur
@@ -11,8 +10,9 @@ from qlass.quantum_chemistry.classical_solution import brute_force_minimize
 from qlass.vqe import VQE
 from qlass.vqe.ansatz import le_ansatz
 
-warnings.simplefilter('ignore')
-warnings.filterwarnings('ignore')
+warnings.simplefilter("ignore")
+warnings.filterwarnings("ignore")
+
 
 # 1. SETUP NOISE MODEL
 def create_readout_noise_model(num_modes, error_rate=0.05):
@@ -39,19 +39,19 @@ def create_readout_noise_model(num_modes, error_rate=0.05):
     matrix = np.zeros((3, 3))
 
     # Col 0 (Ideal=0)
-    matrix[0, 0] = 1.0 - p      # Meas 0
-    matrix[1, 0] = p            # Meas 1 (Dark count)
-    matrix[2, 0] = 0.0          # Meas 2 (Double dark count ignored)
+    matrix[0, 0] = 1.0 - p  # Meas 0
+    matrix[1, 0] = p  # Meas 1 (Dark count)
+    matrix[2, 0] = 0.0  # Meas 2 (Double dark count ignored)
 
     # Col 1 (Ideal=1)
-    matrix[0, 1] = p            # Meas 0 (Loss)
-    matrix[1, 1] = 1.0 - 2*p    # Meas 1
-    matrix[2, 1] = p            # Meas 2 (Dark count / bunching fake)
+    matrix[0, 1] = p  # Meas 0 (Loss)
+    matrix[1, 1] = 1.0 - 2 * p  # Meas 1
+    matrix[2, 1] = p  # Meas 2 (Dark count / bunching fake)
 
     # Col 2 (Ideal=2)
-    matrix[0, 2] = 0.0          # Meas 0 (Double loss unlikely)
-    matrix[1, 2] = p            # Meas 1 (Loss)
-    matrix[2, 2] = 1.0 - p      # Meas 2
+    matrix[0, 2] = 0.0  # Meas 0 (Double loss unlikely)
+    matrix[1, 2] = p  # Meas 1 (Loss)
+    matrix[2, 2] = 1.0 - p  # Meas 2
 
     # Sanity check
     if matrix[1, 1] < 0:
@@ -62,9 +62,9 @@ def create_readout_noise_model(num_modes, error_rate=0.05):
 
     return model
 
+
 # 2. DEFINE EXECUTOR WITH NOISE INJECTION
 def make_noisy_executor(noise_model, num_shots=1000):
-
     def executor(params, pauli_string):
         # 1. Get the ideal processor for the given ansatz and parameters
         processor = le_ansatz(params, pauli_string)
@@ -78,10 +78,10 @@ def make_noisy_executor(noise_model, num_shots=1000):
         try:
             samples = sampler.samples(num_shots)["results"]
         except Exception:
-             # Fallback if structure varies
-             samples = sampler.samples(num_shots)
-             if isinstance(samples, dict) and 'results' in samples:
-                 samples = samples['results']
+            # Fallback if structure varies
+            samples = sampler.samples(num_shots)
+            if isinstance(samples, dict) and "results" in samples:
+                samples = samples["results"]
 
         # 3. Inject Readout Noise
         noisy_samples = []
@@ -92,18 +92,18 @@ def make_noisy_executor(noise_model, num_shots=1000):
             measured_state = list(ideal_state)
 
             for i in range(noise_model.num_modes):
-                 # Get probability column for the ideal photon count
-                 ideal_n = ideal_state[i]
+                # Get probability column for the ideal photon count
+                ideal_n = ideal_state[i]
 
-                 # Cap at max calibrated photons to avoid index error
-                 if ideal_n > noise_model.max_photons:
-                     ideal_n = noise_model.max_photons
+                # Cap at max calibrated photons to avoid index error
+                if ideal_n > noise_model.max_photons:
+                    ideal_n = noise_model.max_photons
 
-                 probs = noise_model.calibration_data[i][:, ideal_n]
+                probs = noise_model.calibration_data[i][:, ideal_n]
 
-                 # Sample measured value
-                 measured_val = np.random.choice(len(probs), p=probs)
-                 measured_state[i] = measured_val
+                # Sample measured value
+                measured_val = np.random.choice(len(probs), p=probs)
+                measured_state[i] = measured_val
 
             # Wrap in FockState so utils.py treats it as photonic data
             noisy_samples.append(exqalibur.FockState(tuple(measured_state)))
@@ -111,6 +111,7 @@ def make_noisy_executor(noise_model, num_shots=1000):
         return noisy_samples
 
     return executor
+
 
 # 3. MAIN BENCHMARK
 def run_benchmark():
@@ -143,7 +144,7 @@ def run_benchmark():
         noisy_exec,
         num_params=num_params_guess,
         optimizer="COBYLA",
-        executor_type="sampling"
+        executor_type="sampling",
     )
     energy_unmitigated = vqe_unmitigated.run(max_iterations=30)
     print(f"Unmitigated Energy: {energy_unmitigated:.4f}")
@@ -156,7 +157,7 @@ def run_benchmark():
         num_params=num_params_guess,
         optimizer="COBYLA",
         executor_type="sampling",
-        mitigator=mitigator
+        mitigator=mitigator,
     )
     energy_mitigated = vqe_mitigated.run(max_iterations=30)
     print(f"Mitigated Energy: {energy_mitigated:.4f}")
@@ -177,6 +178,7 @@ def run_benchmark():
         print("PASS: Mitigation result is closer to exact energy.")
     else:
         print("Note: Mitigation did not reduce absolute error to exact.")
+
 
 if __name__ == "__main__":
     run_benchmark()

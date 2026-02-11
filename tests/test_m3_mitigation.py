@@ -1,4 +1,3 @@
-
 from collections import Counter
 
 import numpy as np
@@ -26,6 +25,7 @@ def simulate_noisy_experiment(ideal_dist, error_model, num_shots):
 
     return dict(noisy_counts)
 
+
 def calculate_tvd(dist1, dist2):
     """Calculates Total Variation Distance."""
     all_states = set(dist1.keys()) | set(dist2.keys())
@@ -35,6 +35,7 @@ def calculate_tvd(dist1, dist2):
         p2 = dist2.get(state, 0.0)
         tvd += abs(p1 - p2)
     return 0.5 * tvd
+
 
 def test_m3_mitigation():
     # 1. SETUP
@@ -51,27 +52,33 @@ def test_m3_mitigation():
     error_model = PhotonicErrorModel(NUM_MODES, MAX_PHOTONS)
 
     # Mode 0
-    mode0_errors = np.array([
-        [0.98, 0.15, 0.30],
-        [0.02, 0.84, 0.15],
-        [0.00, 0.01, 0.55],
-    ])
+    mode0_errors = np.array(
+        [
+            [0.98, 0.15, 0.30],
+            [0.02, 0.84, 0.15],
+            [0.00, 0.01, 0.55],
+        ]
+    )
     error_model.set_mode_calibration(0, mode0_errors)
 
     # Mode 1
-    mode1_errors = np.array([
-        [0.95, 0.05, 0.10],
-        [0.05, 0.94, 0.05],
-        [0.00, 0.01, 0.85],
-    ])
+    mode1_errors = np.array(
+        [
+            [0.95, 0.05, 0.10],
+            [0.05, 0.94, 0.05],
+            [0.00, 0.01, 0.85],
+        ]
+    )
     error_model.set_mode_calibration(1, mode1_errors)
 
     # Mode 2
-    mode2_errors = np.array([
-        [0.97, 0.10, 0.20],
-        [0.03, 0.89, 0.10],
-        [0.00, 0.01, 0.70],
-    ])
+    mode2_errors = np.array(
+        [
+            [0.97, 0.10, 0.20],
+            [0.03, 0.89, 0.10],
+            [0.00, 0.01, 0.70],
+        ]
+    )
     error_model.set_mode_calibration(2, mode2_errors)
 
     # 2. RUN
@@ -93,6 +100,7 @@ def test_m3_mitigation():
     # or very close if noise is low. Here noise is significant.
     assert tvd_mitigated < tvd_noisy, "Mitigation failed to reduce error."
     assert tvd_mitigated < 0.05, "Mitigated result is not close enough to ideal."
+
 
 if __name__ == "__main__":
     test_m3_mitigation()
