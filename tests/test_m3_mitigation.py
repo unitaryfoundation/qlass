@@ -8,8 +8,19 @@ from qlass.mitigation.m3 import M3Mitigator, PhotonicErrorModel
 
 def simulate_noisy_experiment(ideal_dist, error_model, num_shots, seed=None):
     """
-    Simulates a noisy experiment by applying the error model to an ideal distribution.
-    (Copied from M3-rem.py for verification)
+    Simulate a noisy experiment by applying a per-mode error model to an ideal
+    distribution.
+
+    For each of ``num_shots``:
+      * An ideal basis state is sampled from ``ideal_dist``.
+      * Each mode is corrupted independently according to the corresponding
+        column of ``error_model.calibration_data[i]``, i.e.
+        ``calibration_data[i][:, ideal_state[i]]`` is interpreted as the
+        conditional distribution P(measured | ideal) for mode ``i``.
+      * The resulting noisy basis state is counted.
+
+    Returns a dictionary mapping measured basis states (tuples of per-mode
+    outcomes) to their observed counts.
     """
     rng = np.random.default_rng(seed)
     noisy_counts = Counter()

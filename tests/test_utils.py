@@ -18,8 +18,6 @@ from qlass.utils import (
 )
 from qlass.utils.utils import _extract_samples_from_executor_result
 
-qiskit = pytest.importorskip("qiskit")
-
 
 def test_compute_energy():
     # test case 1
@@ -594,6 +592,7 @@ def test_loss_function_grouping_import_error(mocker):
 
 def test_rotate_qubits_qiskit_circuit():
     """Test rotate_qubits with a Qiskit circuit."""
+    qiskit = pytest.importorskip("qiskit")
     qc = qiskit.QuantumCircuit(2)
 
     # X rotation (should apply H)

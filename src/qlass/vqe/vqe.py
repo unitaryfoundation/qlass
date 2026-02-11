@@ -105,7 +105,9 @@ class VQE:
                     self.ancillary_modes,
                 )
             else:
-                energy = loss_function(params, self.hamiltonian, self.executor)
+                energy = loss_function(
+                    params, self.hamiltonian, self.executor, mitigator=self.mitigator
+                )
 
             self.energy_history.append(energy)
 
