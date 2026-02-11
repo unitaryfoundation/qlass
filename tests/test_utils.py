@@ -647,7 +647,7 @@ def test_loss_function_fallback_with_mitigator(mocker):
     from qlass.utils import loss_function
 
     # Mock modules to simulate missing qlass.quantum_chemistry.hamiltonians
-    with patch.dict(sys.modules, {'qlass.quantum_chemistry.hamiltonians': None}):
+    with patch.dict(sys.modules, {"qlass.quantum_chemistry.hamiltonians": None}):
         # Mock executor
         def mock_executor(params, pauli_string):
             return {"counts": {"00": 100}}
