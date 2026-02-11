@@ -296,10 +296,10 @@ def loss_function(
                 # --- MITIGATION BLOCK ---
                 if mitigator is not None:
                     # Convert samples to counts
-                    counts = {}
+                    counts: dict[exqalibur.FockState | tuple[int, ...], int] = {}
                     for s in normalized_samples:
                         counts[s] = counts.get(s, 0) + 1
-                    
+
                     # Mitigate to get probability distribution directly
                     prob_dist = mitigator.mitigate(counts)
                 else:
@@ -323,7 +323,7 @@ def loss_function(
                 counts = {}
                 for s in normalized_samples:
                     counts[s] = counts.get(s, 0) + 1
-                
+
                 # Mitigate
                 prob_dist = mitigator.mitigate(counts)
             else:

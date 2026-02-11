@@ -1,8 +1,10 @@
 
-import numpy as np
-import pytest
 from collections import Counter
-from qlass.mitigation.m3 import PhotonicErrorModel, M3Mitigator
+
+import numpy as np
+
+from qlass.mitigation.m3 import M3Mitigator, PhotonicErrorModel
+
 
 def simulate_noisy_experiment(ideal_dist, error_model, num_shots):
     """
@@ -82,7 +84,7 @@ def test_m3_mitigation():
     # 3. VERIFY
     tvd_noisy = calculate_tvd(ideal_distribution, noisy_distribution)
     tvd_mitigated = calculate_tvd(ideal_distribution, mitigated_distribution)
-    
+
     print(f"TVD Noisy: {tvd_noisy}")
     print(f"TVD Mitigated: {tvd_mitigated}")
 

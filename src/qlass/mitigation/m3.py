@@ -1,4 +1,3 @@
-from collections import Counter
 
 import numpy as np
 from scipy.sparse.linalg import LinearOperator, gmres
@@ -50,7 +49,7 @@ class PhotonicErrorModel:
             # If the state is outside our calibrated model, assume zero probability.
             # A more sophisticated model might handle this differently.
             return 0.0
-        return self.calibration_data[mode_index][measured_photons, ideal_photons]
+        return float(self.calibration_data[mode_index][measured_photons, ideal_photons])
 
 
 class M3Mitigator:
@@ -141,7 +140,7 @@ class M3Mitigator:
         # The subspace is the set of unique Fock states observed in the measurement.
         # We use a sorted list to ensure a consistent ordering.
         # Use tuple conversion for sorting key to handle objects like exqalibur.FockState
-        self.subspace_states = sorted(list(self.noisy_counts.keys()), key=lambda x: tuple(x))
+        self.subspace_states = sorted(self.noisy_counts.keys(), key=lambda x: tuple(x))
         self.subspace_dim = len(self.subspace_states)
 
         # Pre-calculate the column normalizations for the reduced matrix A_tilde
@@ -189,8 +188,6 @@ class M3Mitigator:
             p_ideal_subspace /= p_sum
 
         # 5. Map the mitigated probability vector back to the Fock state representation
-        mitigated_distribution = {
-            state: prob for state, prob in zip(self.subspace_states, p_ideal_subspace)
-        }
+        mitigated_distribution = dict(zip(self.subspace_states, p_ideal_subspace, strict=True))
 
         return mitigated_distribution
