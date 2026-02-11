@@ -103,16 +103,15 @@ def test_m3_mitigation():
     assert tvd_mitigated < 0.05, "Mitigated result is not close enough to ideal."
 
 
-
 def test_error_model_initialization():
     """Test that calibration data is initialized correctly if not set."""
     # Create model but don't set calibration
     model = PhotonicErrorModel(num_modes=2, max_photons_per_mode=1)
-    
+
     # Trigger default initialization by setting one mode
     matrix = np.eye(2)
     model.set_mode_calibration(0, matrix)
-    
+
     # Check that other mode (index 1) has identity matrix
     assert np.allclose(model.calibration_data[1], np.eye(2))
 
@@ -120,17 +119,15 @@ def test_error_model_initialization():
 def test_invalid_probability_matrix():
     """Test that ValueError is raised for invalid probability matrices."""
     model = PhotonicErrorModel(num_modes=1)
-    
+
     # Matrix columns don't sum to 1
-    invalid_matrix = np.array([[0.5, 0.5, 0.5], 
-                               [0.4, 0.4, 0.4], 
-                               [0.0, 0.0, 0.0]])
-    
+    invalid_matrix = np.array([[0.5, 0.5, 0.5], [0.4, 0.4, 0.4], [0.0, 0.0, 0.0]])
+
     with pytest.raises(ValueError, match="do not sum to 1"):
         model.set_mode_calibration(0, invalid_matrix)
-        
+
     # Matrix with wrong dimensions
-    wrong_dim_matrix = np.array([[1.0, 0.0], [0.0, 1.0]]) # 2x2 but expects 3x3 for max_photons=2
+    wrong_dim_matrix = np.array([[1.0, 0.0], [0.0, 1.0]])  # 2x2 but expects 3x3 for max_photons=2
     with pytest.raises(ValueError, match="incorrect dimensions"):
         model.set_mode_calibration(0, wrong_dim_matrix)
 
@@ -140,10 +137,10 @@ def test_out_of_bounds_photons():
     model = PhotonicErrorModel(num_modes=1, max_photons_per_mode=1)
     # Set identity calibration
     model.set_mode_calibration(0, np.eye(2))
-    
+
     # Test within bounds
     assert model.get_error_prob(0, 0, 0) == 1.0
-    
+
     # Test out of bounds inputs
     # measured > max
     assert model.get_error_prob(0, 2, 0) == 0.0
