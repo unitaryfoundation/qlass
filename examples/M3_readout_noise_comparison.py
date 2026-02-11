@@ -17,7 +17,7 @@ warnings.filterwarnings('ignore')
 # 1. SETUP NOISE MODEL
 def create_readout_noise_model(num_modes, error_rate=0.05):
     """
-    Creates a PhotonicErrorModel where each mode has a probability 
+    Creates a PhotonicErrorModel where each mode has a probability
     of reporting the wrong photon count (readout error).
     Supports up to 2 photons per mode to handle potential bunching/dark counts.
     """
