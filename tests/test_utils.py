@@ -1,3 +1,6 @@
+import sys
+from unittest.mock import MagicMock, patch
+
 import numpy as np
 import perceval as pcvl
 import pytest
@@ -11,7 +14,9 @@ from qlass.utils import (
     loss_function,
     loss_function_matrix,
     qubit_state_marginal,
+    rotate_qubits,
 )
+from qlass.utils.utils import _extract_samples_from_executor_result
 
 
 def test_compute_energy():
@@ -535,3 +540,136 @@ def test_ensemble_weights():
         match="Invalid weights_choice. Must be one of 'equi', 'weighted', or 'ground_state_only'.",
     ):
         ensemble_weights("Invalid_weight", 2)
+
+
+def test_loss_function_with_mitigator(mocker):
+    """Test loss function with a mitigator."""
+    from qlass.utils import loss_function
+
+    # Mock executor results as counts
+    def mock_executor(params, pauli_string):
+        return {"counts": {"00": 100}}  # 100 shots of |00>
+
+    # Mock mitigator
+    mitigator = MagicMock()
+    # Mitigator returns a probability distribution
+    mitigator.mitigate.return_value = {(0, 0): 1.0}
+
+    hamiltonian = {"ZZ": 1.0}
+    params = np.array([0.1])
+
+    # Run with mitigator
+    loss = loss_function(params, hamiltonian, mock_executor, mitigator=mitigator)
+
+    # Verify mitigator was called
+    assert mitigator.mitigate.called
+    assert np.isclose(loss, 1.0)
+
+
+def test_loss_function_grouping_import_error(mocker):
+    """Test that loss_function handles ImportError for grouping gracefully."""
+
+    # Mock modules to simulate missing qlass.quantum_chemistry.hamiltonians
+    # We use a patch on sys.modules to hide the module
+    with patch.dict(sys.modules, {"qlass.quantum_chemistry.hamiltonians": None}):
+        # Mock executor
+        def mock_executor(params, pauli_string):
+            return {"counts": {"00": 100}}
+
+        hamiltonian = {"ZZ": 1.0}
+        params = np.array([0.1])
+
+        # This calls loss_function. Because qlass.quantum_chemistry.hamiltonians is None,
+        # it raises ImportError on import, catching it and setting use_grouping=False.
+        # Then it iterates over H directly.
+        from qlass.utils import loss_function
+
+        loss = loss_function(params, hamiltonian, mock_executor)
+
+        # <00|ZZ|00> = 1.0
+        assert np.isclose(loss, 1.0)
+
+
+def test_rotate_qubits_qiskit_circuit():
+    """Test rotate_qubits with a Qiskit circuit."""
+    qiskit = pytest.importorskip("qiskit")
+    qc = qiskit.QuantumCircuit(2)
+
+    # X rotation (should apply H)
+    qc_x = rotate_qubits("X", qc.copy())
+    # Inspect instructions - hard to verify exact gates without transpiling,
+    # but we can check it ran without error and added gates.
+    assert len(qc_x.data) > 0
+
+    # Y rotation (should apply Ry)
+    qc_y = rotate_qubits("Y", qc.copy())
+    assert len(qc_y.data) > 0
+
+
+def test_rotate_qubits_perceval_circuit():
+    """Test rotate_qubits with a Perceval circuit."""
+    # Perceval circuit logic is in the `else` block of `rotate_qubits`
+    import perceval as pcvl
+
+    # Create a dummy linear circuit
+    # 2 qubits -> 4 modes
+
+    # X rotation
+    pcvl_circ_x = rotate_qubits("X", pcvl.Circuit(4))
+    # Should have added components - accessing private attribute as public API might vary
+    # or check if string representation is not empty/different
+    assert len(pcvl_circ_x._components) > 0
+
+    # Y rotation
+    pcvl_circ_y = rotate_qubits("Y", pcvl.Circuit(4))
+    assert len(pcvl_circ_y._components) > 0
+
+
+def test_extract_samples_fallback():
+    """Test _extract_samples_from_executor_result fallback logic."""
+    # Input is a dict with a list value, but no "results" or "counts" key
+    samples_dict = {"custom_key": [(0, 0), (0, 1)]}
+    extracted = _extract_samples_from_executor_result(samples_dict)
+    assert extracted == [(0, 0), (0, 1)]
+
+
+def test_extract_samples_invalid_format():
+    """Test _extract_samples_from_executor_result with invalid input."""
+    # Input is a dict but no list values
+    invalid_dict = {"a": 1, "b": 2}
+    with pytest.raises(ValueError, match="Could not extract sample list"):
+        # The function logic actually raises "Expected dict with..." or so.
+        # But if it reaches the end without finding list, it returns raises ValueError.
+        # Wait, lines 375-378 raise ValueError if type is not dict/list.
+        # If dict but no list found, line 381 raises ValueError.
+        _extract_samples_from_executor_result(invalid_dict)
+
+    # Input is not a valid type (e.g. an int)
+    with pytest.raises(ValueError, match="Executor returned unexpected format"):
+        _extract_samples_from_executor_result(123)
+
+
+def test_loss_function_fallback_with_mitigator(mocker):
+    """Test loss function fallback path (no grouping) with mitigator."""
+    from qlass.utils import loss_function
+
+    # Mock modules to simulate missing qlass.quantum_chemistry.hamiltonians
+    with patch.dict(sys.modules, {"qlass.quantum_chemistry.hamiltonians": None}):
+        # Mock executor
+        def mock_executor(params, pauli_string):
+            return {"counts": {"00": 100}}
+
+        # Mock mitigator
+        mitigator = MagicMock()
+        mitigator.mitigate.return_value = {(0, 0): 1.0}
+
+        hamiltonian = {"ZZ": 1.0}
+        params = np.array([0.1])
+
+        # Run with mitigator.
+        # Import error will force use_grouping = False.
+        # mitigator != None will hit the target block.
+        loss = loss_function(params, hamiltonian, mock_executor, mitigator=mitigator)
+
+        assert mitigator.mitigate.called
+        assert np.isclose(loss, 1.0)
