@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 from scipy.sparse.linalg import LinearOperator, gmres
 
@@ -15,7 +17,9 @@ class PhotonicErrorModel:
         self.num_modes = num_modes
         self.max_photons = max_photons_per_mode
         # calibration_data will store a list of probability matrices, one for each mode.
-        self.calibration_data: list[np.ndarray] = []
+        self.calibration_data: list[np.ndarray] = [
+            np.identity(self.max_photons + 1) for _ in range(self.num_modes)
+        ]
 
     def set_mode_calibration(self, mode_index: int, prob_matrix: np.ndarray) -> None:
         """
@@ -26,11 +30,6 @@ class PhotonicErrorModel:
             prob_matrix (np.ndarray): A (max_photons+1) x (max_photons+1) matrix
                                       where P[i,j] is P(measure=i | ideal=j).
         """
-        if not self.calibration_data:
-            # Initialize with identity matrices if not done before
-            self.calibration_data = [
-                np.identity(self.max_photons + 1) for _ in range(self.num_modes)
-            ]
 
         if prob_matrix.shape != (self.max_photons + 1, self.max_photons + 1):
             raise ValueError("Probability matrix has incorrect dimensions.")
@@ -175,7 +174,11 @@ class M3Mitigator:
         p_ideal_subspace, exit_code = gmres(A_tilde_op, p_noisy, atol=tol, M=preconditioner)
 
         if exit_code != 0:
-            print(f"Warning: GMRES solver did not converge. Exit code: {exit_code}")
+            warnings.warn(
+                f"GMRES solver did not converge. Exit code: {exit_code}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
 
         # Normalize the result to ensure it's a valid probability distribution
         # Some values might be slightly negative due to numerics, clip them to 0??

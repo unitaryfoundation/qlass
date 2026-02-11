@@ -4,7 +4,6 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import perceval as pcvl
 import pytest
-import qiskit
 
 from qlass.quantum_chemistry import pauli_string_to_matrix
 from qlass.utils import (
@@ -18,6 +17,8 @@ from qlass.utils import (
     rotate_qubits,
 )
 from qlass.utils.utils import _extract_samples_from_executor_result
+
+qiskit = pytest.importorskip("qiskit")
 
 
 def test_compute_energy():
@@ -575,13 +576,20 @@ def test_loss_function_grouping_import_error(mocker):
     with patch.dict(sys.modules, {"qlass.quantum_chemistry.hamiltonians": None}):
         # Mock executor
         def mock_executor(params, pauli_string):
-            return {"ids": ["1"]}  # Just dummy return to verify we got past import
+            return {"counts": {"00": 100}}
 
-        # This will raise an error inside loss_function because we return invalid format,
-        # but it proves we entered the function and tried to execute.
-        # However, to properly test the fallback path, we need to mock the import failure
-        # specifically when it's imported INSIDE the function.
-        pass
+        hamiltonian = {"ZZ": 1.0}
+        params = np.array([0.1])
+
+        # This calls loss_function. Because qlass.quantum_chemistry.hamiltonians is None,
+        # it raises ImportError on import, catching it and setting use_grouping=False.
+        # Then it iterates over H directly.
+        from qlass.utils import loss_function
+
+        loss = loss_function(params, hamiltonian, mock_executor)
+
+        # <00|ZZ|00> = 1.0
+        assert np.isclose(loss, 1.0)
 
 
 def test_rotate_qubits_qiskit_circuit():

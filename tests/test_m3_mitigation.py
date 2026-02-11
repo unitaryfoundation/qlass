@@ -6,22 +6,23 @@ import pytest
 from qlass.mitigation.m3 import M3Mitigator, PhotonicErrorModel
 
 
-def simulate_noisy_experiment(ideal_dist, error_model, num_shots):
+def simulate_noisy_experiment(ideal_dist, error_model, num_shots, seed=None):
     """
     Simulates a noisy experiment by applying the error model to an ideal distribution.
     (Copied from M3-rem.py for verification)
     """
+    rng = np.random.default_rng(seed)
     noisy_counts = Counter()
     ideal_states = list(ideal_dist.keys())
     ideal_probs = np.array(list(ideal_dist.values()))
-    shots_for_states = np.random.choice(len(ideal_states), size=num_shots, p=ideal_probs)
+    shots_for_states = rng.choice(len(ideal_states), size=num_shots, p=ideal_probs)
 
     for state_idx in shots_for_states:
         ideal_state = ideal_states[state_idx]
         measured_state = list(ideal_state)
         for i in range(error_model.num_modes):
             probs = error_model.calibration_data[i][:, ideal_state[i]]
-            measured_state[i] = np.random.choice(len(probs), p=probs)
+            measured_state[i] = rng.choice(len(probs), p=probs)
         noisy_counts[tuple(measured_state)] += 1
 
     return dict(noisy_counts)
@@ -43,6 +44,7 @@ def test_m3_mitigation():
     NUM_MODES = 3
     MAX_PHOTONS = 2
     NUM_SHOTS = 10000
+    SEED = 42
 
     ideal_distribution = {
         (1, 0, 1): 0.80,
@@ -83,7 +85,7 @@ def test_m3_mitigation():
     error_model.set_mode_calibration(2, mode2_errors)
 
     # 2. RUN
-    noisy_counts = simulate_noisy_experiment(ideal_distribution, error_model, NUM_SHOTS)
+    noisy_counts = simulate_noisy_experiment(ideal_distribution, error_model, NUM_SHOTS, seed=SEED)
     noisy_distribution = {k: v / NUM_SHOTS for k, v in noisy_counts.items()}
 
     mitigator = M3Mitigator(error_model)
@@ -93,12 +95,7 @@ def test_m3_mitigation():
     tvd_noisy = calculate_tvd(ideal_distribution, noisy_distribution)
     tvd_mitigated = calculate_tvd(ideal_distribution, mitigated_distribution)
 
-    print(f"TVD Noisy: {tvd_noisy}")
-    print(f"TVD Mitigated: {tvd_mitigated}")
-
     # Mitigation should improve the result significantly (lower TVD)
-    # Allow some slack for random fluctuations, but generally mitigated should be better
-    # or very close if noise is low. Here noise is significant.
     assert tvd_mitigated < tvd_noisy, "Mitigation failed to reduce error."
     assert tvd_mitigated < 0.05, "Mitigated result is not close enough to ideal."
 
@@ -108,7 +105,12 @@ def test_error_model_initialization():
     # Create model but don't set calibration
     model = PhotonicErrorModel(num_modes=2, max_photons_per_mode=1)
 
-    # Trigger default initialization by setting one mode
+    # Check that initialization happened immediately
+    assert len(model.calibration_data) == 2
+    assert np.allclose(model.calibration_data[0], np.eye(2))
+    assert np.allclose(model.calibration_data[1], np.eye(2))
+
+    # Set one mode
     matrix = np.eye(2)
     model.set_mode_calibration(0, matrix)
 
