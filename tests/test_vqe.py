@@ -716,3 +716,144 @@ def test_parametershift_grad_pipline_evqe():
         ValueError, match="Wrong keyward for Jacobian. It should be None or parameter_shift"
     ):
         vqe_energy = vqe.run(max_iterations=1, verbose=True, cost="e-VQE", jacobian="paramtershift")
+
+
+# ===== Kerr Ansatz Tests =====
+
+
+def test_fock_kerr_unitarity():
+    """Test that the Fock-space Kerr gate is unitary for various parameters."""
+    from qlass.vqe.ansatz import _fock_kerr
+
+    for kappa in [0.0, 0.5, np.pi / 4, 1.7, 2 * np.pi]:
+        for n_max in [2, 4, 6]:
+            U = _fock_kerr(kappa, n_max)
+            dim = n_max + 1
+            assert U.shape == (dim, dim)
+            assert np.allclose(U @ U.conj().T, np.eye(dim), atol=1e-12)
+
+
+def test_fock_kerr_diagonal():
+    """Test that the Kerr gate has correct diagonal entries: exp(i κ n²)."""
+    from qlass.vqe.ansatz import _fock_kerr
+
+    kappa = 0.3
+    n_max = 4
+    U = _fock_kerr(kappa, n_max)
+    for n in range(n_max + 1):
+        expected = np.exp(1j * kappa * n**2)
+        assert np.isclose(U[n, n], expected)
+    # Off-diagonal should be zero
+    assert np.allclose(U - np.diag(np.diag(U)), 0)
+
+
+def test_fock_phase_shift_unitarity():
+    """Test that the Fock-space phase shifter is unitary."""
+    from qlass.vqe.ansatz import _fock_phase_shift
+
+    for phi in [0.0, 0.5, np.pi / 3, 2.0]:
+        for n_max in [2, 4]:
+            U = _fock_phase_shift(phi, n_max)
+            dim = n_max + 1
+            assert U.shape == (dim, dim)
+            assert np.allclose(U @ U.conj().T, np.eye(dim), atol=1e-12)
+
+
+def test_fock_phase_shift_diagonal():
+    """Test that the phase shifter has correct diagonal entries: exp(i φ n)."""
+    from qlass.vqe.ansatz import _fock_phase_shift
+
+    phi = 0.7
+    n_max = 3
+    U = _fock_phase_shift(phi, n_max)
+    for n in range(n_max + 1):
+        expected = np.exp(1j * phi * n)
+        assert np.isclose(U[n, n], expected)
+
+
+def test_fock_beamsplitter_unitarity():
+    """Test that the Fock-space beamsplitter is unitary for various parameters."""
+    from qlass.vqe.ansatz import _fock_beamsplitter
+
+    for theta in [0.0, np.pi / 4, np.pi / 3, 1.234]:
+        for phi in [0.0, np.pi / 6, 2.0]:
+            for n_max in [2, 3, 4]:
+                U = _fock_beamsplitter(theta, phi, n_max)
+                dim2 = (n_max + 1) ** 2
+                assert U.shape == (dim2, dim2)
+                assert np.allclose(U @ U.conj().T, np.eye(dim2), atol=1e-10)
+
+
+def test_fock_beamsplitter_identity_at_zero():
+    """Test that BS(θ=0) is the identity (no coupling)."""
+    from qlass.vqe.ansatz import _fock_beamsplitter
+
+    n_max = 3
+    U = _fock_beamsplitter(0.0, 0.0, n_max)
+    dim2 = (n_max + 1) ** 2
+    assert np.allclose(U, np.eye(dim2), atol=1e-12)
+
+
+def test_kerr_ansatz_unitarity():
+    """Test that kerr_ansatz produces unitary matrices for all num_kerr values."""
+    from qlass.vqe.ansatz import kerr_ansatz
+
+    params = np.array([0.3, 0.5, 0.7, 0.1, np.pi / 4, np.pi / 3])
+    for num_kerr in [1, 2, 3, 4]:
+        U = kerr_ansatz(params, num_kerr=num_kerr, n_max=4)
+        dim = 5**2  # (n_max+1)^2 = 25
+        assert U.shape == (dim, dim)
+        assert np.allclose(U @ U.conj().T, np.eye(dim), atol=1e-10)
+
+
+def test_kerr_ansatz_output_shape():
+    """Test that kerr_ansatz output shape matches (n_max+1)^2."""
+    from qlass.vqe.ansatz import kerr_ansatz
+
+    params = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6])
+    for n_max in [1, 2, 3, 5]:
+        U = kerr_ansatz(params, num_kerr=4, n_max=n_max)
+        expected_dim = (n_max + 1) ** 2
+        assert U.shape == (expected_dim, expected_dim)
+
+
+def test_kerr_ansatz_invalid_num_kerr():
+    """Test that invalid num_kerr values raise ValueError."""
+    from qlass.vqe.ansatz import kerr_ansatz
+
+    params = np.zeros(6)
+    with pytest.raises(ValueError, match="num_kerr must be between 1 and 4"):
+        kerr_ansatz(params, num_kerr=0)
+    with pytest.raises(ValueError, match="num_kerr must be between 1 and 4"):
+        kerr_ansatz(params, num_kerr=5)
+
+
+def test_kerr_ansatz_invalid_param_count():
+    """Test that wrong number of parameters raises ValueError."""
+    from qlass.vqe.ansatz import kerr_ansatz
+
+    with pytest.raises(ValueError, match="Expected 6 parameters"):
+        kerr_ansatz(np.zeros(5), num_kerr=2)
+    with pytest.raises(ValueError, match="Expected 6 parameters"):
+        kerr_ansatz(np.zeros(7), num_kerr=2)
+
+
+def test_kerr_ansatz_kerr_vs_phase_shift():
+    """Test that different num_kerr values produce different unitaries."""
+    from qlass.vqe.ansatz import kerr_ansatz
+
+    params = np.array([0.3, 0.5, 0.7, 0.1, np.pi / 4, np.pi / 3])
+    U4 = kerr_ansatz(params, num_kerr=4, n_max=3)
+    U1 = kerr_ansatz(params, num_kerr=1, n_max=3)
+    # The unitaries should differ significantly
+    assert np.max(np.abs(U4 - U1)) > 0.01
+
+
+def test_kerr_ansatz_import_from_package():
+    """Test that kerr_ansatz can be imported from the qlass.vqe package."""
+    from qlass.vqe import kerr_ansatz
+
+    params = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6])
+    U = kerr_ansatz(params, num_kerr=2, n_max=2)
+    assert U.shape == (9, 9)
+    assert np.allclose(U @ U.conj().T, np.eye(9), atol=1e-10)
