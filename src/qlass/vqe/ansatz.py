@@ -1,5 +1,6 @@
 import numpy as np
 import perceval as pcvl
+from functools import lru_cache
 from perceval.components import Processor
 from perceval.utils import NoiseModel
 from qiskit import QuantumCircuit, transpile
@@ -371,6 +372,30 @@ def _fock_phase_shift(phi: float, n_max: int) -> np.ndarray:
     return np.diag(np.exp(1j * phi * ns))
 
 
+@lru_cache(maxsize=16)
+def _cached_fock_bs_operators(n_max: int) -> tuple[np.ndarray, np.ndarray]:
+    """Cache the fixed operator products a0† a1 and a0 a1† for the Beamsplitter Hamiltonian."""
+    dim = n_max + 1
+
+    # Build annihilation operator for a single mode in Fock basis
+    # a|n⟩ = √n |n-1⟩
+    a = np.zeros((dim, dim), dtype=complex)
+    for n in range(1, dim):
+        a[n - 1, n] = np.sqrt(n)
+
+    # Identity for single mode
+    I_single = np.eye(dim, dtype=complex)
+
+    # Two-mode operators: a_0 = a ⊗ I, a_1 = I ⊗ a
+    a0 = np.kron(a, I_single)
+    a1 = np.kron(I_single, a)
+
+    a0dag = a0.conj().T
+    a1dag = a1.conj().T
+
+    return a0dag @ a1, a0 @ a1dag
+
+
 def _fock_beamsplitter(theta: float, phi: float, n_max: int) -> np.ndarray:
     """
     Two-mode beamsplitter in the Fock basis.
@@ -391,26 +416,10 @@ def _fock_beamsplitter(theta: float, phi: float, n_max: int) -> np.ndarray:
     """
     from scipy.linalg import expm
 
-    dim = n_max + 1
-
-    # Build annihilation operator for a single mode in Fock basis
-    # a|n⟩ = √n |n-1⟩
-    a = np.zeros((dim, dim), dtype=complex)
-    for n in range(1, dim):
-        a[n - 1, n] = np.sqrt(n)
-
-    # Identity for single mode
-    I_single = np.eye(dim, dtype=complex)
-
-    # Two-mode operators: a_0 = a ⊗ I, a_1 = I ⊗ a
-    a0 = np.kron(a, I_single)
-    a1 = np.kron(I_single, a)
-
-    a0dag = a0.conj().T
-    a1dag = a1.conj().T
+    op1, op2 = _cached_fock_bs_operators(n_max)
 
     # BS Hamiltonian: H = θ (e^{iφ} a†_0 a_1 + e^{-iφ} a_0 a†_1)
-    H_bs = theta * (np.exp(1j * phi) * a0dag @ a1 + np.exp(-1j * phi) * a0 @ a1dag)
+    H_bs = theta * (np.exp(1j * phi) * op1 + np.exp(-1j * phi) * op2)
 
     return expm(-1j * H_bs)
 
@@ -457,8 +466,6 @@ def kerr_ansatz(params: np.ndarray, num_kerr: int = 4, n_max: int = 4) -> np.nda
         raise ValueError(f"num_kerr must be between 1 and 4, got {num_kerr}")
     if len(params) != 6:
         raise ValueError(f"Expected 6 parameters, got {len(params)}")
-
-    dim = n_max + 1
 
     # Determine which slots are Kerr gates (True) or phase shifters (False).
     # Slots 0..num_kerr-1 are Kerr, the rest are phase shifters.
