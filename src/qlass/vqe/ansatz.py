@@ -389,8 +389,6 @@ def _fock_beamsplitter(theta: float, phi: float, n_max: int) -> np.ndarray:
         np.ndarray: Unitary matrix of shape ((n_max+1)^2, (n_max+1)^2)
                     acting on the two-mode Fock space.
     """
-    from scipy.linalg import expm
-
     dim = n_max + 1
 
     # Build annihilation operator for a single mode in Fock basis
@@ -412,7 +410,11 @@ def _fock_beamsplitter(theta: float, phi: float, n_max: int) -> np.ndarray:
     # BS Hamiltonian: H = θ (e^{iφ} a†_0 a_1 + e^{-iφ} a_0 a†_1)
     H_bs = theta * (np.exp(1j * phi) * a0dag @ a1 + np.exp(-1j * phi) * a0 @ a1dag)
 
-    return expm(-1j * H_bs)
+    # Since H_bs is Hermitian, we can compute exp(-i H_bs) via eigen-decomposition
+    # H_bs = V D V† with real eigenvalues D, so exp(-i H_bs) = V exp(-i D) V†
+    eigenvalues, eigenvectors = np.linalg.eigh(H_bs)
+    U = eigenvectors @ np.diag(np.exp(-1j * eigenvalues)) @ eigenvectors.conj().T
+    return U
 
 
 def kerr_ansatz(params: np.ndarray, num_kerr: int = 4, n_max: int = 4) -> np.ndarray:
