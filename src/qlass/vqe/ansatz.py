@@ -415,7 +415,6 @@ def _fock_beamsplitter(theta: float, phi: float, n_max: int) -> np.ndarray:
     return expm(-1j * H_bs)
 
 
-
 def kerr_ansatz(params: np.ndarray, num_kerr: int = 4, n_max: int = 4) -> np.ndarray:
     """
     Construct a 2-mode nonlinear photonic ansatz with Kerr gates and a beamsplitter.
