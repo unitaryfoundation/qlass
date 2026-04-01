@@ -1,6 +1,7 @@
+from functools import lru_cache
+
 import numpy as np
 import perceval as pcvl
-from functools import lru_cache
 from perceval.components import Processor
 from perceval.utils import NoiseModel
 from qiskit import QuantumCircuit, transpile
@@ -423,7 +424,7 @@ def _fock_beamsplitter(theta: float, phi: float, n_max: int) -> np.ndarray:
     # H_bs = V D V† with real eigenvalues D, so exp(-i H_bs) = V exp(-i D) V†
     eigenvalues, eigenvectors = np.linalg.eigh(H_bs)
     U = eigenvectors @ np.diag(np.exp(-1j * eigenvalues)) @ eigenvectors.conj().T
-    return U
+    return U  # type: ignore[no-any-return]
 
 
 def kerr_ansatz(params: np.ndarray, num_kerr: int = 4, n_max: int = 4) -> np.ndarray:
@@ -491,4 +492,4 @@ def kerr_ansatz(params: np.ndarray, num_kerr: int = 4, n_max: int = 4) -> np.nda
     layer2 = np.kron(gate0_l2, gate1_l2)
 
     # Full circuit: layer2 @ bs @ layer1
-    return layer2 @ bs @ layer1
+    return layer2 @ bs @ layer1  # type: ignore[no-any-return]
