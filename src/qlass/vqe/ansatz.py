@@ -392,7 +392,6 @@ def _fock_beamsplitter(theta: float, phi: float, n_max: int) -> np.ndarray:
     from scipy.linalg import expm
 
     dim = n_max + 1
-    dim2 = dim * dim
 
     # Build annihilation operator for a single mode in Fock basis
     # a|n⟩ = √n |n-1⟩
