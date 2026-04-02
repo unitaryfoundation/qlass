@@ -799,7 +799,7 @@ def test_kerr_ansatz_unitarity():
     from qlass.vqe.ansatz import kerr_ansatz
 
     params = np.array([0.3, 0.5, 0.7, 0.1, np.pi / 4, np.pi / 3])
-    for num_kerr in [1, 2, 3, 4]:
+    for num_kerr in [0, 1, 2, 3, 4]:
         U = kerr_ansatz(params, num_kerr=num_kerr, n_max=4)
         dim = 5**2  # (n_max+1)^2 = 25
         assert U.shape == (dim, dim)
@@ -822,9 +822,9 @@ def test_kerr_ansatz_invalid_num_kerr():
     from qlass.vqe.ansatz import kerr_ansatz
 
     params = np.zeros(6)
-    with pytest.raises(ValueError, match="num_kerr must be between 1 and 4"):
-        kerr_ansatz(params, num_kerr=0)
-    with pytest.raises(ValueError, match="num_kerr must be between 1 and 4"):
+    with pytest.raises(ValueError, match="num_kerr must be between 0 and 4"):
+        kerr_ansatz(params, num_kerr=-1)
+    with pytest.raises(ValueError, match="num_kerr must be between 0 and 4"):
         kerr_ansatz(params, num_kerr=5)
 
 
