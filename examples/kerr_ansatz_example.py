@@ -27,7 +27,7 @@ def kerr_sampling_executor(
     final_state = U @ state
 
     # 4. Compute the exact probability distribution
-    probs = np.abs(final_state)**2
+    probs = np.abs(final_state) ** 2
 
     # Ensure probabilities sum to 1 (to mitigate any minor floating point artifacts)
     probs = probs / np.sum(probs)
@@ -37,6 +37,7 @@ def kerr_sampling_executor(
     samples = np.random.choice(indices, size=num_samples, p=probs)
 
     return samples, probs, dim
+
 
 def main() -> None:
     n_max = 4
@@ -72,7 +73,10 @@ def main() -> None:
             sampled_freq = counts.get(idx, 0) / num_samples
             diff = abs(prob - sampled_freq)
 
-            print(f" |{n0}, {n1}>  | {prob*100:8.2f}% | {sampled_freq*100:11.2f}% | {diff*100:8.2f}%")
+            print(
+                f" |{n0}, {n1}>  | {prob * 100:8.2f}% | {sampled_freq * 100:11.2f}% | {diff * 100:8.2f}%"
+            )
+
 
 if __name__ == "__main__":
     main()
