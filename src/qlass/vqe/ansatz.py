@@ -465,8 +465,8 @@ def kerr_ansatz(params: np.ndarray, num_kerr: int = 4, n_max: int = 4) -> np.nda
         ValueError: If ``num_kerr`` is not in {1, 2, 3, 4} or ``params``
                     does not have exactly 6 elements.
     """
-    if num_kerr < 1 or num_kerr > 4:
-        raise ValueError(f"num_kerr must be between 1 and 4, got {num_kerr}")
+    if num_kerr < 0 or num_kerr > 4:
+        raise ValueError(f"num_kerr must be between 0 and 4, got {num_kerr}")
     if len(params) != 6:
         raise ValueError(f"Expected 6 parameters, got {len(params)}")
 
