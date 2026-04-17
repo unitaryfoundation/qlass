@@ -21,7 +21,7 @@ def executor(params, pauli_string):
     """
     processor = le_ansatz(params, pauli_string)
     sampler = Sampler(processor)
-    samples = sampler.samples(10_000)
+    samples = sampler.samples(1_000_000)
     return samples
 
 

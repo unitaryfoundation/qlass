@@ -6,7 +6,7 @@ import numpy as np
 from openfermion.chem import MolecularData
 
 # Import QubitOperator para type hinting
-from openfermion.ops import InteractionOperator, QubitOperator
+from openfermion.ops import InteractionOperator, QubitOperator, BosonOperator
 from openfermion.transforms import (
     get_fermion_operator,
     jordan_wigner,
@@ -610,3 +610,66 @@ def Hchain_hamiltonian_WFT(
         H_qubit = jordan_wigner(fermionic_op)
     # Convert to dictionary format
     return sparsepauliop_dictionary(H_qubit)
+
+
+def bose_hubbard_dimer_hamiltonian(
+    n_max: int, J: float, U: float, as_boson_operator: bool = False
+) -> np.ndarray | BosonOperator:
+    """
+    Construct the Hamiltonian matrix for a two-mode Bose-Hubbard dimer system.
+    This corresponds to the Continuous-Variable (photon) encoding of a many-body system,
+    allowing direct compatibility with states evolved by the Kerr ansatz.
+
+    Args:
+        n_max (int): Maximum number of photons/bosons per mode (truncation level).
+                     The resulting matrix will have size ((n_max+1)^2, (n_max+1)^2).
+        J (float): Hopping parameter representing boson delocalization (often chosen as > 0).
+        U (float): Many-body attractive interaction parameter (often chosen as > 0).
+        as_boson_operator (bool): If True, returns an OpenFermion BosonOperator representing the Hamiltonian
+                                  in terms of normal-ordered creation and annihilation operators.
+                                  Defaults to False.
+
+    Returns:
+        np.ndarray | openfermion.ops.BosonOperator: 
+            A complex Hermitian matrix representing the Hamiltonian operator
+            if as_boson_operator is False.
+            An OpenFermion BosonOperator if True.
+    """
+    if as_boson_operator:
+        # Polynomial expression of the exact normal-ordered Bose-Hubbard Dimer Hamiltonian.
+        # Hopping terms: a_0^\\dagger a_1  +  a_1^\\dagger a_0
+        # Interaction terms: n_i(n_i - 1) = a_i^\\dagger a_i^\\dagger a_i a_i
+        polynomial = (
+            -float(J) * (BosonOperator("0^ 1") + BosonOperator("1^ 0"))
+            - (float(U) / 2.0) * (BosonOperator("0^ 0^ 0 0") + BosonOperator("1^ 1^ 1 1"))
+        )
+        return polynomial
+
+    dim = n_max + 1
+
+    # Single-mode operators in the truncated Fock basis
+    a = np.zeros((dim, dim), dtype=complex)
+    for k in range(n_max):
+        a[k, k + 1] = np.sqrt(k + 1)
+
+    a_dag = a.T.conj()
+    n = a_dag @ a
+    eye = np.eye(dim, dtype=complex)
+
+    # Two-mode operators via Kronecker product
+    a0 = np.kron(a, eye)
+    a0_dag = np.kron(a_dag, eye)
+    n0 = np.kron(n, eye)
+
+    a1 = np.kron(eye, a)
+    a1_dag = np.kron(eye, a_dag)
+    n1 = np.kron(eye, n)
+
+    # Hamiltonian terms
+    hopping_term = a0_dag @ a1 + a1_dag @ a0
+    interaction_term = n0 @ (n0 - np.eye(dim ** 2)) + n1 @ (n1 - np.eye(dim ** 2))
+
+    # Construct the Bose-Hubbard Dimer Hamiltonian matching analytical definitions
+    H = -J * hopping_term - (U / 2.0) * interaction_term
+
+    return H
