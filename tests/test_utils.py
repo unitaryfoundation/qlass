@@ -62,6 +62,42 @@ def test_draw_circuit_saves_each_output_format(tmp_path):
         assert save_path.stat().st_size > 0
 
 
+def test_draw_circuit_displays_without_save_path(mocker):
+    processor = le_ansatz(np.zeros(4), "II")
+    pdisplay = mocker.patch("qlass.utils.utils.pcvl.pdisplay")
+
+    draw_circuit(
+        processor,
+        output_format="text",
+        skin="debug",
+        compact=True,
+        recursive=True,
+    )
+
+    pdisplay.assert_called_once()
+    args, kwargs = pdisplay.call_args
+    assert args[0] is processor
+    assert kwargs["output_format"] == pcvl.Format.TEXT
+    assert kwargs["skin"].__class__.__name__ == "DebugSkin"
+    assert kwargs["recursive"] is True
+
+
+def test_draw_circuit_rejects_invalid_inputs():
+    processor = le_ansatz(np.zeros(4), "II")
+
+    with pytest.raises(ValueError, match="Invalid output_format"):
+        draw_circuit(processor, output_format="pdf")
+
+    with pytest.raises(ValueError, match="Invalid skin"):
+        draw_circuit(processor, skin="minimal")
+
+    with pytest.raises(NotImplementedError, match="perceval"):
+        draw_circuit(processor, backend="piquasso")
+
+    with pytest.raises(TypeError, match="Processor or Circuit"):
+        draw_circuit(object())
+
+
 def test_get_probabilities():
     # test case 1
     samples = [(0, 0, 0), (0, 0, 1), (0, 0, 0), (0, 1, 0), (0, 0, 1)]
