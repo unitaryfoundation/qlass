@@ -54,7 +54,9 @@ def test_draw_circuit_saves_each_output_format(tmp_path):
 
     for output_format, extension in output_formats.items():
         save_path = tmp_path / f"ansatz.{extension}"
-        draw_circuit(processor, output_format=output_format, save_path=str(save_path))
+        draw_circuit(
+            processor, output_format=output_format, save_path=str(save_path), recursive=True
+        )
 
         assert save_path.exists()
         assert save_path.stat().st_size > 0

@@ -86,7 +86,7 @@ def test_draw_ansatz_saves_circuit(tmp_path):
     )
     save_path = tmp_path / "ansatz.txt"
 
-    vqe.draw_ansatz(np.zeros(4), output_format="text", save_path=str(save_path))
+    vqe.draw_ansatz(np.zeros(4), output_format="text", save_path=str(save_path), recursive=True)
 
     assert save_path.exists()
     assert save_path.stat().st_size > 0

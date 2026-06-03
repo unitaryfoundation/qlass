@@ -55,6 +55,7 @@ def draw_circuit(
     compact: bool = False,
     save_path: str | None = None,
     backend: str = "perceval",
+    **kwargs: Any,
 ) -> None:
     """
     Draw a linear optical circuit or processor.
@@ -69,6 +70,7 @@ def draw_circuit(
         save_path (Optional[str]): If provided, save the rendering to this path instead of
             displaying it interactively.
         backend (str): Drawing backend. Currently only ``"perceval"`` is supported.
+        **kwargs (Any): Additional keyword arguments forwarded to Perceval's display function.
 
     Raises:
         NotImplementedError: If ``backend`` is not ``"perceval"``.
@@ -83,7 +85,7 @@ def draw_circuit(
 
     perceval_format = _get_perceval_format(output_format)
     perceval_skin = _get_perceval_skin(skin, compact)
-    display_options = {"skin": perceval_skin}
+    display_options = {"skin": perceval_skin, **kwargs}
 
     if save_path is not None:
         pcvl.pdisplay_to_file(
