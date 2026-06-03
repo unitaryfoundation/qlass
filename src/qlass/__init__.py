@@ -14,7 +14,7 @@ from .quantum_chemistry.hamiltonians import (
 )
 
 # export from utils module
-from .utils.utils import e_vqe_loss_function, loss_function, rotate_qubits
+from .utils.utils import draw_circuit, e_vqe_loss_function, loss_function, rotate_qubits
 
 # export from vqe module
 from .vqe.ansatz import custom_unitary_ansatz, le_ansatz
@@ -32,6 +32,7 @@ __all__ = [
     "sparsepauliop_dictionary",
     "le_ansatz",
     "custom_unitary_ansatz",
+    "draw_circuit",
     "loss_function",
     "e_vqe_loss_function",
     "rotate_qubits",

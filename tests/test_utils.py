@@ -9,6 +9,7 @@ from qlass.quantum_chemistry import pauli_string_to_matrix
 from qlass.utils import (
     compute_energy,
     compute_expectation_value_from_unitary,
+    draw_circuit,
     get_probabilities,
     is_qubit_state,
     loss_function,
@@ -17,6 +18,7 @@ from qlass.utils import (
     rotate_qubits,
 )
 from qlass.utils.utils import _extract_samples_from_executor_result
+from qlass.vqe import le_ansatz
 
 
 def test_compute_energy():
@@ -39,6 +41,23 @@ def test_compute_energy():
     pauli_bin = (1, 0, 0)
     res = {(0, 0, 0): 0.45, (0, 0, 1): 0.23, (0, 1, 0): 0.1, (1, 0, 0): 0.32}
     assert compute_energy(pauli_bin, res) == 0.46
+
+
+def test_draw_circuit_saves_each_output_format(tmp_path):
+    processor = le_ansatz(np.zeros(4), "II")
+    output_formats = {
+        "mpl": "png",
+        "html": "html",
+        "latex": "tex",
+        "text": "txt",
+    }
+
+    for output_format, extension in output_formats.items():
+        save_path = tmp_path / f"ansatz.{extension}"
+        draw_circuit(processor, output_format=output_format, save_path=str(save_path))
+
+        assert save_path.exists()
+        assert save_path.stat().st_size > 0
 
 
 def test_get_probabilities():
