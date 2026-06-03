@@ -54,6 +54,16 @@ def test_rotate_modes_appends_beamsplitter():
     assert sum(1 for _ in circuit) == 1
 
 
+def test_rotate_modes_rejects_invalid_modes():
+    circuit = pcvl.Circuit(2)
+
+    with pytest.raises(ValueError, match="distinct modes"):
+        rotate_modes(circuit, 0, 0)
+
+    with pytest.raises(ValueError, match="non-negative"):
+        rotate_modes(circuit, -1, 0)
+
+
 def test_loss_function_bose_hubbard_diagonal_matches_exact_matrix():
     hamiltonian = (
         BosonOperator("0^ 0^ 0 0", 0.5)
@@ -110,6 +120,30 @@ def test_loss_function_bose_hubbard_hopping_dimer_matches_exact_matrix():
 
     assert np.isclose(sampled_energy, exact_energy)
     assert calls == [("identity", None, None), ("hop", 0, 1)]
+
+
+def test_loss_function_bose_hubbard_constant_term_does_not_call_executor():
+    def executor(params, measurement, *modes):
+        raise AssertionError("Constant-only Hamiltonians should not request samples.")
+
+    hamiltonian = BosonOperator("", 2.5)
+
+    sampled_energy = loss_function_bose_hubbard(np.array([0.0]), hamiltonian, executor)
+
+    assert np.isclose(sampled_energy, 2.5)
+
+
+def test_loss_function_bose_hubbard_rejects_invalid_inputs():
+    def executor(params, measurement, *modes):
+        raise AssertionError("Invalid Hamiltonians should fail before sampling.")
+
+    with pytest.raises(TypeError, match="OpenFermion BosonOperator"):
+        loss_function_bose_hubbard(np.array([0.0]), {"0^ 0": 1.0}, executor)
+
+    hamiltonian = BosonOperator("0^ 1^", 1.0)
+
+    with pytest.raises(ValueError, match="Unsupported Bose-Hubbard term"):
+        loss_function_bose_hubbard(np.array([0.0]), hamiltonian, executor)
 
 
 def test_get_probabilities():
