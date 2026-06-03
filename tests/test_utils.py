@@ -4,6 +4,8 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import perceval as pcvl
 import pytest
+from openfermion import BosonOperator
+from openfermion.linalg import boson_operator_sparse
 
 from qlass.quantum_chemistry import pauli_string_to_matrix
 from qlass.utils import (
@@ -12,8 +14,10 @@ from qlass.utils import (
     get_probabilities,
     is_qubit_state,
     loss_function,
+    loss_function_bose_hubbard,
     loss_function_matrix,
     qubit_state_marginal,
+    rotate_modes,
     rotate_qubits,
 )
 from qlass.utils.utils import _extract_samples_from_executor_result
@@ -39,6 +43,73 @@ def test_compute_energy():
     pauli_bin = (1, 0, 0)
     res = {(0, 0, 0): 0.45, (0, 0, 1): 0.23, (0, 1, 0): 0.1, (1, 0, 0): 0.32}
     assert compute_energy(pauli_bin, res) == 0.46
+
+
+def test_rotate_modes_appends_beamsplitter():
+    circuit = pcvl.Circuit(2)
+
+    rotated = rotate_modes(circuit, 0, 1)
+
+    assert rotated is circuit
+    assert sum(1 for _ in circuit) == 1
+
+
+def test_loss_function_bose_hubbard_diagonal_matches_exact_matrix():
+    hamiltonian = (
+        BosonOperator("0^ 0^ 0 0", 0.5)
+        + BosonOperator("1^ 1^ 1 1", 0.25)
+        + BosonOperator("0^ 0", 1.3)
+        + BosonOperator("1^ 1", 0.7)
+        + BosonOperator("0^ 1^ 0 1", 0.2)
+    )
+    truncation = 3
+    trial_state = np.zeros(truncation**2, dtype=complex)
+    trial_state[2 * truncation + 1] = 1.0  # |n_0=2, n_1=1>
+    exact_energy = np.vdot(
+        trial_state, boson_operator_sparse(hamiltonian, truncation) @ trial_state
+    ).real
+    calls = []
+
+    def executor(params, measurement):
+        calls.append((measurement,))
+        return {"results": [(2, 1)] * 10}
+
+    sampled_energy = loss_function_bose_hubbard(np.array([0.0]), hamiltonian, executor)
+
+    assert np.isclose(sampled_energy, exact_energy)
+    assert calls == [("identity",)]
+
+
+def test_loss_function_bose_hubbard_hopping_dimer_matches_exact_matrix():
+    hopping_strength = -0.7
+    hamiltonian = (
+        BosonOperator("0^ 0", 0.4)
+        + BosonOperator("1^ 1", 1.2)
+        + BosonOperator("0^ 1", hopping_strength)
+        + BosonOperator("1^ 0", hopping_strength)
+    )
+    truncation = 2
+    trial_state = np.zeros(truncation**2, dtype=complex)
+    trial_state[1] = 1 / np.sqrt(2)  # |n_0=0, n_1=1>
+    trial_state[2] = 1 / np.sqrt(2)  # |n_0=1, n_1=0>
+    exact_energy = np.vdot(
+        trial_state, boson_operator_sparse(hamiltonian, truncation) @ trial_state
+    ).real
+    calls = []
+
+    def executor(params, measurement, mode_1=None, mode_2=None):
+        calls.append((measurement, mode_1, mode_2))
+        if measurement == "identity":
+            return {"results": [(1, 0)] * 50 + [(0, 1)] * 50}
+        if measurement == "hop":
+            assert (mode_1, mode_2) == (0, 1)
+            return {"results": [(1, 0)] * 100}
+        raise ValueError(f"Unexpected measurement: {measurement}")
+
+    sampled_energy = loss_function_bose_hubbard(np.array([0.0]), hamiltonian, executor)
+
+    assert np.isclose(sampled_energy, exact_energy)
+    assert calls == [("identity", None, None), ("hop", 0, 1)]
 
 
 def test_get_probabilities():
