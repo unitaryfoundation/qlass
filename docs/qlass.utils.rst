@@ -12,10 +12,14 @@ Key Features
 - ``loss_function_matrix``: Loss function for qubit unitary-based VQE
 - ``loss_function_photonic_unitary``: Loss function for photonic unitaries with post-selection
 - ``e_vqe_loss_function``: Ensemble-VQE loss function supporting multiple states
+- ``loss_function_bose_hubbard``: Sampling-based loss function for Bose-Hubbard Hamiltonians
 
 **Utilities**
 
 - ``linear_circuit_to_unitary``: Converts Perceval linear circuits to unitary matrices
+- ``draw_circuit``: Visualizes Perceval Processor or Circuit objects using Perceval's
+  ``pdisplay`` interface (supports ``mpl``, ``html``, ``latex``, and ``text`` formats)
+- ``rotate_modes``: Appends a 50/50 beam splitter on a consecutive mode pair for hopping-term measurement
 - ``DataCollector``: Collects and stores energy data during ensemble-VQE optimization
 
   - ``loss_data``: List of cost function values

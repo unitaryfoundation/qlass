@@ -31,6 +31,12 @@ The VQE class supports three executor types to handle different abstraction leve
   - ``method="DFT"``: Density functional theory :cite:p:`kohn1965self`
   - Compatible with both VQE and e-VQE costs
 
+**Circuit Visualization**
+
+- ``VQE.draw_ansatz``: Visualizes the compiled photonic circuit for a given set of
+  variational parameters outside the optimization loop
+- ``draw_circuit``: Standalone utility for drawing Perceval Processor or Circuit objects
+
 VQE Class
 ---------
 

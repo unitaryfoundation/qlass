@@ -250,6 +250,46 @@ Using photonic unitaries with dual-rail encoding and post-selection:
    
    vqe_energy = vqe.run(max_iterations=100, verbose=True)
 
+Circuit Visualization
+~~~~~~~~~~~~~~~~~~~~~
+
+Inspecting the compiled photonic circuit for a VQE ansatz before or after optimization:
+
+.. code-block:: python
+
+   import numpy as np
+   from qlass import draw_circuit
+   from qlass.vqe import VQE, le_ansatz
+   from qlass.quantum_chemistry import LiH_hamiltonian
+   from perceval.algorithm import Sampler
+   import warnings
+   warnings.filterwarnings('ignore')
+
+   # Number of qubits
+   num_qubits = 2
+   params = np.array([0.1, 0.2, 0.3, 0.4])
+
+   # Draw the ansatz processor directly
+   processor = le_ansatz(params, "II")
+   draw_circuit(processor, output_format="mpl", skin="phys")
+   draw_circuit(processor, output_format="html", save_path="le_ansatz.html")
+
+   # Define an executor function that uses the linear entangled ansatz
+   def executor(params, pauli_string):
+       processor = le_ansatz(params, pauli_string)
+       sampler = Sampler(processor)
+       samples = sampler.samples(100)
+       return samples
+
+   # Visualize via VQE.draw_ansatz (pass ansatz_fn when executor returns samples)
+   hamiltonian = LiH_hamiltonian(num_electrons=2, num_orbitals=1)
+   vqe = VQE(
+       hamiltonian=hamiltonian,
+       executor=executor,
+       num_params=2 * num_qubits,
+   )
+   vqe.draw_ansatz(params, ansatz_fn=le_ansatz, output_format="html", save_path="vqe_ansatz.html")
+
 Ensemble-VQE (e-VQE)
 ~~~~~~~~~~~~~~~~~~~~
 
@@ -315,6 +355,48 @@ Using DFT-based Kohn-Sham Hamiltonians:
    )
    
    vqe_energy = vqe.run(max_iterations=50, verbose=True)
+
+Bose-Hubbard VQE
+~~~~~~~~~~~~~~~~
+
+Computing the ground-state energy of a Bose-Hubbard dimer using sampling-based
+``loss_function_bose_hubbard``. The executor must handle two measurement types:
+
+* ``"identity"`` — sample Fock occupation numbers in the computational basis.
+* ``"hop", p, q`` — apply ``rotate_modes(p, q, circuit)`` then sample; modes ``p``
+  and ``q`` must be consecutive.
+
+.. code-block:: python
+
+   import numpy as np
+   from openfermion.ops import BosonOperator
+   from perceval.algorithm import Sampler
+
+   from qlass.utils import loss_function_bose_hubbard, rotate_modes
+
+   # 2-site Bose-Hubbard dimer: H = -t(a†_0 a_1 + h.c.) - mu*(n_0+n_1) + U/2*sum n_i(n_i-1)
+   t, mu, U = 1.0, 0.5, 4.0
+   H = (
+       BosonOperator("0^ 1", -t) + BosonOperator("1^ 0", -t)
+       + BosonOperator("0^ 0", -mu) + BosonOperator("1^ 1", -mu)
+       + BosonOperator("0^ 0^ 0 0", U / 2) + BosonOperator("1^ 1^ 1 1", U / 2)
+   )
+
+   def build_ansatz(params):
+       """Return a Perceval processor for the variational state."""
+       ...  # build and return processor
+
+   def executor(params, measurement_type, *modes):
+       processor = build_ansatz(params)
+       if measurement_type == "hop":
+           p, q = modes
+           rotate_modes(p, q, processor.linear_circuit())
+       sampler = Sampler(processor)
+       return sampler.samples(10_000)
+
+   params = np.random.rand(4)
+   energy = loss_function_bose_hubbard(params, H, executor)
+   print(f"Energy: {energy:.6f}")
 
 Working with Molecular Hamiltonians
 -----------------------------------

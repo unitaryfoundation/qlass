@@ -14,6 +14,7 @@ from .quantum_chemistry.hamiltonians import (
 )
 
 # export from utils module
+from .utils.draw_circuit import draw_circuit
 from .utils.utils import e_vqe_loss_function, loss_function, rotate_qubits
 
 # export from vqe module
@@ -35,6 +36,7 @@ __all__ = [
     "loss_function",
     "e_vqe_loss_function",
     "rotate_qubits",
+    "draw_circuit",
     "ResourceAwareCompiler",
     "HardwareConfig",
     "generate_report",

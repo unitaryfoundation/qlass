@@ -1,3 +1,4 @@
+from .draw_circuit import draw_circuit
 from .utils import (
     compute_energy,
     compute_expectation_value_from_unitary,
@@ -32,4 +33,5 @@ __all__ = [
     "logical_state_to_modes",
     "photon_to_qubit_unitary",
     "loss_function_photonic_unitary",
+    "draw_circuit",
 ]

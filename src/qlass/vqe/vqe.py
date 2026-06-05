@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import OptimizeResult, minimize
 
-from qlass.utils import e_vqe_loss_function, loss_function
+from qlass.utils import draw_circuit, e_vqe_loss_function, loss_function
+from qlass.utils.draw_circuit import resolve_executor_circuit
 from qlass.utils.utils import DataCollector
 
 
@@ -292,6 +293,36 @@ class VQE:
         if self.optimization_result is None:
             raise ValueError("VQE optimization has not been run yet.")
         return np.asarray(self.optimization_result.x)
+
+    def draw_ansatz(
+        self,
+        params: np.ndarray,
+        pauli_string: str | None = None,
+        *,
+        ansatz_fn: Callable | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """
+        Visualize the ansatz circuit for a specific set of parameters.
+
+        Args:
+            params (np.ndarray): Variational parameters for the ansatz
+            pauli_string (str, optional): Pauli string for measurement basis rotation.
+                Defaults to all identity (``"I" * num_qubits``)
+            ansatz_fn (Callable, optional): Callable ``(params, pauli_string) -> Processor``
+                used to build the circuit. Required when the executor returns samples
+                rather than a Perceval object (e.g. pass ``le_ansatz``)
+            **kwargs: Additional keyword arguments forwarded to :func:`draw_circuit`
+        """
+        if pauli_string is None:
+            pauli_string = "I" * self.num_qubits
+
+        if ansatz_fn is not None:
+            circuit_or_processor = ansatz_fn(params, pauli_string)
+        else:
+            circuit_or_processor = resolve_executor_circuit(self.executor(params, pauli_string))
+
+        draw_circuit(circuit_or_processor, **kwargs)
 
     def plot_convergence(self, exact_energy: float | None = None) -> None:
         """
