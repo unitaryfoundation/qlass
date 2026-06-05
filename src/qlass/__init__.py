@@ -14,7 +14,13 @@ from .quantum_chemistry.hamiltonians import (
 )
 
 # export from utils module
-from .utils.utils import e_vqe_loss_function, loss_function, rotate_qubits
+from .utils.utils import (
+    e_vqe_loss_function,
+    loss_function,
+    loss_function_bose_hubbard,
+    rotate_modes,
+    rotate_qubits,
+)
 
 # export from vqe module
 from .vqe.ansatz import custom_unitary_ansatz, le_ansatz
@@ -33,8 +39,10 @@ __all__ = [
     "le_ansatz",
     "custom_unitary_ansatz",
     "loss_function",
+    "loss_function_bose_hubbard",
     "e_vqe_loss_function",
     "rotate_qubits",
+    "rotate_modes",
     "ResourceAwareCompiler",
     "HardwareConfig",
     "generate_report",

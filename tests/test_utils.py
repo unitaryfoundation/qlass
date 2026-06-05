@@ -673,3 +673,253 @@ def test_loss_function_fallback_with_mitigator(mocker):
 
         assert mitigator.mitigate.called
         assert np.isclose(loss, 1.0)
+
+
+# ---------------------------------------------------------------------------
+# rotate_modes
+# ---------------------------------------------------------------------------
+
+
+def test_rotate_modes_adds_bs():
+    """rotate_modes appends a BS gate to the specified modes of a circuit."""
+    import perceval as pcvl
+
+    from qlass.utils import rotate_modes
+
+    circuit = pcvl.Circuit(4)
+    result = rotate_modes(0, 1, circuit)
+    assert result is circuit
+    assert len(circuit._components) > 0
+
+
+def test_rotate_modes_returns_circuit():
+    """rotate_modes returns the modified circuit (same object)."""
+    import perceval as pcvl
+
+    from qlass.utils import rotate_modes
+
+    circuit = pcvl.Circuit(4)
+    result = rotate_modes(2, 3, circuit)
+    assert result is circuit
+    assert len(circuit._components) > 0
+
+
+def test_rotate_modes_non_consecutive_raises():
+    """rotate_modes raises ValueError for non-consecutive modes."""
+    import perceval as pcvl
+
+    from qlass.utils import rotate_modes
+
+    circuit = pcvl.Circuit(4)
+    with pytest.raises(ValueError, match="consecutive modes"):
+        rotate_modes(0, 3, circuit)
+
+
+# ---------------------------------------------------------------------------
+# loss_function_bose_hubbard
+# ---------------------------------------------------------------------------
+
+
+def test_loss_function_bose_hubbard_mitigator_raises():
+    """Passing mitigator raises NotImplementedError (not silently ignored)."""
+    from unittest.mock import MagicMock
+
+    from openfermion.ops import BosonOperator
+
+    from qlass.utils.utils import loss_function_bose_hubbard
+
+    H = BosonOperator("0^ 0", -1.0)
+    with pytest.raises(NotImplementedError, match="not yet supported"):
+        loss_function_bose_hubbard(np.array([]), H, lambda *a: None, mitigator=MagicMock())
+
+
+def test_loss_function_bose_hubbard_empty():
+    """Empty Hamiltonian: executor never called, energy is 0."""
+    from openfermion.ops import BosonOperator
+
+    from qlass.utils.utils import loss_function_bose_hubbard
+
+    H = BosonOperator()
+
+    def bad_executor(lp, measurement_type, *modes):
+        raise AssertionError("executor must not be called for empty H")
+
+    energy = loss_function_bose_hubbard(np.array([]), H, bad_executor)
+    assert np.isclose(energy, 0.0)
+
+
+def test_loss_function_bose_hubbard_const():
+    """Constant term: energy equals the constant regardless of samples."""
+    from openfermion.ops import BosonOperator
+
+    from qlass.utils.utils import loss_function_bose_hubbard
+
+    H = BosonOperator("", 3.5)
+
+    def mock_executor(lp, measurement_type, *modes):
+        if measurement_type == "identity":
+            return {"results": [(0, 0), (0, 0)]}
+        raise AssertionError(f"Unexpected measurement: {measurement_type}")
+
+    energy = loss_function_bose_hubbard(np.array([]), H, mock_executor)
+    assert np.isclose(energy, 3.5)
+
+
+def test_loss_function_bose_hubbard_num():
+    """Chemical-potential term: <-mu * n_p> computed from Fock samples."""
+    from openfermion.ops import BosonOperator
+
+    from qlass.utils.utils import loss_function_bose_hubbard
+
+    mu = 2.0
+    H = BosonOperator("0^ 0", -mu)
+
+    def mock_executor(lp, measurement_type, *modes):
+        if measurement_type == "identity":
+            # n_0 = 2 for all samples
+            return {"results": [(2, 0), (2, 0), (2, 0)]}
+        raise AssertionError(f"Unexpected measurement: {measurement_type}")
+
+    energy = loss_function_bose_hubbard(np.array([]), H, mock_executor)
+    # -mu * <n_0> = -2.0 * 2.0 = -4.0
+    assert np.isclose(energy, -4.0)
+
+
+def test_loss_function_bose_hubbard_int():
+    """On-site interaction: <U/2 * n_p(n_p-1)> computed from Fock samples."""
+    from openfermion.ops import BosonOperator
+
+    from qlass.utils.utils import loss_function_bose_hubbard
+
+    U = 1.0
+    H = BosonOperator("0^ 0^ 0 0", U / 2)
+
+    def mock_executor(lp, measurement_type, *modes):
+        if measurement_type == "identity":
+            # n_0 in {0, 1, 2, 2}: n*(n-1) = {0, 0, 2, 2}
+            return {"results": [(0, 0), (1, 0), (2, 0), (2, 0)]}
+        raise AssertionError(f"Unexpected measurement: {measurement_type}")
+
+    energy = loss_function_bose_hubbard(np.array([]), H, mock_executor)
+    # 0.5 * mean([0, 0, 2, 2]) = 0.5 * 1.0 = 0.5
+    assert np.isclose(energy, 0.5)
+
+
+def test_loss_function_bose_hubbard_dip():
+    """Dipole-dipole: <V * n_p * n_q> computed from Fock samples."""
+    from openfermion.ops import BosonOperator
+
+    from qlass.utils.utils import loss_function_bose_hubbard
+
+    V = 2.0
+    H = BosonOperator("0^ 1^ 0 1", V)
+
+    def mock_executor(lp, measurement_type, *modes):
+        if measurement_type == "identity":
+            return {"results": [(1, 1), (1, 0), (0, 1), (0, 0)]}
+        raise AssertionError(f"Unexpected measurement: {measurement_type}")
+
+    energy = loss_function_bose_hubbard(np.array([]), H, mock_executor)
+    # V * mean([1*1, 1*0, 0*1, 0*0]) = 2.0 * 0.25 = 0.5
+    assert np.isclose(energy, 0.5)
+
+
+def test_loss_function_bose_hubbard_hop():
+    """Hopping term: <n_p_out - n_q_out> after BS, scaled by coefficient."""
+    from openfermion.ops import BosonOperator
+
+    from qlass.utils.utils import loss_function_bose_hubbard
+
+    t = 1.0
+    # Both directions; conjugate (1^ 0) is skipped by parser
+    H = BosonOperator("0^ 1", -t) + BosonOperator("1^ 0", -t)
+
+    hop_calls = []
+
+    def mock_executor(lp, measurement_type, *modes):
+        if measurement_type == "hop":
+            hop_calls.append(modes)
+            # After BS: n_0_out=1, n_1_out=0 for all shots
+            return {"results": [(1, 0)] * 100}
+        raise AssertionError(f"Unexpected measurement: {measurement_type}")
+
+    energy = loss_function_bose_hubbard(np.array([]), H, mock_executor)
+    # -t * <n_0_out - n_1_out> = -1.0 * 1.0 = -1.0
+    assert np.isclose(energy, -t)
+    # Exactly one executor call for the canonical pair (0, 1)
+    assert len(hop_calls) == 1
+    assert hop_calls[0] == (0, 1)
+
+
+def test_loss_function_bose_hubbard_hop_symmetric():
+    """Hopping with zero net difference: energy contribution is zero."""
+    from openfermion.ops import BosonOperator
+
+    from qlass.utils.utils import loss_function_bose_hubbard
+
+    H = BosonOperator("0^ 1", -1.0) + BosonOperator("1^ 0", -1.0)
+
+    def mock_executor(lp, measurement_type, *modes):
+        if measurement_type == "hop":
+            # 50/50: <n_0_out - n_1_out> = 0
+            return {"results": [(1, 0)] * 50 + [(0, 1)] * 50}
+        raise AssertionError(f"Unexpected measurement: {measurement_type}")
+
+    energy = loss_function_bose_hubbard(np.array([]), H, mock_executor)
+    assert np.isclose(energy, 0.0)
+
+
+def test_loss_function_bose_hubbard_matches_exact_dimer():
+    """
+    Sampling-based energy matches exact result for the BH dimer.
+
+    Trial state: psi = (|1,0> + |0,1>) / sqrt(2)
+
+    Hamiltonian:
+      H = -t*(a†_0 a_1 + a†_1 a_0) - mu*(n_0 + n_1) + U/2*(n_0(n_0-1) + n_1(n_1-1))
+
+    Exact expectations for psi:
+      <hop>  = -t * <a†_0 a_1 + a†_1 a_0>  = -t * 0  (but measured as -t * <n_out_diff>)
+      ... actually computed via perfect BS sampling below.
+
+    After 50/50 BS on modes (0,1):
+      |1,0> -> (|1,0> + |0,1>) / sqrt(2)
+      |0,1> -> (|1,0> - |0,1>) / sqrt(2)
+      psi = (|1,0> + |0,1>) / sqrt(2)  ->  |1,0>
+
+    So <n_0_out - n_1_out> = 1, giving hop contribution -t * 1 = -t.
+
+    Diagonal measurement:
+      <n_0> = 0.5, <n_1> = 0.5  ->  num contribution -mu * 1.0
+      <n_i(n_i-1)> = 0 for n_i in {0, 1}  ->  int contribution 0.
+
+    Total exact: -t - mu.
+    """
+    from openfermion.ops import BosonOperator
+
+    from qlass.utils.utils import loss_function_bose_hubbard
+
+    t, mu, U = 1.0, 0.5, 4.0
+    H = (
+        BosonOperator("0^ 1", -t)
+        + BosonOperator("1^ 0", -t)
+        + BosonOperator("0^ 0", -mu)
+        + BosonOperator("1^ 1", -mu)
+        + BosonOperator("0^ 0^ 0 0", U / 2)
+        + BosonOperator("1^ 1^ 1 1", U / 2)
+    )
+
+    def mock_executor(lp, measurement_type, *modes):
+        if measurement_type == "identity":
+            # psi = (|1,0> + |0,1>) / sqrt(2): 50/50
+            return {"results": [(1, 0)] * 500 + [(0, 1)] * 500}
+        elif measurement_type == "hop":
+            # After BS: psi -> |1,0>, always sample (1, 0)
+            return {"results": [(1, 0)] * 1000}
+        raise AssertionError(f"Unknown measurement: {measurement_type}")
+
+    energy = loss_function_bose_hubbard(np.array([0.0]), H, mock_executor)
+
+    # <hop> = -t*1 = -1.0, <num> = -mu*1 = -0.5, <int> = 0
+    exact = -t - mu
+    assert np.isclose(energy, exact)

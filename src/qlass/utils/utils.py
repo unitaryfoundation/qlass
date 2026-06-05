@@ -201,6 +201,30 @@ def rotate_qubits(
     return vqe_circuit
 
 
+def rotate_modes(p: int, q: int, circuit: pcvl.Circuit) -> pcvl.Circuit:
+    """
+    Append a 50/50 beam splitter on modes (p, q) for hopping term measurement.
+
+    Perceval circuits require components to act on consecutive ports,
+    so p and q must satisfy q == p + 1.
+
+    Args:
+        p (int): Index of the first mode
+        q (int): Index of the second mode (must equal p + 1)
+        circuit (pcvl.Circuit): The photonic circuit to modify
+
+    Returns:
+        pcvl.Circuit: The modified circuit with the beam splitter appended on modes (p, q)
+    """
+    if q != p + 1:
+        raise ValueError(
+            f"rotate_modes requires consecutive modes (got p={p}, q={q}). "
+            "Perceval circuits only support components on consecutive ports."
+        )
+    circuit.add((p, q), pcvl.BS())
+    return circuit
+
+
 def normalize_samples(samples: Any) -> list[exqalibur.FockState | tuple[int, ...]]:
     """
     Normalize samples from different executor formats to a consistent format.
@@ -381,6 +405,125 @@ def _extract_samples_from_executor_result(samples: Any) -> list[Any]:
         raise ValueError("Could not extract sample list from executor return value.")
 
     return sample_list
+
+
+def loss_function_bose_hubbard(
+    lp: np.ndarray,
+    H: Any,
+    executor: Callable,
+    mitigator: Any | None = None,
+) -> float:
+    """
+    Compute energy expectation value of a Bose-Hubbard Hamiltonian from sampling data.
+
+    Parses an OpenFermion BosonOperator Hamiltonian and evaluates the energy
+    expectation value using statistical sampling from a quantum processor.
+
+    Diagonal terms (constant, chemical potential, on-site interaction, dipole-dipole)
+    are grouped into a single executor call in the computational (Fock) basis:
+    executor(lp, "identity").
+
+    Hopping terms require a 50/50 beam-splitter rotation before measurement.
+    For each canonical hopping pair (p, q) with p < q the executor is called as
+    executor(lp, "hop", p, q), and the expectation value
+    <a†_p a_q + a†_q a_p> is estimated as <n_p_out - n_q_out>.
+
+    The Hamiltonian H should be an openfermion.ops.BosonOperator whose terms are
+    keyed by tuples of (mode_index, action) pairs (action 1 = creation, 0 = annihilation).
+    Recognised term patterns (determined by multisets of creation/annihilation modes):
+
+    - Constant:              empty ops tuple
+    - Chemical potential:    1 creation and 1 annihilation on the same mode
+    - On-site interaction:   2 creations and 2 annihilations all on the same mode
+    - Dipole-dipole:         2 creations and 2 annihilations on two distinct modes
+    - Hopping (canonical):   1 creation on mode p and 1 annihilation on mode q, p < q
+
+    Conjugate hopping terms (creation mode > annihilation mode) are skipped because
+    the beam-splitter measurement already accounts for both directions.
+    Unrecognised term patterns (e.g. 3-body) are silently ignored.
+
+    Each executor call must return Fock-state occupation samples indexable as
+    sample[mode], e.g. tuples (n_0, n_1, ..., n_{M-1}).
+
+    Args:
+        lp (np.ndarray): Array of variational parameters
+        H: Bose-Hubbard Hamiltonian as an openfermion.ops.BosonOperator
+        executor: Callable accepting (lp, measurement_type, *modes) where
+            measurement_type is "identity" for diagonal terms or "hop" for hopping terms.
+        mitigator: Optional mitigator for readout error correction (not yet supported).
+
+    Returns:
+        float: The computed energy expectation value
+    """
+    if mitigator is not None:
+        raise NotImplementedError(
+            "Readout error mitigation is not yet supported for loss_function_bose_hubbard."
+        )
+
+    diag_const = 0.0
+    diag_num: list[tuple[float, int]] = []
+    diag_int: list[tuple[float, int]] = []
+    diag_dip: list[tuple[float, int, int]] = []
+    hop_pairs: dict[tuple[int, int], float] = {}
+
+    for ops, coeff in H.terms.items():
+        c = float(np.real(coeff))
+        n = len(ops)
+
+        if n == 0:
+            diag_const += c
+            continue
+
+        create_modes = sorted(m for m, a in ops if a == 1)
+        annihilate_modes = sorted(m for m, a in ops if a == 0)
+
+        if len(create_modes) == 1 and len(annihilate_modes) == 1:
+            p, q = create_modes[0], annihilate_modes[0]
+            if p == q:
+                diag_num.append((c, p))
+            elif p < q:
+                hop_pairs[(p, q)] = hop_pairs.get((p, q), 0.0) + c
+            # else: conjugate hopping (p > q), skip
+
+        elif len(create_modes) == 2 and len(annihilate_modes) == 2:
+            if create_modes == annihilate_modes:
+                if create_modes[0] == create_modes[1]:
+                    diag_int.append((c, create_modes[0]))
+                else:
+                    diag_dip.append((c, create_modes[0], create_modes[1]))
+
+    loss = 0.0
+
+    if diag_const or diag_num or diag_int or diag_dip:
+        samples = executor(lp, "identity")
+        sample_list = _extract_samples_from_executor_result(samples)
+
+        total = 0.0
+        for sample in sample_list:
+            e = diag_const
+            for c, p in diag_num:
+                e += c * sample[p]
+            for c, p in diag_int:
+                e += c * sample[p] * (sample[p] - 1)
+            for c, p, q in diag_dip:
+                e += c * sample[p] * sample[q]
+            total += e
+
+        if sample_list:
+            loss += total / len(sample_list)
+
+    for (p, q), coeff in hop_pairs.items():
+        samples = executor(lp, "hop", p, q)
+        sample_list = _extract_samples_from_executor_result(samples)
+
+        expectation = 0.0
+        for sample in sample_list:
+            expectation += sample[p] - sample[q]
+
+        if sample_list:
+            loss += coeff * expectation / len(sample_list)
+
+    return float(loss)
 
 
 def linear_circuit_to_unitary(circuit: pcvl.Circuit) -> np.ndarray:

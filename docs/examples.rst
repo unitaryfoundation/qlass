@@ -316,6 +316,48 @@ Using DFT-based Kohn-Sham Hamiltonians:
    
    vqe_energy = vqe.run(max_iterations=50, verbose=True)
 
+Bose-Hubbard VQE
+~~~~~~~~~~~~~~~~
+
+Computing the ground-state energy of a Bose-Hubbard dimer using sampling-based
+``loss_function_bose_hubbard``. The executor must handle two measurement types:
+
+* ``"identity"`` — sample Fock occupation numbers in the computational basis.
+* ``"hop", p, q`` — apply ``rotate_modes(p, q, circuit)`` then sample; modes ``p``
+  and ``q`` must be consecutive.
+
+.. code-block:: python
+
+   import numpy as np
+   from openfermion.ops import BosonOperator
+   from perceval.algorithm import Sampler
+
+   from qlass.utils import loss_function_bose_hubbard, rotate_modes
+
+   # 2-site Bose-Hubbard dimer: H = -t(a†_0 a_1 + h.c.) - mu*(n_0+n_1) + U/2*sum n_i(n_i-1)
+   t, mu, U = 1.0, 0.5, 4.0
+   H = (
+       BosonOperator("0^ 1", -t) + BosonOperator("1^ 0", -t)
+       + BosonOperator("0^ 0", -mu) + BosonOperator("1^ 1", -mu)
+       + BosonOperator("0^ 0^ 0 0", U / 2) + BosonOperator("1^ 1^ 1 1", U / 2)
+   )
+
+   def build_ansatz(params):
+       """Return a Perceval processor for the variational state."""
+       ...  # build and return processor
+
+   def executor(params, measurement_type, *modes):
+       processor = build_ansatz(params)
+       if measurement_type == "hop":
+           p, q = modes
+           rotate_modes(p, q, processor.linear_circuit())
+       sampler = Sampler(processor)
+       return sampler.samples(10_000)
+
+   params = np.random.rand(4)
+   energy = loss_function_bose_hubbard(params, H, executor)
+   print(f"Energy: {energy:.6f}")
+
 Working with Molecular Hamiltonians
 -----------------------------------
 
