@@ -266,7 +266,8 @@ def normalize_samples(samples: Any) -> list[exqalibur.FockState | tuple[int, ...
 
 
 def _occupation(state: exqalibur.FockState | tuple[int, ...], mode: int) -> int:
-    if mode >= len(state):
+    max_modes = state.m if isinstance(state, exqalibur.FockState) else len(state)
+    if mode >= max_modes:
         raise ValueError(f"Sample {state} does not contain mode {mode}.")
     return int(state[mode])
 
@@ -287,18 +288,14 @@ def _samples_to_probabilities(
 
 
 def _is_number_term(term: tuple[tuple[int, int], ...]) -> bool:
-    return (
-        len(term) == 2
-        and term[0][0] == term[1][0]
-        and sorted(action for _, action in term) == [0, 1]
-    )
+    return len(term) == 2 and term[0][0] == term[1][0] and term[0][1] == 1 and term[1][1] == 0
 
 
 def _is_interaction_term(term: tuple[tuple[int, int], ...]) -> bool:
     return (
         len(term) == 4
         and len({mode for mode, _ in term}) == 1
-        and sorted(action for _, action in term) == [0, 0, 1, 1]
+        and [action for _, action in term] == [1, 1, 0, 0]
     )
 
 
@@ -311,7 +308,7 @@ def _is_dipole_term(term: tuple[tuple[int, int], ...]) -> bool:
         return False
 
     return all(
-        sorted(action for mode, action in term if mode == current_mode) == [0, 1]
+        [action for mode, action in term if mode == current_mode] == [1, 0]
         for current_mode in modes
     )
 
@@ -327,6 +324,21 @@ def _is_hopping_term(term: tuple[tuple[int, int], ...]) -> bool:
 def _hopping_pair(term: tuple[tuple[int, int], ...]) -> tuple[int, int]:
     mode_1, mode_2 = sorted(mode for mode, _ in term)
     return mode_1, mode_2
+
+
+def _hopping_direction(term: tuple[tuple[int, int], ...]) -> tuple[int, int]:
+    creation_mode = next(mode for mode, action in term if action == 1)
+    annihilation_mode = next(mode for mode, action in term if action == 0)
+    return creation_mode, annihilation_mode
+
+
+def _real_coefficient(term: tuple[tuple[int, int], ...], coefficient: complex) -> float:
+    if not np.isclose(coefficient.imag, 0.0):
+        raise ValueError(
+            "Bose-Hubbard sampling only supports real coefficients: "
+            f"term={term}, coefficient={coefficient}."
+        )
+    return float(coefficient.real)
 
 
 def _diagonal_expectation(
@@ -389,17 +401,20 @@ def loss_function_bose_hubbard(
         raise TypeError("H must be an OpenFermion BosonOperator.")
 
     constant = 0.0
-    diagonal_terms: list[tuple[tuple[tuple[int, int], ...], complex]] = []
-    hopping_terms: dict[tuple[int, int], list[complex]] = {}
+    diagonal_terms: list[tuple[tuple[tuple[int, int], ...], float]] = []
+    hopping_terms: dict[tuple[int, int], dict[tuple[int, int], float]] = {}
 
     for term, coefficient in H.terms.items():
         coefficient = complex(coefficient)
+        coefficient = _real_coefficient(term, coefficient)
         if term == ():
-            constant += coefficient.real
+            constant += coefficient
         elif _is_number_term(term) or _is_interaction_term(term) or _is_dipole_term(term):
             diagonal_terms.append((term, coefficient))
         elif _is_hopping_term(term):
-            hopping_terms.setdefault(_hopping_pair(term), []).append(coefficient)
+            hopping_terms.setdefault(_hopping_pair(term), {})[_hopping_direction(term)] = (
+                coefficient
+            )
         else:
             raise ValueError(f"Unsupported Bose-Hubbard term: {term}")
 
@@ -408,12 +423,22 @@ def loss_function_bose_hubbard(
     if diagonal_terms:
         identity_prob_dist = _samples_to_probabilities(executor(lp, "identity"), mitigator)
         for term, coefficient in diagonal_terms:
-            energy += coefficient.real * _diagonal_expectation(identity_prob_dist, term)
+            energy += coefficient * _diagonal_expectation(identity_prob_dist, term)
 
-    for (mode_1, mode_2), coefficients in hopping_terms.items():
+    for (mode_1, mode_2), coefficients_by_direction in hopping_terms.items():
+        forward = (mode_1, mode_2)
+        backward = (mode_2, mode_1)
+        if set(coefficients_by_direction) != {forward, backward} or not np.isclose(
+            coefficients_by_direction[forward], coefficients_by_direction[backward]
+        ):
+            raise ValueError(
+                "Hopping terms must be provided as Hermitian pairs with identical real "
+                f"coefficients: modes=({mode_1}, {mode_2})."
+            )
+
         hop_prob_dist = _samples_to_probabilities(executor(lp, "hop", mode_1, mode_2), mitigator)
-        hopping_coefficient = sum(coefficients) / len(coefficients)
-        energy += hopping_coefficient.real * _hopping_expectation(hop_prob_dist, mode_1, mode_2)
+        hopping_coefficient = coefficients_by_direction[forward]
+        energy += hopping_coefficient * _hopping_expectation(hop_prob_dist, mode_1, mode_2)
 
     return float(energy)
 

@@ -1,6 +1,7 @@
 import sys
 from unittest.mock import MagicMock, patch
 
+import exqalibur
 import numpy as np
 import perceval as pcvl
 import pytest
@@ -133,6 +134,18 @@ def test_loss_function_bose_hubbard_constant_term_does_not_call_executor():
     assert np.isclose(sampled_energy, 2.5)
 
 
+def test_loss_function_bose_hubbard_accepts_fock_state_samples():
+    hamiltonian = BosonOperator("0^ 0", 1.0)
+
+    def executor(params, measurement):
+        assert measurement == "identity"
+        return {"results": [exqalibur.FockState([2])] * 10}
+
+    sampled_energy = loss_function_bose_hubbard(np.array([0.0]), hamiltonian, executor)
+
+    assert np.isclose(sampled_energy, 2.0)
+
+
 def test_loss_function_bose_hubbard_rejects_invalid_inputs():
     def executor(params, measurement, *modes):
         raise AssertionError("Invalid Hamiltonians should fail before sampling.")
@@ -144,6 +157,26 @@ def test_loss_function_bose_hubbard_rejects_invalid_inputs():
 
     with pytest.raises(ValueError, match="Unsupported Bose-Hubbard term"):
         loss_function_bose_hubbard(np.array([0.0]), hamiltonian, executor)
+
+    non_normal_ordered_number = BosonOperator("0 0^", 1.0)
+
+    with pytest.raises(ValueError, match="Unsupported Bose-Hubbard term"):
+        loss_function_bose_hubbard(np.array([0.0]), non_normal_ordered_number, executor)
+
+    complex_coefficient = BosonOperator("0^ 0", 1.0j)
+
+    with pytest.raises(ValueError, match="real coefficients"):
+        loss_function_bose_hubbard(np.array([0.0]), complex_coefficient, executor)
+
+    non_hermitian_hop = BosonOperator("0^ 1", 1.0)
+
+    with pytest.raises(ValueError, match="Hermitian pairs"):
+        loss_function_bose_hubbard(np.array([0.0]), non_hermitian_hop, executor)
+
+    asymmetric_hop = BosonOperator("0^ 1", 1.0) + BosonOperator("1^ 0", 2.0)
+
+    with pytest.raises(ValueError, match="identical real coefficients"):
+        loss_function_bose_hubbard(np.array([0.0]), asymmetric_hop, executor)
 
 
 def test_get_probabilities():
