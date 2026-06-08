@@ -77,7 +77,7 @@ def draw_circuit(
         TypeError: If ``circuit_or_processor`` is not a Perceval ``Processor`` or ``Circuit``.
         ValueError: If ``output_format`` or ``skin`` is invalid.
     """
-    if backend != "perceval":
+    if backend.strip().lower() != "perceval":
         raise NotImplementedError("Only the 'perceval' drawing backend is currently supported.")
 
     if not isinstance(circuit_or_processor, (pcvl.Processor, pcvl.Circuit)):
