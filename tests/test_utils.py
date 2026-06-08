@@ -12,6 +12,7 @@ from qlass.quantum_chemistry import pauli_string_to_matrix
 from qlass.utils import (
     compute_energy,
     compute_expectation_value_from_unitary,
+    draw_circuit,
     get_probabilities,
     is_qubit_state,
     loss_function,
@@ -22,6 +23,7 @@ from qlass.utils import (
     rotate_qubits,
 )
 from qlass.utils.utils import _extract_samples_from_executor_result
+from qlass.vqe import le_ansatz
 
 
 def test_compute_energy():
@@ -177,6 +179,70 @@ def test_loss_function_bose_hubbard_rejects_invalid_inputs():
 
     with pytest.raises(ValueError, match="identical real coefficients"):
         loss_function_bose_hubbard(np.array([0.0]), asymmetric_hop, executor)
+
+
+def test_draw_circuit_saves_each_output_format(tmp_path):
+    processor = le_ansatz(np.zeros(4), "II")
+    output_formats = {
+        "mpl": "png",
+        "html": "html",
+        "latex": "tex",
+        "text": "txt",
+    }
+
+    for output_format, extension in output_formats.items():
+        save_path = tmp_path / f"ansatz.{extension}"
+        draw_circuit(
+            processor, output_format=output_format, save_path=str(save_path), recursive=True
+        )
+
+        assert save_path.exists()
+        assert save_path.stat().st_size > 0
+
+
+def test_draw_circuit_displays_without_save_path(mocker):
+    processor = le_ansatz(np.zeros(4), "II")
+    pdisplay = mocker.patch("qlass.utils.utils.pcvl.pdisplay")
+
+    draw_circuit(
+        processor,
+        output_format="text",
+        skin="debug",
+        compact=True,
+        recursive=True,
+    )
+
+    pdisplay.assert_called_once()
+    args, kwargs = pdisplay.call_args
+    assert args[0] is processor
+    assert kwargs["output_format"] == pcvl.Format.TEXT
+    assert kwargs["skin"].__class__.__name__ == "DebugSkin"
+    assert kwargs["recursive"] is True
+
+
+def test_draw_circuit_normalizes_backend(mocker):
+    processor = le_ansatz(np.zeros(4), "II")
+    pdisplay = mocker.patch("qlass.utils.utils.pcvl.pdisplay")
+
+    draw_circuit(processor, output_format="text", backend=" Perceval ")
+
+    pdisplay.assert_called_once()
+
+
+def test_draw_circuit_rejects_invalid_inputs():
+    processor = le_ansatz(np.zeros(4), "II")
+
+    with pytest.raises(ValueError, match="Invalid output_format"):
+        draw_circuit(processor, output_format="pdf")
+
+    with pytest.raises(ValueError, match="Invalid skin"):
+        draw_circuit(processor, skin="minimal")
+
+    with pytest.raises(NotImplementedError, match="perceval"):
+        draw_circuit(processor, backend="piquasso")
+
+    with pytest.raises(TypeError, match="Processor or Circuit"):
+        draw_circuit(object())
 
 
 def test_get_probabilities():

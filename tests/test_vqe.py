@@ -75,6 +75,23 @@ def test_get_optimal_parameters(simple_vqe):
     assert np.allclose(optimal_params, simple_vqe.optimization_result.x)
 
 
+def test_draw_ansatz_saves_circuit(tmp_path):
+    def processor_executor(params, pauli_string):
+        return le_ansatz(params, pauli_string)
+
+    vqe = VQE(
+        hamiltonian={"II": 1.0},
+        executor=processor_executor,
+        num_params=4,
+    )
+    save_path = tmp_path / "ansatz.txt"
+
+    vqe.draw_ansatz(np.zeros(4), output_format="text", save_path=str(save_path), recursive=True)
+
+    assert save_path.exists()
+    assert save_path.stat().st_size > 0
+
+
 def test_compare_with_exact(simple_vqe):
     """
     Tests the comparison with an exact energy value.

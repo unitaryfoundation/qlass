@@ -23,6 +23,11 @@ The VQE class supports three executor types to handle different abstraction leve
   - ``equi``: Equal weights for all states
   - ``ground_state_only``: Only ground state contributes
 
+**Circuit Inspection**
+
+- ``VQE.draw_ansatz``: Builds a circuit for a chosen parameter vector and sends it to the
+  shared ``qlass.utils.draw_circuit`` rendering utility.
+
 **Ansätze**
 
 - ``hf_ansatz``: Hartree-Fock based ansatz supporting:

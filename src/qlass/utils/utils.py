@@ -6,6 +6,7 @@ import numpy as np
 import perceval as pcvl
 import qiskit
 from openfermion import BosonOperator
+from perceval.rendering import DebugSkin, PhysSkin, SymbSkin
 
 H_matrix = (1 / np.sqrt(2)) * pcvl.Matrix([[1.0, 1.0], [1.0, -1.0]])
 M_matrix = (1 / np.sqrt(2)) * pcvl.Matrix([[1.0, 1.0], [1.0j, -1.0j]])
@@ -17,6 +18,86 @@ mzi = (
 )
 H_circ = pcvl.Circuit.decomposition(H_matrix, mzi, shape=pcvl.InterferometerShape.TRIANGLE)
 M_circ = pcvl.Circuit.decomposition(M_matrix, mzi, shape=pcvl.InterferometerShape.TRIANGLE)
+
+
+def _get_perceval_format(output_format: str) -> pcvl.Format:
+    output_formats = {
+        "mpl": pcvl.Format.MPLOT,
+        "html": pcvl.Format.HTML,
+        "latex": pcvl.Format.LATEX,
+        "text": pcvl.Format.TEXT,
+    }
+    try:
+        return output_formats[output_format.lower()]
+    except KeyError as exc:
+        valid_formats = "', '".join(output_formats)
+        raise ValueError(
+            f"Invalid output_format '{output_format}'. Use one of: '{valid_formats}'."
+        ) from exc
+
+
+def _get_perceval_skin(skin: str, compact: bool) -> Any:
+    skins = {
+        "phys": PhysSkin,
+        "symb": SymbSkin,
+        "debug": DebugSkin,
+    }
+    try:
+        return skins[skin.lower()](compact_display=compact)
+    except KeyError as exc:
+        valid_skins = "', '".join(skins)
+        raise ValueError(f"Invalid skin '{skin}'. Use one of: '{valid_skins}'.") from exc
+
+
+def draw_circuit(
+    circuit_or_processor: pcvl.Processor | pcvl.Circuit,
+    output_format: str = "mpl",
+    skin: str = "phys",
+    compact: bool = False,
+    save_path: str | None = None,
+    backend: str = "perceval",
+    **kwargs: Any,
+) -> None:
+    """
+    Draw a linear optical circuit or processor.
+
+    Args:
+        circuit_or_processor (Union[pcvl.Processor, pcvl.Circuit]): Perceval processor or
+            linear optical circuit to draw.
+        output_format (str): Output format. One of ``"mpl"``, ``"html"``, ``"latex"``,
+            or ``"text"``.
+        skin (str): Perceval skin to use. One of ``"phys"``, ``"symb"``, or ``"debug"``.
+        compact (bool): Whether to use compact circuit display.
+        save_path (Optional[str]): If provided, save the rendering to this path instead of
+            displaying it interactively.
+        backend (str): Drawing backend. Currently only ``"perceval"`` is supported.
+        **kwargs (Any): Additional keyword arguments forwarded to Perceval's display function.
+
+    Raises:
+        NotImplementedError: If ``backend`` is not ``"perceval"``.
+        TypeError: If ``circuit_or_processor`` is not a Perceval ``Processor`` or ``Circuit``.
+        ValueError: If ``output_format`` or ``skin`` is invalid.
+    """
+    if backend.strip().lower() != "perceval":
+        raise NotImplementedError("Only the 'perceval' drawing backend is currently supported.")
+
+    if not isinstance(circuit_or_processor, (pcvl.Processor, pcvl.Circuit)):
+        raise TypeError("draw_circuit expects a Perceval Processor or Circuit.")
+
+    perceval_format = _get_perceval_format(output_format)
+    perceval_skin = _get_perceval_skin(skin, compact)
+    display_options = {"skin": perceval_skin, **kwargs}
+
+    if save_path is not None:
+        pcvl.pdisplay_to_file(
+            circuit_or_processor,
+            str(save_path),
+            output_format=perceval_format,
+            **display_options,
+        )
+        return
+
+    pcvl.pdisplay(circuit_or_processor, output_format=perceval_format, **display_options)
 
 
 def is_qubit_state(state: exqalibur.FockState) -> tuple[int, ...] | bool:

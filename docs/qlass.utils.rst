@@ -18,6 +18,7 @@ Key Features
 
 - ``linear_circuit_to_unitary``: Converts Perceval linear circuits to unitary matrices
 - ``rotate_modes``: Appends a 50/50 beam splitter for hopping-term measurements
+- ``draw_circuit``: Draws or saves Perceval circuits and processors using Perceval rendering
 - ``DataCollector``: Collects and stores energy data during ensemble-VQE optimization
 
   - ``loss_data``: List of cost function values
