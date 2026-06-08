@@ -1,6 +1,7 @@
 from .utils import (
     compute_energy,
     compute_expectation_value_from_unitary,
+    draw_circuit,
     e_vqe_loss_function,
     get_probabilities,
     is_qubit_state,
@@ -18,6 +19,7 @@ from .utils import (
 
 __all__ = [
     "compute_energy",
+    "draw_circuit",
     "get_probabilities",
     "qubit_state_marginal",
     "is_qubit_state",
