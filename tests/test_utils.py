@@ -82,6 +82,15 @@ def test_draw_circuit_displays_without_save_path(mocker):
     assert kwargs["recursive"] is True
 
 
+def test_draw_circuit_normalizes_backend(mocker):
+    processor = le_ansatz(np.zeros(4), "II")
+    pdisplay = mocker.patch("qlass.utils.utils.pcvl.pdisplay")
+
+    draw_circuit(processor, output_format="text", backend=" Perceval ")
+
+    pdisplay.assert_called_once()
+
+
 def test_draw_circuit_rejects_invalid_inputs():
     processor = le_ansatz(np.zeros(4), "II")
 
