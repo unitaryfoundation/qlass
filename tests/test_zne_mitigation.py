@@ -106,6 +106,16 @@ def test_zne_rejects_mismatched_expectation_values():
         mitigator.extrapolate([1.0])
 
 
+def test_zne_rejects_non_finite_expectation_values():
+    def executor(params, noise_scale):
+        return 1.0
+
+    mitigator = ZNEMitigator(executor, scaling_factors=[1.0, 3.0])
+
+    with pytest.raises(ValueError, match="finite real numbers"):
+        mitigator.extrapolate([1.0, np.nan])
+
+
 def test_zne_exponential_extrapolation():
     def executor(params, noise_scale):
         return 1.0
@@ -153,3 +163,6 @@ def test_zne_rejects_invalid_configuration():
 
     with pytest.raises(ValueError, match="Invalid extrapolation_method"):
         ZNEMitigator(executor, scaling_factors=[1.0, 3.0], extrapolation_method="cubic")
+
+    with pytest.raises(ValueError, match="finite real numbers"):
+        ZNEMitigator(executor, scaling_factors=[1.0, np.inf])

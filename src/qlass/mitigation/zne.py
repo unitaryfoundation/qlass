@@ -9,9 +9,12 @@ from qlass.compiler import HardwareConfig
 
 
 def _validate_scaling_factor(scaling_factor: float) -> float:
-    if scaling_factor < 1:
+    factor = float(scaling_factor)
+    if not np.isfinite(factor):
+        raise ValueError("Noise scaling factors must be finite real numbers.")
+    if factor < 1:
         raise ValueError("Noise scaling factors must be greater than or equal to 1.")
-    return float(scaling_factor)
+    return factor
 
 
 def _validate_global_folding_factor(scaling_factor: float) -> int:
@@ -167,6 +170,8 @@ class ZNEMitigator:
 
         x = np.array(self.scaling_factors, dtype=float)
         y = np.array(expectation_values, dtype=float)
+        if not np.all(np.isfinite(y)):
+            raise ValueError("Expectation values must be finite real numbers.")
 
         if self.extrapolation_method == "linear":
             return float(np.polyval(np.polyfit(x, y, 1), 0.0))
