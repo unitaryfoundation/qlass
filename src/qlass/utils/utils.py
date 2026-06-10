@@ -467,9 +467,12 @@ def loss_function_bose_hubbard(
     hop_pairs: dict[tuple[int, int], float] = {}
 
     for ops, coeff in H.terms.items():
+        if abs(np.imag(coeff)) > 1e-12:
+            raise ValueError(
+                f"Complex coefficient {coeff} for term {ops} is not supported; expected a real-valued Bose-Hubbard Hamiltonian."
+            )
         c = float(np.real(coeff))
         n = len(ops)
-
         if n == 0:
             diag_const += c
             continue
