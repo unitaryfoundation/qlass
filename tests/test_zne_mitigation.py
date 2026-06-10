@@ -42,6 +42,38 @@ def test_zne_polynomial_extrapolation_from_noisy_two_mode_executor():
     assert np.isclose(mitigator.mitigate(params), ideal_expectation)
 
 
+def test_zne_mitigates_noisy_perceval_linear_optical_energy():
+    circuit = pcvl.Circuit(2).add((0, 1), pcvl.BS.H())
+    input_state = pcvl.BasicState([1, 0])
+    loss_db = 0.15
+
+    def noisy_perceval_energy(params, noise_scale):
+        transmittance = 10 ** (-(loss_db * noise_scale) / 10)
+        processor = pcvl.Processor(
+            "SLOS",
+            circuit.copy(),
+            noise=pcvl.NoiseModel(transmittance=transmittance),
+        )
+        processor.with_input(input_state)
+        processor.min_detected_photons_filter(0)
+        probabilities = processor.probs()["results"]
+        return -sum(state[0] * probability for state, probability in probabilities.items())
+
+    params = np.array([])
+    ideal_energy = noisy_perceval_energy(params, noise_scale=0.0)
+    unmitigated_energy = noisy_perceval_energy(params, noise_scale=1.0)
+    mitigator = ZNEMitigator(
+        noisy_perceval_energy,
+        scaling_factors=[1.0, 2.0, 3.0],
+        extrapolation_method="exponential",
+    )
+
+    mitigated_energy = mitigator.mitigate(params)
+
+    assert abs(mitigated_energy - ideal_energy) < abs(unmitigated_energy - ideal_energy)
+    assert np.isclose(mitigated_energy, ideal_energy)
+
+
 def test_global_interferometer_folding_preserves_unitary():
     circuit = pcvl.Circuit(2) // pcvl.BS()
 
