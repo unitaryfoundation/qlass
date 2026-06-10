@@ -125,6 +125,49 @@ def test_loss_function_bose_hubbard_hopping_dimer_matches_exact_matrix():
     assert calls == [("identity", None, None), ("hop", 0, 1)]
 
 
+def test_loss_function_bose_hubbard_hopping_with_perceval_simulator():
+    hopping_strength = -0.7
+    hamiltonian = (
+        BosonOperator("0^ 0", 0.4)
+        + BosonOperator("1^ 1", 1.2)
+        + BosonOperator("0^ 1", hopping_strength)
+        + BosonOperator("1^ 0", hopping_strength)
+    )
+    truncation = 2
+    trial_state = np.zeros(truncation**2, dtype=complex)
+    trial_state[1] = 1 / np.sqrt(2)  # |n_0=0, n_1=1>
+    trial_state[2] = 1 / np.sqrt(2)  # |n_0=1, n_1=0>
+    exact_energy = np.vdot(
+        trial_state, boson_operator_sparse(hamiltonian, truncation) @ trial_state
+    ).real
+    calls = []
+
+    def run_perceval(circuit, shots=1000):
+        simulator = pcvl.Simulator(pcvl.SLOSBackend())
+        simulator.set_circuit(circuit)
+        samples = []
+        for state, probability in simulator.probs(pcvl.BasicState([1, 0])).items():
+            samples.extend([state] * int(round(probability * shots)))
+        assert len(samples) == shots
+        return {"results": samples}
+
+    def executor(params, measurement, mode_1=None, mode_2=None):
+        calls.append((measurement, mode_1, mode_2))
+        circuit = pcvl.Circuit(2).add((0, 1), pcvl.BS.H())
+
+        if measurement == "identity":
+            return run_perceval(circuit)
+        if measurement == "hop":
+            assert (mode_1, mode_2) == (0, 1)
+            return run_perceval(rotate_modes(circuit, mode_1, mode_2))
+        raise ValueError(f"Unexpected measurement: {measurement}")
+
+    sampled_energy = loss_function_bose_hubbard(np.array([0.0]), hamiltonian, executor)
+
+    assert np.isclose(sampled_energy, exact_energy)
+    assert calls == [("identity", None, None), ("hop", 0, 1)]
+
+
 def test_loss_function_bose_hubbard_constant_term_does_not_call_executor():
     def executor(params, measurement, *modes):
         raise AssertionError("Constant-only Hamiltonians should not request samples.")

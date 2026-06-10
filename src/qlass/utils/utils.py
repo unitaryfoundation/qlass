@@ -307,7 +307,8 @@ def rotate_modes(
     if mode_1 < 0 or mode_2 < 0:
         raise ValueError("Mode indices must be non-negative.")
 
-    circuit_or_processor.add((mode_1, mode_2), pcvl.BS())
+    # BS.H() maps the real hopping quadrature onto the output number difference.
+    circuit_or_processor.add((mode_1, mode_2), pcvl.BS.H())
     return circuit_or_processor
 
 
