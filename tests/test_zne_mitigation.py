@@ -74,6 +74,48 @@ def test_zne_mitigates_noisy_perceval_linear_optical_energy():
     assert np.isclose(mitigated_energy, ideal_energy)
 
 
+def test_zne_mitigates_global_folded_perceval_interferometer():
+    circuit = pcvl.Circuit(2).add((0, 1), pcvl.BS.H())
+    input_state = pcvl.BasicState([1, 0])
+    component_loss = 0.05
+    folded_component_counts = []
+
+    def energy_from_processor(processor):
+        processor.with_input(input_state)
+        processor.min_detected_photons_filter(0)
+        probabilities = processor.probs()["results"]
+        return -sum(state[0] * probability for state, probability in probabilities.items())
+
+    def folded_noisy_energy(params, noise_scale):
+        folded_circuit = fold_global_interferometer(circuit, noise_scale)
+        folded_components = list(folded_circuit)
+        folded_component_counts.append(len(folded_components))
+        processor = pcvl.Processor("SLOS", 2)
+
+        for modes, component in folded_components:
+            processor.add(modes, component)
+            for mode in range(2):
+                processor.add(mode, pcvl.LC(component_loss))
+
+        return energy_from_processor(processor)
+
+    params = np.array([])
+    ideal_energy = energy_from_processor(pcvl.Processor("SLOS", circuit.copy()))
+    unmitigated_energy = folded_noisy_energy(params, noise_scale=1.0)
+    folded_component_counts.clear()
+    mitigator = ZNEMitigator(
+        folded_noisy_energy,
+        scaling_factors=[1.0, 3.0, 5.0],
+        extrapolation_method="exponential",
+    )
+
+    mitigated_energy = mitigator.mitigate(params)
+
+    assert folded_component_counts == [1, 3, 5]
+    assert abs(mitigated_energy - ideal_energy) < abs(unmitigated_energy - ideal_energy)
+    assert np.isclose(mitigated_energy, ideal_energy)
+
+
 def test_global_interferometer_folding_preserves_unitary():
     circuit = pcvl.Circuit(2) // pcvl.BS()
 
