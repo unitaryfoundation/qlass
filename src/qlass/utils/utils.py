@@ -1,10 +1,11 @@
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 import exqalibur
 import numpy as np
 import perceval as pcvl
 import qiskit
+from openfermion import BosonOperator
 from perceval.rendering import DebugSkin, PhysSkin, SymbSkin
 
 H_matrix = (1 / np.sqrt(2)) * pcvl.Matrix([[1.0, 1.0], [1.0, -1.0]])
@@ -282,6 +283,35 @@ def rotate_qubits(
     return vqe_circuit
 
 
+def rotate_modes(
+    circuit_or_processor: pcvl.Circuit | pcvl.Processor, mode_1: int, mode_2: int
+) -> pcvl.Circuit | pcvl.Processor:
+    """
+    Append a 50/50 beam splitter across two photonic modes before measurement.
+
+    Args:
+        circuit_or_processor (Union[pcvl.Circuit, pcvl.Processor]): Perceval circuit or
+            processor to rotate.
+        mode_1 (int): First mode index.
+        mode_2 (int): Second mode index.
+
+    Returns:
+        Union[pcvl.Circuit, pcvl.Processor]: The input circuit or processor with the
+        beam splitter appended.
+
+    Raises:
+        ValueError: If both mode indices are identical or either index is negative.
+    """
+    if mode_1 == mode_2:
+        raise ValueError("rotate_modes requires two distinct modes.")
+    if mode_1 < 0 or mode_2 < 0:
+        raise ValueError("Mode indices must be non-negative.")
+
+    # BS.H() maps the real hopping quadrature onto the output number difference.
+    circuit_or_processor.add((mode_1, mode_2), pcvl.BS.H())
+    return circuit_or_processor
+
+
 def normalize_samples(samples: Any) -> list[exqalibur.FockState | tuple[int, ...]]:
     """
     Normalize samples from different executor formats to a consistent format.
@@ -315,6 +345,184 @@ def normalize_samples(samples: Any) -> list[exqalibur.FockState | tuple[int, ...
             normalized.append(sample)
 
     return normalized
+
+
+def _occupation(state: exqalibur.FockState | tuple[int, ...], mode: int) -> int:
+    max_modes = state.m if isinstance(state, exqalibur.FockState) else len(state)
+    if mode >= max_modes:
+        raise ValueError(f"Sample {state} does not contain mode {mode}.")
+    return int(state[mode])
+
+
+def _samples_to_probabilities(
+    samples: Any, mitigator: Any | None = None
+) -> dict[exqalibur.FockState | tuple[int, ...], float]:
+    sample_list = _extract_samples_from_executor_result(samples)
+    normalized_samples = normalize_samples(sample_list)
+
+    if mitigator is None:
+        return get_probabilities(normalized_samples)
+
+    counts: dict[exqalibur.FockState | tuple[int, ...], int] = {}
+    for sample in normalized_samples:
+        counts[sample] = counts.get(sample, 0) + 1
+    return cast(dict[exqalibur.FockState | tuple[int, ...], float], mitigator.mitigate(counts))
+
+
+def _is_number_term(term: tuple[tuple[int, int], ...]) -> bool:
+    return len(term) == 2 and term[0][0] == term[1][0] and term[0][1] == 1 and term[1][1] == 0
+
+
+def _is_interaction_term(term: tuple[tuple[int, int], ...]) -> bool:
+    return (
+        len(term) == 4
+        and len({mode for mode, _ in term}) == 1
+        and [action for _, action in term] == [1, 1, 0, 0]
+    )
+
+
+def _is_dipole_term(term: tuple[tuple[int, int], ...]) -> bool:
+    if len(term) != 4:
+        return False
+
+    modes = sorted({mode for mode, _ in term})
+    if len(modes) != 2:
+        return False
+
+    return all(
+        [action for mode, action in term if mode == current_mode] == [1, 0]
+        for current_mode in modes
+    )
+
+
+def _is_hopping_term(term: tuple[tuple[int, int], ...]) -> bool:
+    return (
+        len(term) == 2
+        and term[0][0] != term[1][0]
+        and sorted(action for _, action in term) == [0, 1]
+    )
+
+
+def _hopping_pair(term: tuple[tuple[int, int], ...]) -> tuple[int, int]:
+    mode_1, mode_2 = sorted(mode for mode, _ in term)
+    return mode_1, mode_2
+
+
+def _hopping_direction(term: tuple[tuple[int, int], ...]) -> tuple[int, int]:
+    creation_mode = next(mode for mode, action in term if action == 1)
+    annihilation_mode = next(mode for mode, action in term if action == 0)
+    return creation_mode, annihilation_mode
+
+
+def _real_coefficient(term: tuple[tuple[int, int], ...], coefficient: complex) -> float:
+    if not np.isclose(coefficient.imag, 0.0):
+        raise ValueError(
+            "Bose-Hubbard sampling only supports real coefficients: "
+            f"term={term}, coefficient={coefficient}."
+        )
+    return float(coefficient.real)
+
+
+def _diagonal_expectation(
+    prob_dist: dict[exqalibur.FockState | tuple[int, ...], float],
+    term: tuple[tuple[int, int], ...],
+) -> float:
+    if _is_number_term(term):
+        mode = term[0][0]
+        return sum(_occupation(state, mode) * prob for state, prob in prob_dist.items())
+
+    if _is_interaction_term(term):
+        mode = term[0][0]
+        return sum(
+            _occupation(state, mode) * (_occupation(state, mode) - 1) * prob
+            for state, prob in prob_dist.items()
+        )
+
+    modes = sorted({mode for mode, _ in term})
+    mode_1, mode_2 = modes
+    return sum(
+        _occupation(state, mode_1) * _occupation(state, mode_2) * prob
+        for state, prob in prob_dist.items()
+    )
+
+
+def _hopping_expectation(
+    prob_dist: dict[exqalibur.FockState | tuple[int, ...], float], mode_1: int, mode_2: int
+) -> float:
+    return sum(
+        (_occupation(state, mode_1) - _occupation(state, mode_2)) * prob
+        for state, prob in prob_dist.items()
+    )
+
+
+def loss_function_bose_hubbard(
+    lp: np.ndarray,
+    H: BosonOperator,
+    executor: Callable,
+    mitigator: Any | None = None,
+) -> float:
+    """
+    Compute the expectation value of a Bose-Hubbard Hamiltonian from samples.
+
+    Args:
+        lp (np.ndarray): Variational parameters passed to the executor.
+        H (BosonOperator): Bose-Hubbard Hamiltonian represented as an OpenFermion
+            ``BosonOperator``.
+        executor (Callable): Sampling executor. It is called as ``executor(lp, "identity")``
+            for diagonal terms and ``executor(lp, "hop", p, q)`` for hopping terms.
+        mitigator (Any, optional): Optional mitigator object used to correct sampled counts.
+
+    Returns:
+        float: Estimated Bose-Hubbard energy.
+
+    Raises:
+        TypeError: If ``H`` is not a ``BosonOperator``.
+        ValueError: If ``H`` contains unsupported non-Bose-Hubbard terms.
+    """
+    if not isinstance(H, BosonOperator):
+        raise TypeError("H must be an OpenFermion BosonOperator.")
+
+    constant = 0.0
+    diagonal_terms: list[tuple[tuple[tuple[int, int], ...], float]] = []
+    hopping_terms: dict[tuple[int, int], dict[tuple[int, int], float]] = {}
+
+    for term, coefficient in H.terms.items():
+        coefficient = complex(coefficient)
+        coefficient = _real_coefficient(term, coefficient)
+        if term == ():
+            constant += coefficient
+        elif _is_number_term(term) or _is_interaction_term(term) or _is_dipole_term(term):
+            diagonal_terms.append((term, coefficient))
+        elif _is_hopping_term(term):
+            hopping_terms.setdefault(_hopping_pair(term), {})[_hopping_direction(term)] = (
+                coefficient
+            )
+        else:
+            raise ValueError(f"Unsupported Bose-Hubbard term: {term}")
+
+    energy = constant
+
+    if diagonal_terms:
+        identity_prob_dist = _samples_to_probabilities(executor(lp, "identity"), mitigator)
+        for term, coefficient in diagonal_terms:
+            energy += coefficient * _diagonal_expectation(identity_prob_dist, term)
+
+    for (mode_1, mode_2), coefficients_by_direction in hopping_terms.items():
+        forward = (mode_1, mode_2)
+        backward = (mode_2, mode_1)
+        if set(coefficients_by_direction) != {forward, backward} or not np.isclose(
+            coefficients_by_direction[forward], coefficients_by_direction[backward]
+        ):
+            raise ValueError(
+                "Hopping terms must be provided as Hermitian pairs with identical real "
+                f"coefficients: modes=({mode_1}, {mode_2})."
+            )
+
+        hop_prob_dist = _samples_to_probabilities(executor(lp, "hop", mode_1, mode_2), mitigator)
+        hopping_coefficient = coefficients_by_direction[forward]
+        energy += hopping_coefficient * _hopping_expectation(hop_prob_dist, mode_1, mode_2)
+
+    return float(energy)
 
 
 def loss_function(
