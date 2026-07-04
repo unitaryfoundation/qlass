@@ -2,18 +2,18 @@ Installation
 ============
 
 Prerequisites
-------------
+-------------
 
 Before installing ``qlass``, ensure you have the following:
 
-- Python 3.9 or newer
+- Python 3.10 or newer
 - pip (Python package manager)
 
 
 Stable install from PyPI
------------------------
+------------------------
 
-To install the latest stable release of ``qlass`` from PyPI using `uv`:
+To install the latest stable release of ``qlass`` from PyPI:
 
 .. code-block:: bash
 
@@ -22,14 +22,14 @@ To install the latest stable release of ``qlass`` from PyPI using `uv`:
 This will install ``qlass`` and all its dependencies from the Python Package Index.
 
 Installing from Source
----------------------
+----------------------
 
 To install the development version from source:
 
 .. code-block:: bash
 
    # Clone the repository
-   git clone https://github.com/unitaryfund/qlass.git
+   git clone https://github.com/unitaryfoundation/qlass.git
 
    # Navigate to the repository directory
    cd qlass
@@ -47,21 +47,21 @@ Or, you can install it via pip:
    pip install uv
 
 Dependencies
------------
+------------
 
 ``qlass`` relies on the following packages, which will be automatically installed:
 
-- qiskit (version 1.4.2)
+- qiskit (>= 2.0)
+- qiskit-aer
+- perceval-quandela (>= 0.13.2, < 1.0)
+- piquasso (>= 8.0.1)
+- openfermion and openfermionpyscf (which install pyscf)
 - numpy
-- perceval-quandela (version 0.12.1)
-- qiskit_aer
-- qiskit_nature
-- pyscf
 - tqdm
 - numba
 
 Verifying Installation
----------------------
+----------------------
 
 To verify that ``qlass`` has been installed correctly, you can run a simple test:
 

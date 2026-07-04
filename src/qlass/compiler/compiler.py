@@ -47,6 +47,10 @@ def compile(
     return processor
 
 
+# Preferred name: the bare `compile` shadows the Python builtin when star-imported.
+compile_circuit = compile
+
+
 class ResourceAwareCompiler:
     """
     A compiler that analyzes a quantum circuit against a hardware configuration
