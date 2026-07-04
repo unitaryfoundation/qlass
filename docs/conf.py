@@ -7,10 +7,12 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 
+from importlib.metadata import version as _package_version
+
 project = "qlass"
 copyright = "2025, Farrokh Labib, Nathan Shammah"
 author = "Farrokh Labib, Nathan Shammah"
-release = "0.2.3"
+release = _package_version("qlass")
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
