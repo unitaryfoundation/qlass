@@ -141,6 +141,49 @@ def test_lanczos_tridiagonalization():
     assert np.allclose(lhs, rhs), "Tridiagonal matrix T does not satisfy the Lanczos relation"
 
 
+def test_lanczos_reorthogonalization_complex_hermitian():
+    """Regression test for issue #212.
+
+    The re-orthogonalization step subtracted conj(<V_i, v>) V_i instead of
+    <V_i, v> V_i — correct for real matrices, wrong for complex Hermitian
+    ones. The error only shows once orthogonality actually degrades, so use
+    a genuinely complex Hermitian matrix with a clustered spectrum: with the
+    wrong conjugation the Lanczos basis loses orthonormality entirely
+    (max deviation ~0.7) and the smallest Ritz value is off by ~0.6.
+    """
+    rng = np.random.default_rng(7)
+    dim = 120
+    spectrum = np.concatenate(
+        [np.linspace(-2, -1.99, 20), np.linspace(0, 1, 80), np.linspace(9, 10, 20)]
+    )
+    Q, _ = np.linalg.qr(rng.standard_normal((dim, dim)) + 1j * rng.standard_normal((dim, dim)))
+    A = Q @ np.diag(spectrum) @ Q.conj().T
+    v_init = (rng.standard_normal(dim) + 1j * rng.standard_normal(dim)).astype(np.complex128)
+
+    m = 60
+    T, V = lanczos(A, v_init, m)
+
+    assert np.allclose(V @ V.conj().T, np.eye(m), atol=1e-8), "Lanczos basis lost orthonormality"
+    smallest_ritz = np.linalg.eigvalsh(T)[0].real
+    assert np.isclose(smallest_ritz, spectrum.min(), atol=1e-4)
+
+
+def test_eig_decomp_lanczos_returns_n_smallest():
+    """eig_decomp_lanczos(R, n=k) returns the k smallest eigenvalues."""
+    dim = 8
+    np.random.seed(42)
+    random_real_matrix = np.random.rand(dim, dim)
+    hermitian_matrix = ((random_real_matrix + random_real_matrix.T.conj()) / 2).astype(
+        np.complex128
+    )
+
+    two_smallest = eig_decomp_lanczos(hermitian_matrix, n=2)
+
+    assert two_smallest.shape == (2,)
+    exact = np.linalg.eigvalsh(hermitian_matrix)
+    assert np.allclose(two_smallest, exact[:2], atol=1e-3)
+
+
 def test_lanczos_early_exit():
     """
     Tests the early exit condition of the lanczos function when beta becomes zero.

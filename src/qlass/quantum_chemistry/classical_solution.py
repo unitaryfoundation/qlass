@@ -73,10 +73,9 @@ def brute_force_minimize(H: dict[str, float]) -> float:
     """
 
     H_matrix = hamiltonian_matrix(H)
-    l0 = np.linalg.eigvals(H_matrix)
-    l0.sort()
+    eigenvalues = np.linalg.eigvalsh(H_matrix)
 
-    return float(l0[0].real)
+    return float(eigenvalues[0])
 
 
 def _lanczos_impl(A: np.ndarray, v_init: np.ndarray, m: int) -> tuple[np.ndarray, np.ndarray]:
@@ -113,7 +112,7 @@ def _lanczos_impl(A: np.ndarray, v_init: np.ndarray, m: int) -> tuple[np.ndarray
         # Explicitly make the new vector orthogonal to all previous vectors
         # This is the key to fixing numerical stability issues.
         for i in range(j):
-            v -= np.dot(v.conj(), V[i, :]) * V[i, :]
+            v -= np.dot(V[i, :].conj(), v) * V[i, :]
         v /= np.linalg.norm(v)  # Re-normalize after correction
         # --- End of Re-orthogonalization ---
 
@@ -142,17 +141,18 @@ lanczos: Callable[[np.ndarray, np.ndarray, int], tuple[np.ndarray, np.ndarray]]
 lanczos = njit(_lanczos_impl) if not DISABLE_JIT else _lanczos_impl
 
 
-def eig_decomp_lanczos(R: np.ndarray, n: int = 1, m: int = 100) -> np.ndarray:
+def eig_decomp_lanczos(R: np.ndarray, n: int | None = None, m: int = 100) -> np.ndarray:
     """
     Compute the eigenvalues of a matrix using the Lanczos algorithm.
 
     Args:
         R (np.ndarray): Matrix to compute the eigenvalues of
-        n (int): Number of eigenvalues to compute
+        n (Optional[int]): Number of smallest eigenvalues to return.
+            If None (default), all Ritz values are returned.
         m (int): Number of iterations
 
     Returns:
-        np.ndarray: Eigenvalues of the matrix
+        np.ndarray: Eigenvalues of the matrix, in ascending order
 
     """
 
@@ -162,4 +162,4 @@ def eig_decomp_lanczos(R: np.ndarray, n: int = 1, m: int = 100) -> np.ndarray:
     T, V = lanczos(R, v0, m)
     esT, _ = np.linalg.eigh(T)
 
-    return esT
+    return esT if n is None else esT[:n]
