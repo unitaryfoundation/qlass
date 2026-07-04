@@ -13,6 +13,8 @@ authors:
   given-names: Nathan
   orcid: "https://orcid.org/0000-0002-8775-3667"
 doi: 10.5281/zenodo.18245793
+version: "0.2.4"
+date-released: "2026-07-04"
 message: If you use this software, please cite our article in the
   Journal of Open Source Software.
 preferred-citation:
