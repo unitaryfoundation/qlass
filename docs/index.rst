@@ -28,16 +28,17 @@ Key features include:
 * Utility functions for quantum algorithm execution
 
 Installation
------------
+------------
 
-The development install of ``qlass`` requirements can be done by setting the working directory to the top level of the repository and running:
+Install the latest stable release from PyPI with ``pip install qlass``. For a development
+install, set the working directory to the top level of the repository and run:
 
 .. code-block:: bash
 
-   pip install -e .
+   uv sync --all-groups
 
 Quick Start
-----------
+-----------
 
 Compiling a Quantum Circuit
 ^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -30,11 +30,13 @@ The VQE class supports three executor types to handle different abstraction leve
 
 **Ansätze**
 
-- ``hf_ansatz``: Hartree-Fock based ansatz supporting:
-  
-  - ``method="WFT"``: Wave function theory
-  - ``method="DFT"``: Density functional theory :cite:p:`kohn1965self`
-  - Compatible with both VQE and e-VQE costs
+- ``le_ansatz``: Linear entangled ansatz (parametrized rotations with CNOT entanglers)
+- ``custom_unitary_ansatz``: Compiles an arbitrary qubit unitary into a photonic processor
+- ``CSF_initial_states``: Hartree-Fock initial state for wave-function-theory Hamiltonians,
+  with optional singlet excitations
+- ``Bitstring_initial_states``: Computational-basis reference states for density-functional-theory
+  Hamiltonians :cite:p:`kohn1965self`; compatible with both VQE and e-VQE costs
+- ``kerr_ansatz``: Kerr-nonlinearity-based photonic ansatz
 
 VQE Class
 ---------

@@ -1,4 +1,10 @@
-from .compiler import ResourceAwareCompiler, compile, generate_report
+from .compiler import ResourceAwareCompiler, compile, compile_circuit, generate_report
 from .hardware_config import HardwareConfig
 
-__all__ = ["compile", "ResourceAwareCompiler", "HardwareConfig", "generate_report"]
+__all__ = [
+    "compile",
+    "compile_circuit",
+    "ResourceAwareCompiler",
+    "HardwareConfig",
+    "generate_report",
+]

@@ -1,6 +1,6 @@
-[![Repository](https://img.shields.io/badge/GitHub-5C5C5C.svg?logo=github)](https://github.com/unitaryfund/qlass)
+[![Repository](https://img.shields.io/badge/GitHub-5C5C5C.svg?logo=github)](https://github.com/unitaryfoundation/qlass)
 [![build](https://github.com/unitaryfoundation/qlass/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/unitaryfoundation/qlass/actions)
-[![European Union](https://img.shields.io/badge/Supported%20By-%20The%20EU-004494.svg)]([https://wellcomeleap.org](https://cordis.europa.eu/project/id/101135876))
+[![European Union](https://img.shields.io/badge/Supported%20By-%20The%20EU-004494.svg)](https://cordis.europa.eu/project/id/101135876)
 [![Unitary Foundation](https://img.shields.io/badge/Supported%20By-Unitary%20Foundation-FFFF00.svg)](https://unitary.foundation)
 [![Documentation Status](https://readthedocs.org/projects/qlass/badge/?version=stable)](https://qlass.readthedocs.io/en/stable/)
 [![codecov](https://codecov.io/gh/unitaryfoundation/qlass/branch/main/graph/badge.svg)](https://codecov.io/gh/unitaryfoundation/qlass)
@@ -73,7 +73,6 @@ processor = compile(qc)
 
 ```python
 from qlass.vqe import VQE, le_ansatz
-from qlass.utils import loss_function
 from qlass.quantum_chemistry import LiH_hamiltonian
 
 from perceval.algorithm import Sampler
@@ -123,6 +122,7 @@ The `qlass` package is organized into several modules:
 - `qlass.compiler`: Functions for compiling quantum circuits to photonic processors
 - `qlass.quantum_chemistry`: Tools for generating and manipulating Hamiltonians
 - `qlass.vqe`: VQE ansatz implementations for photonic quantum computing
+- `qlass.mitigation`: Error mitigation techniques (M3 readout mitigation, zero-noise extrapolation)
 - `qlass.utils`: Utility functions for executing algorithms and processing results
 
 ## Documentation
@@ -131,9 +131,9 @@ The main functions of the package are commented using the Google style format an
 ## Contributing
 `qlass` is developed by the [Unitary Foundation](https://unitary.foundation/), in collaboration with QLASS performers.
 
-You can join the UF [Discord server](http://discord.unitary.fund) for community support.
+You can join the UF [Discord server](http://discord.unitary.foundation) for community support.
 
-For a guide to opening a PR, checkout the [contributing guide](https://github.com/unitaryfoundation/qlass/blob/contributing/CONTRIBUTING.md).
+For a guide to opening a PR, checkout the [contributing guide](https://github.com/unitaryfoundation/qlass/blob/main/CONTRIBUTING.md).
 
 ## Funding
 Funded by the European Union. Views and opinions expressed are however those of the authors only and do not necessarily reflect those of the European Union. Neither the European Union nor the granting authority can be held responsible for them.
