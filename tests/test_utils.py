@@ -838,38 +838,80 @@ def test_loss_function_grouping_import_error(mocker):
 
 
 def test_rotate_qubits_qiskit_circuit():
-    """Test rotate_qubits with a Qiskit circuit."""
-    qiskit = pytest.importorskip("qiskit")
-    qc = qiskit.QuantumCircuit(2)
+    """The qiskit branch must map the measured Pauli onto Z: U† Z U == P."""
+    from qiskit import QuantumCircuit
+    from qiskit.quantum_info import Operator
 
-    # X rotation (should apply H)
-    qc_x = rotate_qubits("X", qc.copy())
-    # Inspect instructions - hard to verify exact gates without transpiling,
-    # but we can check it ran without error and added gates.
-    assert len(qc_x.data) > 0
+    Z = np.array([[1, 0], [0, -1]], dtype=complex)
+    expected = {
+        "X": np.array([[0, 1], [1, 0]], dtype=complex),
+        "Y": np.array([[0, -1j], [1j, 0]], dtype=complex),
+    }
+    for pauli, matrix in expected.items():
+        rotated = rotate_qubits(pauli, QuantumCircuit(1))
+        u = Operator(rotated).data
+        assert np.allclose(u.conj().T @ Z @ u, matrix), f"{pauli} rotation is wrong"
 
-    # Y rotation (should apply Ry)
-    qc_y = rotate_qubits("Y", qc.copy())
-    assert len(qc_y.data) > 0
+
+def test_rotate_qubits_qiskit_bell_state_expectation():
+    """Regression test for issue #207: <YY> on a Bell state is -1, not +1.
+
+    For (|00> + |11>)/sqrt(2), <XX> = +1 while <YY> = -1, so this state
+    distinguishes a Y measurement from an accidental X measurement.
+    """
+    from qiskit import QuantumCircuit
+    from qiskit.quantum_info import Statevector
+
+    for pauli_string, exact in [("XX", 1.0), ("YY", -1.0)]:
+        bell = QuantumCircuit(2)
+        bell.h(0)
+        bell.cx(0, 1)
+        rotated = rotate_qubits(pauli_string, bell)
+        expectation = sum(
+            prob * (-1) ** bin(int(bitstring, 2)).count("1")
+            for bitstring, prob in Statevector(rotated).probabilities_dict().items()
+        )
+        assert np.isclose(expectation, exact), f"<{pauli_string}> = {expectation}, expected {exact}"
+
+
+def test_loss_function_y_terms_match_exact_expectation():
+    """End-to-end regression for issue #207: sampled <YY> through the photonic
+    pipeline must match the exact statevector value.
+
+    For these parameters <YY> = -0.271 while <XX> = +0.915, so measuring the
+    wrong basis cannot pass.
+    """
+    from perceval.algorithm import Sampler
+    from qiskit.circuit.library import n_local
+    from qiskit.quantum_info import SparsePauliOp, Statevector
+
+    params = np.array([0.4, 0.8, 1.1, 0.3])
+    hamiltonian = {"YY": 1.0}
+
+    ansatz = n_local(2, "ry", "cx", reps=1, entanglement="linear").assign_parameters(params)
+    exact = Statevector(ansatz).expectation_value(SparsePauliOp("YY")).real
+
+    def executor(p, pauli_string):
+        processor = le_ansatz(p, pauli_string)
+        return Sampler(processor).samples(20_000)
+
+    sampled = loss_function(params, hamiltonian, executor)
+    assert np.isclose(sampled, exact, atol=0.05), f"sampled {sampled}, exact {exact}"
 
 
 def test_rotate_qubits_perceval_circuit():
-    """Test rotate_qubits with a Perceval circuit."""
-    # Perceval circuit logic is in the `else` block of `rotate_qubits`
+    """The perceval branch must add a mode-pair unitary U with U† Z U == P."""
     import perceval as pcvl
 
-    # Create a dummy linear circuit
-    # 2 qubits -> 4 modes
-
-    # X rotation
-    pcvl_circ_x = rotate_qubits("X", pcvl.Circuit(4))
-    # Should have added components - accessing private attribute as public API might vary
-    # or check if string representation is not empty/different
-    assert len(pcvl_circ_x._components) > 0
-
-    # Y rotation
-    pcvl_circ_y = rotate_qubits("Y", pcvl.Circuit(4))
-    assert len(pcvl_circ_y._components) > 0
+    Z = np.array([[1, 0], [0, -1]], dtype=complex)
+    expected = {
+        "X": np.array([[0, 1], [1, 0]], dtype=complex),
+        "Y": np.array([[0, -1j], [1j, 0]], dtype=complex),
+    }
+    for pauli, matrix in expected.items():
+        rotated = rotate_qubits(pauli, pcvl.Circuit(2))
+        u = np.array(rotated.compute_unitary())
+        assert np.allclose(u.conj().T @ Z @ u, matrix), f"{pauli} rotation is wrong"
 
 
 def test_extract_samples_fallback():
