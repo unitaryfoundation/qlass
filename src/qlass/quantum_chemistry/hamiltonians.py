@@ -159,65 +159,6 @@ def group_commuting_pauli_terms(hamiltonian: dict[str, float]) -> list[dict[str,
     return groups
 
 
-def group_commuting_pauli_terms_openfermion_hybrid(
-    hamiltonian: dict[str, float],
-) -> list[dict[str, float]]:
-    """
-    Hybrid approach that tries to use OpenFermion's grouping when possible,
-    fallback to our implementation otherwise.
-
-    This function attempts to leverage OpenFermion's optimized grouping functions
-    when they are applicable, while maintaining full compatibility with our
-    general commuting term grouping for all other cases.
-
-    Args:
-        hamiltonian (Dict[str, float]): Hamiltonian dictionary with Pauli string
-                                       keys and coefficient values
-
-    Returns:
-        List[Dict[str, float]]: List of grouped Hamiltonians, where each group
-                               contains mutually commuting Pauli terms
-    """
-    if not hamiltonian:
-        return []
-
-    try:
-        # Try to use OpenFermion's grouping for tensor product basis sets
-        from openfermion.measurements import group_into_tensor_product_basis_sets
-        from openfermion.ops import QubitOperator
-
-        # Convert Dict to QubitOperator
-        qubit_op = QubitOperator()
-        for pauli_string, coeff in hamiltonian.items():
-            # Convert our format to OpenFermion format
-            of_term = []
-            for i, pauli in enumerate(pauli_string):
-                if pauli != "I":
-                    of_term.append((i, pauli))
-
-            if of_term:
-                qubit_op += QubitOperator(tuple(of_term), coeff)
-            else:
-                # Identity term
-                qubit_op += QubitOperator((), coeff)
-
-        # Use OpenFermion's grouping
-        of_groups = group_into_tensor_product_basis_sets(qubit_op)
-
-        # Convert back to our format
-        groups = []
-        for of_group in of_groups:
-            group_dict = sparsepauliop_dictionary(of_group)
-            if group_dict:  # Only add non-empty groups
-                groups.append(group_dict)
-
-        return groups
-
-    except (ImportError, Exception):
-        # Fallback to our implementation if OpenFermion grouping fails
-        return group_commuting_pauli_terms(hamiltonian)
-
-
 def LiH_hamiltonian(
     R: float = 1.5, charge: int = 0, spin: int = 0, num_electrons: int = 2, num_orbitals: int = 2
 ) -> dict[str, float]:
