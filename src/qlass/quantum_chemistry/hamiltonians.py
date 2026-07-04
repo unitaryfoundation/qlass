@@ -386,8 +386,9 @@ def Hchain_KS_hamiltonian(
     Parameters
     ----------
     n_hydrogens : int, optional
-        Number of hydrogen atoms in the linear chain. Must be an even integer.
-        Default is 2.
+        Number of hydrogen atoms in the linear chain. Must be a power of two
+        (2, 4, 8, ...), since the n_hydrogens x n_hydrogens Fock matrix is
+        mapped onto log2(n_hydrogens) qubits. Default is 2.
     R : float, optional
         Bond length between adjacent hydrogen atoms in angstroms. Default is 1.2.
 
@@ -415,6 +416,13 @@ def Hchain_KS_hamiltonian(
 
     """
     from pyscf import gto, scf
+
+    if n_hydrogens < 2 or (n_hydrogens & (n_hydrogens - 1)) != 0:
+        raise ValueError(
+            f"n_hydrogens must be a power of two (2, 4, 8, ...), got {n_hydrogens}. "
+            f"The {n_hydrogens}x{n_hydrogens} Fock matrix is mapped onto "
+            "log2(n_hydrogens) qubits; any other size would be silently truncated."
+        )
 
     geometry = []
     numberof_qubits = int(np.log2(n_hydrogens))
