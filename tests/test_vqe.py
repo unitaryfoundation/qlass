@@ -567,6 +567,34 @@ def test_Bitstring_initial_states():
         )
 
 
+def test_Bitstring_initial_states_prepares_correct_excited_state():
+    """Regression test for issue #208.
+
+    With zero parameters the ansatz reduces to the X-gate preparation followed
+    by CX gates: state index 1 applies X on qubit 0, and cx(0, 1) then flips
+    qubit 1, giving |11> whose dual-rail encoding is |0,1,0,1>. The previous
+    implementation prepared the basis state twice (X gates in the circuit plus
+    a non-vacuum photonic input) with reversed bit order, producing |0,1,1,0>.
+    """
+    procs = Bitstring_initial_states(
+        layers=1, n_states=2, lp=np.zeros(4), pauli_string="II", cost="e-VQE"
+    )
+    samples = Sampler(procs[1]).samples(50)["results"]
+    assert len(samples) > 0
+    expected = pcvl.BasicState([0, 1, 0, 1])
+    assert all(s == expected for s in samples), f"got {samples[0]}, expected {expected}"
+
+
+def test_Bitstring_initial_states_multiple_layers():
+    """Regression test for issue #208: qubit-count inference must account for
+    layers — n_local(reps=layers) has num_qubits * (layers + 1) parameters."""
+    proc = Bitstring_initial_states(
+        layers=2, n_states=1, lp=np.zeros(6), pauli_string="II", cost="VQE"
+    )
+    assert isinstance(proc, pcvl.Processor)
+    assert proc.m == 4  # 2 qubits -> 4 dual-rail modes
+
+
 def test_CSF_initial_states():
     from qlass.vqe.ansatz import CSF_initial_states
 
