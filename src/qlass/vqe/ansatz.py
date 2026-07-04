@@ -6,7 +6,6 @@ from perceval.components import Processor
 from perceval.utils import NoiseModel
 from qiskit import QuantumCircuit, transpile
 from qiskit.circuit.library import n_local
-from qiskit.quantum_info import Statevector
 
 from qlass.compiler import compile
 from qlass.utils import rotate_qubits
@@ -281,7 +280,8 @@ def Bitstring_initial_states(
     - See `https://scipost.org/SciPostPhys.14.3.055` for details on the DFT mapping.
     """
     initial_circuits = []
-    num_qubits = len(lp) // 2
+    # n_local(..., reps=layers) has num_qubits * (layers + 1) parameters
+    num_qubits = len(lp) // (layers + 1)
     for _i in range(n_states):
         initial_circuits += [QuantumCircuit(num_qubits)]
     """Initial states"""
@@ -308,23 +308,17 @@ def Bitstring_initial_states(
     """Assign parameters"""
     circuits = [c.assign_parameters(lp) for c in circuits]
 
-    intial_states = []
-    for c in range(len(initial_circuits)):
-        sv = Statevector.from_instruction(initial_circuits[c])
-        index = list(sv.data).index(1 + 0j)  # position of the "1"
-        bitstring = format(index, f"0{sv.num_qubits}b")
-        bits_list = [int(b) for b in bitstring]
-        intial_states.append(pcvl.LogicalState(bits_list))
-
     ansatz_transpiled = [
         transpile(c, basis_gates=["u3", "cx"], optimization_level=3) for c in circuits
     ]
 
     ansatz_rot = [rotate_qubits(pauli_string, at.copy()) for at in ansatz_transpiled]
 
+    # The X-gate state preparation is already part of each circuit, so every
+    # processor takes the dual-rail-encoded |0...0> as photonic input.
+    input_state = pcvl.LogicalState([0] * num_qubits)
     processors = [
-        compile(ar, input_state=st, noise_model=noise_model)
-        for ar, st in zip(ansatz_rot, intial_states, strict=False)
+        compile(ar, input_state=input_state, noise_model=noise_model) for ar in ansatz_rot
     ]
     if cost == "VQE":
         return processors[0]
