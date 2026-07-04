@@ -307,6 +307,18 @@ def test_Hchain_KS_hamiltonian(monkeypatch):
     assert -2.0 < mo_energy[0] < 0.0
 
 
+def test_Hchain_KS_hamiltonian_rejects_non_power_of_two():
+    """Regression test for issue #210.
+
+    int(np.log2(n_hydrogens)) floors, so n_hydrogens=6 used to map a 6x6 Fock
+    matrix onto 2 qubits, silently discarding rows/columns 4-5. Non-power-of-two
+    chain lengths must be rejected instead.
+    """
+    for bad_n_hydrogens in [1, 3, 6, 12]:
+        with pytest.raises(ValueError, match="power of two"):
+            Hchain_KS_hamiltonian(n_hydrogens=bad_n_hydrogens, R=1.2)
+
+
 def test_transformation_Hmatrix_Hqubit():
     # Pauli-Z Hamiltonian
     H = np.array([[1, 0], [0, -1]], dtype=complex)
