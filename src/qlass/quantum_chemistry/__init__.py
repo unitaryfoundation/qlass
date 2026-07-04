@@ -12,7 +12,6 @@ from .hamiltonians import (
     LiH_hamiltonian_tapered,
     generate_random_hamiltonian,
     group_commuting_pauli_terms,
-    group_commuting_pauli_terms_openfermion_hybrid,
     pauli_commute,
     sparsepauliop_dictionary,
     transformation_Hmatrix_Hqubit,
@@ -31,7 +30,6 @@ __all__ = [
     "transformation_Hmatrix_Hqubit",
     "pauli_commute",
     "group_commuting_pauli_terms",
-    "group_commuting_pauli_terms_openfermion_hybrid",
     "sparsepauliop_dictionary",
     "Hchain_hamiltonian_WFT",
 ]
