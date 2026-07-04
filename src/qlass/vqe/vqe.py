@@ -74,45 +74,20 @@ class VQE:
         self.loss_history: list[float] = []
         self.energy_collector = DataCollector()
 
-    def _callback(
-        self, params: np.ndarray, cost_type: str = "VQE", weight_option: str = "weighted"
-    ) -> None:
-        """Callback function to record optimization progress."""
-        if cost_type == "e-VQE":
-            # Ensemble-VQE mode
-            cost = e_vqe_loss_function(
-                params,
-                self.hamiltonian,
-                self.executor,
-                self.energy_collector,
-                weight_option=weight_option,
-            )
-            self.loss_history.append(cost)
-        else:
-            # Standard VQE mode
-            if self.executor_type == "qubit_unitary":
-                from qlass.utils import loss_function_matrix
+    def _recording_objective(self, loss_fn: Callable, history: list[float]) -> Callable:
+        """Wrap a loss function so every evaluation is recorded in `history`.
 
-                energy = loss_function_matrix(params, self.hamiltonian, self.executor)
-            elif self.executor_type == "photonic_unitary":
-                from qlass.utils import loss_function_photonic_unitary
+        Recording inside the objective avoids re-executing the (expensive,
+        stochastic) loss function in an optimizer callback just to log it.
+        """
 
-                energy = loss_function_photonic_unitary(
-                    params,
-                    self.hamiltonian,
-                    self.executor,
-                    self.initial_state,
-                    self.ancillary_modes,
-                )
-            else:
-                energy = loss_function(
-                    params, self.hamiltonian, self.executor, mitigator=self.mitigator
-                )
+        def objective(params: np.ndarray, *args: Any) -> float:
+            value = float(loss_fn(params, *args))
+            history.append(value)
+            self.parameter_history.append(np.asarray(params).copy())
+            return value
 
-            self.energy_history.append(energy)
-
-            # Always record parameters
-        self.parameter_history.append(params.copy())
+        return objective
 
     def run(
         self,
@@ -169,22 +144,25 @@ class VQE:
 
         Notes
         -----
-        - The method resets the loss and parameter history at the start of each run.
+        - The method resets all optimization history (energy, loss, parameters, and the
+          e-VQE energy collector) at the start of each run.
+        - History is recorded once per objective-function evaluation (not per accepted
+          optimizer iteration); gradient evaluations are not recorded.
         - For ensemble-VQE, the ``weight_option`` determines how individual state energies
           are combined into the total loss.
-        - Exact energies for the Hamiltonian are computed at the end using a brute-force
-          diagonalization routine for reference.
         - Verbose mode prints information about optimizer progress, final energies, and
           number of function evaluations.
         """
         # Initialize parameters if not provided
         if initial_params is None:
             initial_params = np.random.rand(self.num_params)
-        # Initialize gradient method with Finate difference by default
+        # Initialize gradient method with finite difference by default
         jac_fun = None
         # Reset history
         self.energy_history = []
         self.parameter_history = []
+        self.loss_history = []
+        self.energy_collector = DataCollector()
 
         if verbose:
             print(f"Starting VQE optimization using {self.optimizer} optimizer")
@@ -197,18 +175,17 @@ class VQE:
                 from qlass.utils import loss_function_matrix
 
                 self.optimization_result = minimize(
-                    loss_function_matrix,
+                    self._recording_objective(loss_function_matrix, self.energy_history),
                     initial_params,
                     args=(self.hamiltonian, self.executor),
                     method=self.optimizer,
-                    callback=lambda p: self._callback(p, cost_type="VQE"),
                     options={"maxiter": max_iterations},
                 )
             elif self.executor_type == "photonic_unitary":
                 from qlass.utils import loss_function_photonic_unitary
 
                 self.optimization_result = minimize(
-                    loss_function_photonic_unitary,
+                    self._recording_objective(loss_function_photonic_unitary, self.energy_history),
                     initial_params,
                     args=(
                         self.hamiltonian,
@@ -217,7 +194,6 @@ class VQE:
                         self.ancillary_modes,
                     ),
                     method=self.optimizer,
-                    callback=lambda p: self._callback(p, cost_type="VQE"),
                     options={"maxiter": max_iterations},
                 )
 
@@ -233,12 +209,11 @@ class VQE:
                         "Wrong keyward for Jacobian. It should be None or parameter_shift"
                     )
                 self.optimization_result = minimize(
-                    loss_function,
+                    self._recording_objective(loss_function, self.energy_history),
                     initial_params,
                     args=(self.hamiltonian, self.executor, self.mitigator),
                     method=self.optimizer,
                     jac=jac_fun,
-                    callback=lambda p: self._callback(p, cost_type="VQE"),
                     options={"maxiter": max_iterations},
                 )
 
@@ -248,7 +223,15 @@ class VQE:
                 if jacobian == "parameter_shift":
 
                     def jac_fun(p: np.ndarray, *args: Any) -> Any:
-                        return self.parametershift_grad(e_vqe_loss_function, p, *args)
+                        # Gradient evaluations use a throwaway collector so they
+                        # don't pollute the recorded per-state energy data.
+                        grad_args = (
+                            self.hamiltonian,
+                            self.executor,
+                            DataCollector(),
+                            weight_option,
+                        )
+                        return self.parametershift_grad(e_vqe_loss_function, p, *grad_args)
                 elif jacobian is None:
                     pass
                 else:
@@ -256,14 +239,11 @@ class VQE:
                         "Wrong keyward for Jacobian. It should be None or parameter_shift"
                     )
                 self.optimization_result = minimize(
-                    e_vqe_loss_function,
+                    self._recording_objective(e_vqe_loss_function, self.loss_history),
                     initial_params,
                     args=arguments,
                     method=self.optimizer,
                     jac=jac_fun,
-                    callback=lambda p: self._callback(
-                        p, cost_type="e-VQE", weight_option=weight_option
-                    ),
                     options={"maxiter": max_iterations},
                 )
             else:
@@ -343,17 +323,20 @@ class VQE:
         Args:
             exact_energy (float): Exact ground state energy for comparison, if available
         """
-        if not self.energy_history:
+        # Standard VQE records energies; e-VQE records the ensemble cost.
+        history = self.energy_history if self.energy_history else self.loss_history
+        label = "VQE Energy" if self.energy_history else "e-VQE Ensemble Cost"
+        if not history:
             raise ValueError("No optimization history available. Run VQE first.")
 
         plt.figure(figsize=(10, 6))
-        iterations = range(len(self.energy_history))
-        plt.plot(iterations, self.energy_history, "o-", label="VQE Energy")
+        iterations = range(len(history))
+        plt.plot(iterations, history, "o-", label=label)
 
         if exact_energy is not None:
             plt.axhline(y=exact_energy, color="r", linestyle="--", label="Exact Energy")
 
-        plt.xlabel("Iteration")
+        plt.xlabel("Function evaluation")
         plt.ylabel("Energy")
         plt.title("VQE Convergence")
         plt.legend()
