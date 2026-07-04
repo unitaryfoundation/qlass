@@ -9,15 +9,13 @@ from openfermion import BosonOperator
 from perceval.rendering import DebugSkin, PhysSkin, SymbSkin
 
 H_matrix = (1 / np.sqrt(2)) * pcvl.Matrix([[1.0, 1.0], [1.0, -1.0]])
-M_matrix = (1 / np.sqrt(2)) * pcvl.Matrix([[1.0, 1.0], [1.0j, -1.0j]])
-mzi = (
-    pcvl.BS()
-    // (0, pcvl.PS(pcvl.Parameter("phi1")))
-    // pcvl.BS()
-    // (0, pcvl.PS(pcvl.Parameter("phi2")))
-)
-H_circ = pcvl.Circuit.decomposition(H_matrix, mzi, shape=pcvl.InterferometerShape.TRIANGLE)
-M_circ = pcvl.Circuit.decomposition(M_matrix, mzi, shape=pcvl.InterferometerShape.TRIANGLE)
+# Y-basis change: satisfies M† Z M = Y, so measuring Z after M measures Y before it.
+M_matrix = (1 / np.sqrt(2)) * pcvl.Matrix([[1.0, -1.0j], [1.0, 1.0j]])
+# Built directly rather than via Circuit.decomposition: an MZI template without an
+# input phase shifter can only match the target up to input-side phases, which is
+# enough to corrupt the measurement basis.
+H_circ = pcvl.Circuit(2) // pcvl.BS.H()
+M_circ = (pcvl.Circuit(2) // (1, pcvl.PS(-np.pi / 2))) // pcvl.BS.H()
 
 
 def _get_perceval_format(output_format: str) -> pcvl.Format:
@@ -270,7 +268,8 @@ def rotate_qubits(
             if pauli == "X":
                 vqe_circuit.h(i)
             elif pauli == "Y":
-                vqe_circuit.ry(np.pi / 2, i)
+                vqe_circuit.sdg(i)
+                vqe_circuit.h(i)
 
     else:
         for i, pauli in enumerate(pauli_string):
