@@ -1,4 +1,5 @@
 import warnings
+from unittest.mock import patch
 
 import numpy as np
 import perceval as pcvl
@@ -143,6 +144,45 @@ def test_vqe_pipeline():
         raise ValueError("Optimization result is not a valid float")
 
 
+def test_vqe_run_does_not_reexecute_loss_for_history():
+    """Regression test for issue #211.
+
+    History used to be recorded by re-running the full loss function inside an
+    optimizer callback, roughly doubling quantum execution cost. With a
+    single-term Hamiltonian the executor must be called exactly once per
+    objective evaluation (nfev), and once per recorded history entry.
+    """
+    executor_calls = []
+
+    def counting_executor(params, pauli_string):
+        executor_calls.append(pauli_string)
+        return {"counts": {"00": 500, "11": 500}}
+
+    vqe = VQE(hamiltonian={"ZZ": 1.0}, executor=counting_executor, num_params=2)
+    vqe.run(max_iterations=5, verbose=False)
+
+    nfev = vqe.optimization_result.nfev
+    assert len(executor_calls) == nfev, (
+        f"executor called {len(executor_calls)} times for {nfev} evaluations"
+    )
+    assert len(vqe.energy_history) == nfev
+    assert len(vqe.parameter_history) == nfev
+
+
+def test_vqe_run_resets_all_history():
+    """Regression test for issue #211: run() must reset every history container,
+    not just energy_history and parameter_history."""
+    vqe = VQE(hamiltonian={"ZZ": 1.0}, executor=mock_executor, num_params=2)
+
+    vqe.run(max_iterations=5, verbose=False)
+    vqe.run(max_iterations=5, verbose=False)
+
+    nfev = vqe.optimization_result.nfev
+    assert len(vqe.energy_history) == nfev, "energy_history accumulated across runs"
+    assert len(vqe.parameter_history) == nfev, "parameter_history accumulated across runs"
+    assert vqe.loss_history == [], "loss_history not reset for a standard VQE run"
+
+
 def test_evqe_pipeline():
     # Define an executor function that uses the linear entangled ansatz
     def executor(params, pauli_string):
@@ -165,6 +205,18 @@ def test_evqe_pipeline():
 
     if not isinstance(vqe_energy, float):
         raise ValueError("Optimization result is not a valid float")
+
+    # Regression checks for issue #211: the e-VQE cost is logged exactly once
+    # per objective evaluation (the callback used to re-evaluate and re-log a
+    # second, resampled entry per iteration), and plot_convergence must work
+    # after an e-VQE run (it used to raise because only loss_history is filled).
+    nfev = vqe.optimization_result.nfev
+    assert len(vqe.loss_history) == nfev
+    for state_energies in vqe.energy_collector.energy_data.values():
+        assert len(state_energies) == nfev
+
+    with patch("matplotlib.pyplot.show"):
+        vqe.plot_convergence()
 
 
 def test_invalid_cost_type():
