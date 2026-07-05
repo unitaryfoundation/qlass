@@ -15,6 +15,7 @@ from qlass.quantum_chemistry import (
     lanczos,
     pauli_commute,
     pauli_string_to_matrix,
+    sparsepauliop_dictionary,
     transformation_Hmatrix_Hqubit,
 )
 
@@ -326,6 +327,57 @@ def check_groups(groups):
                 assert pauli_commute(terms[i], terms[j]), (
                     f"{terms[i]} and {terms[j]} do not commute"
                 )
+
+
+def test_pauli_commute():
+    """Pauli strings commute iff they differ on an even number of non-identity positions."""
+    # Identical or identity-padded strings always commute
+    assert pauli_commute("XX", "XX")
+    assert pauli_commute("XI", "IZ")
+    assert pauli_commute("II", "XY")
+
+    # Single differing non-identity position: anticommute
+    assert not pauli_commute("XI", "ZI")
+    assert not pauli_commute("XY", "XZ")
+
+    # Two differing positions: commute again (e.g. XX vs YY)
+    assert pauli_commute("XX", "YY")
+    assert pauli_commute("XZ", "YX")
+
+    with pytest.raises(ValueError, match="same length"):
+        pauli_commute("X", "XX")
+
+
+def test_group_commuting_pauli_terms():
+    """The grouper partitions terms into mutually commuting groups, preserving
+    every term and coefficient. (Direct tests: the previous coverage came
+    indirectly through the removed hybrid-grouping wrapper.)"""
+    from qlass.quantum_chemistry import group_commuting_pauli_terms
+
+    hamiltonian = {"II": 1.0, "ZI": 0.5, "IZ": -0.3, "ZZ": 0.2, "XX": 0.7, "XI": -0.1}
+
+    groups = group_commuting_pauli_terms(hamiltonian)
+
+    # Every term lands in exactly one group with its coefficient intact
+    regrouped = {term: coeff for group in groups for term, coeff in group.items()}
+    assert regrouped == hamiltonian
+
+    # All terms within each group mutually commute
+    check_groups(groups)
+
+    # ZI and XI anticommute, so there must be more than one group
+    assert len(groups) > 1
+
+    # Empty Hamiltonian gives no groups
+    assert group_commuting_pauli_terms({}) == []
+
+
+def test_sparsepauliop_dictionary_edge_cases():
+    """Empty operators give an empty dict; identity-only operators give an 'I' key."""
+    assert sparsepauliop_dictionary(QubitOperator()) == {}
+
+    identity_only = sparsepauliop_dictionary(QubitOperator("", 2.5))
+    assert identity_only == {"I": 2.5}
 
 
 def test_Hchain_KS_hamiltonian(monkeypatch):
