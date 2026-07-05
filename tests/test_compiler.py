@@ -86,6 +86,26 @@ def test_resource_aware_compiler_counts_loss_from_all_components(bell_circuit, c
     assert np.isclose(component_loss, counts["Total"] * chip_config.photon_loss_component_db)
 
 
+def test_component_count_includes_phase_shifters_and_unitaries(chip_config):
+    """Every physical component category is counted, not just BS/PERM."""
+    compiler = ResourceAwareCompiler(config=chip_config)
+
+    # A T gate compiles to a phase shifter
+    qc = QuantumCircuit(1)
+    qc.h(0)
+    qc.t(0)
+    compiler.compile(qc)
+    assert compiler.analysis_report["component_count"]["PhaseShifter"] > 0
+
+    # A generic Unitary component lands in the "Other" bucket
+    circuit = pcvl.Circuit(2) // pcvl.Unitary(pcvl.Matrix(np.eye(2)))
+    processor = pcvl.Processor("SLOS", circuit)
+    compiler._analyze(processor, num_cnots=0)
+    counts = compiler.analysis_report["component_count"]
+    assert counts["Other"] == 1
+    assert counts["Total"] == 1
+
+
 def test_fusion_probability_depends_on_cnot_count(chip_config):
     """No CNOTs -> no fusion penalty; with CNOTs the penalty kicks in."""
     compiler = ResourceAwareCompiler(config=chip_config)
