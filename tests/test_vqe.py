@@ -121,7 +121,7 @@ def test_vqe_pipeline():
     def executor(params, pauli_string):
         processor = le_ansatz(params, pauli_string)
         sampler = Sampler(processor)
-        samples = sampler.samples(10_000)
+        samples = sampler.samples(1_000)
         return samples
 
     # Number of qubits
@@ -138,7 +138,7 @@ def test_vqe_pipeline():
     )
 
     # Run the VQE optimization
-    vqe_energy = vqe.run(max_iterations=10, verbose=True)
+    vqe_energy = vqe.run(max_iterations=5, verbose=True)
 
     if not isinstance(vqe_energy, float):
         raise ValueError("Optimization result is not a valid float")
@@ -192,7 +192,10 @@ def test_evqe_pipeline():
 
         return samples
 
-    ham, scf_mo_energy, n_orbs = Hchain_KS_hamiltonian(4, 1.2)
+    # Real KS Hamiltonian, but a 2-state ensemble and few iterations keep this
+    # integration test fast (issue #188)
+    ham, scf_mo_energy, _ = Hchain_KS_hamiltonian(4, 1.2)
+    n_orbs = 2
 
     vqe = VQE(
         hamiltonian=ham,
@@ -201,7 +204,7 @@ def test_evqe_pipeline():
     )
 
     # Run the VQE optimization
-    vqe_energy = vqe.run(max_iterations=5, verbose=True, weight_option="weighted", cost="e-VQE")
+    vqe_energy = vqe.run(max_iterations=3, verbose=True, weight_option="weighted", cost="e-VQE")
 
     if not isinstance(vqe_energy, float):
         raise ValueError("Optimization result is not a valid float")
@@ -758,44 +761,38 @@ def test_parametershift_grad():
 
 
 def test_parametershift_grad_pipline_vqe():
-    ham = Hchain_hamiltonian_WFT(2, 0.741, tampering=True)
-
-    def executor(params, pauli_string):
-        # for VQE
-        processor = Bitstring_initial_states(1, 1, params, pauli_string)
-        samplers = Sampler(processor)
-        samples = samplers.samples(100)
-
-        return samples
+    # This test covers the jacobian="parameter_shift" wiring in VQE.run;
+    # photonic execution is covered by test_vqe_pipeline, and the gradient
+    # math by test_parametershift_grad — so the instant mock executor keeps
+    # this fast (issue #188).
+    ham = {"ZZ": 1.0, "IX": 0.5}
 
     # Initialize the VQE solver
     vqe = VQE(
         hamiltonian=ham,
-        executor=executor,
+        executor=mock_executor,
         num_params=4,  # Number of parameters in the linear entangled ansatz
         optimizer="SLSQP",
     )
 
     # Run the VQE optimization
-    vqe_energy = vqe.run(max_iterations=2, verbose=True, cost="VQE", jacobian=None)
+    vqe_energy = vqe.run(max_iterations=1, verbose=False, cost="VQE", jacobian=None)
     assert isinstance(vqe_energy, float)
-    vqe_energy = vqe.run(max_iterations=2, verbose=True, cost="VQE", jacobian="parameter_shift")
+    vqe_energy = vqe.run(max_iterations=1, verbose=False, cost="VQE", jacobian="parameter_shift")
     assert isinstance(vqe_energy, float)
     with pytest.raises(
         ValueError, match="Wrong keyward for Jacobian. It should be None or parameter_shift"
     ):
-        vqe_energy = vqe.run(max_iterations=1, verbose=True, cost="VQE", jacobian="paramtershift")
+        vqe_energy = vqe.run(max_iterations=1, verbose=False, cost="VQE", jacobian="paramtershift")
 
 
 def test_parametershift_grad_pipline_evqe():
-    ham, scf_mo_energy, n_orbs = Hchain_KS_hamiltonian(4, 0.784)
+    # Same as test_parametershift_grad_pipline_vqe, for the e-VQE branch:
+    # the mock executor returns a two-state ensemble instantly (issue #188).
+    ham = {"ZZ": 1.0, "IX": 0.5}
 
     def executor(params, pauli_string):
-        processors = Bitstring_initial_states(1, n_orbs, params, pauli_string, cost="e-VQE")
-        samplers = [Sampler(p) for p in processors]
-        samples = [sampler.samples(100) for sampler in samplers]
-
-        return samples
+        return [mock_executor(params, pauli_string) for _ in range(2)]
 
     # Initialize the VQE solver
     vqe = VQE(
@@ -807,12 +804,14 @@ def test_parametershift_grad_pipline_evqe():
     )
 
     # Run the VQE optimization
-    vqe_energy = vqe.run(max_iterations=2, verbose=True, cost="e-VQE", jacobian="parameter_shift")
+    vqe_energy = vqe.run(max_iterations=1, verbose=False, cost="e-VQE", jacobian="parameter_shift")
     assert isinstance(vqe_energy, float)
     with pytest.raises(
         ValueError, match="Wrong keyward for Jacobian. It should be None or parameter_shift"
     ):
-        vqe_energy = vqe.run(max_iterations=1, verbose=True, cost="e-VQE", jacobian="paramtershift")
+        vqe_energy = vqe.run(
+            max_iterations=1, verbose=False, cost="e-VQE", jacobian="paramtershift"
+        )
 
 
 # ===== Kerr Ansatz Tests =====
