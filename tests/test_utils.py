@@ -242,6 +242,24 @@ def test_draw_circuit_saves_each_output_format(tmp_path):
         assert save_path.stat().st_size > 0
 
 
+def test_draw_circuit_raises_when_rendering_cannot_be_saved(tmp_path, mocker):
+    """If pdisplay_to_file silently writes nothing (a Perceval 1.2 HTML bug)
+    and the drawsvg fallback also has nothing usable to save, draw_circuit
+    must raise instead of returning with no file."""
+    import importlib
+
+    # The perceval.rendering.pdisplay *module* is shadowed by the pdisplay
+    # function re-exported from the package, so patch the module object itself.
+    pdisplay_module = importlib.import_module("perceval.rendering.pdisplay")
+
+    processor = le_ansatz(np.zeros(4), "II")
+    mocker.patch("qlass.utils.utils.pcvl.pdisplay_to_file")  # writes nothing
+    mocker.patch.object(pdisplay_module, "_pdisplay", return_value=object())  # no .value
+
+    with pytest.raises(RuntimeError, match="Could not save"):
+        draw_circuit(processor, output_format="html", save_path=str(tmp_path / "c.html"))
+
+
 def test_draw_circuit_displays_without_save_path(mocker):
     processor = le_ansatz(np.zeros(4), "II")
     pdisplay = mocker.patch("qlass.utils.utils.pcvl.pdisplay")
