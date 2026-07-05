@@ -2,8 +2,8 @@ from typing import Any
 
 import perceval as pcvl
 from perceval.components.unitary_components import BS, PERM, PS, Barrier
-from perceval.converters import QiskitConverter
 from perceval.utils import NoiseModel
+from perceval_interop import QiskitConverter
 from qiskit import QuantumCircuit
 
 from qlass.compiler.hardware_config import HardwareConfig

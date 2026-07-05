@@ -34,7 +34,9 @@ def qiskit_executor(params: np.ndarray, pauli_string: str, shots: int = 4096) ->
     # 1. Create the variational ansatz circuit
     ansatz = TwoLocal(num_qubits, "ry", "cx", reps=1, entanglement="linear")
     ansatz_assigned = ansatz.assign_parameters(params)
-    ansatz_transpiled = transpile(ansatz_assigned, basis_gates=["u3", "cx"], optimization_level=3)
+    ansatz_transpiled = transpile(
+        ansatz_assigned, basis_gates=["rz", "ry", "cx"], optimization_level=3
+    )
 
     # 2. Apply basis-change rotations for measuring the Pauli string
     circuit = rotate_qubits(pauli_string, ansatz_transpiled.copy())

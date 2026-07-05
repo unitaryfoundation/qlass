@@ -2,7 +2,7 @@ from functools import lru_cache
 
 import numpy as np
 import perceval as pcvl
-from perceval.components import Processor
+from perceval import Processor
 from perceval.utils import NoiseModel
 from qiskit import QuantumCircuit, transpile
 from qiskit.circuit.library import n_local
@@ -31,7 +31,9 @@ def le_ansatz(
     ansatz = n_local(num_qubits, "ry", "cx", reps=1, entanglement="linear")
 
     ansatz_assigned = ansatz.assign_parameters(lp)
-    ansatz_transpiled = transpile(ansatz_assigned, basis_gates=["u3", "cx"], optimization_level=3)
+    ansatz_transpiled = transpile(
+        ansatz_assigned, basis_gates=["rz", "ry", "cx"], optimization_level=3
+    )
 
     ansatz_rot = rotate_qubits(pauli_string, ansatz_transpiled.copy())
     processor = compile(
@@ -202,7 +204,9 @@ def CSF_initial_states(
 
     hfc.compose(ansatz, inplace=True)
     ansatz_assigned = hfc.assign_parameters(initial_parameters)
-    ansatz_transpiled = transpile(ansatz_assigned, basis_gates=["u3", "cx"], optimization_level=3)
+    ansatz_transpiled = transpile(
+        ansatz_assigned, basis_gates=["rz", "ry", "cx"], optimization_level=3
+    )
     ansatz_rot = rotate_qubits(pauli_string, ansatz_transpiled.copy())
     # The X gates above already prepare the Hartree-Fock state, so the photonic
     # input is the dual-rail |0...0> (issue #236: feeding the HF bitstring here
@@ -230,7 +234,7 @@ def CSF_initial_states(
         sc.compose(ansatz, inplace=True)
         sc_assigned_ansatz = sc.assign_parameters(initial_parameters)
         sc_ansatz_transpiled = transpile(
-            sc_assigned_ansatz, basis_gates=["u3", "cx"], optimization_level=3
+            sc_assigned_ansatz, basis_gates=["rz", "ry", "cx"], optimization_level=3
         )
         sc_ansatz_rot = rotate_qubits(pauli_string, sc_ansatz_transpiled.copy())
         processor_sc = compile(sc_ansatz_rot, input_state=input_state, noise_model=noise_model)
@@ -316,7 +320,7 @@ def Bitstring_initial_states(
     circuits = [c.assign_parameters(lp) for c in circuits]
 
     ansatz_transpiled = [
-        transpile(c, basis_gates=["u3", "cx"], optimization_level=3) for c in circuits
+        transpile(c, basis_gates=["rz", "ry", "cx"], optimization_level=3) for c in circuits
     ]
 
     ansatz_rot = [rotate_qubits(pauli_string, at.copy()) for at in ansatz_transpiled]

@@ -53,7 +53,8 @@ Dependencies
 
 - qiskit (>= 2.0)
 - qiskit-aer
-- perceval-quandela (>= 0.13.2, < 1.0)
+- perceval-quandela (>= 1.2, < 2)
+- perceval-interop (>= 1.2, < 2)
 - piquasso (>= 8.0.1)
 - openfermion and openfermionpyscf (which install pyscf)
 - numpy

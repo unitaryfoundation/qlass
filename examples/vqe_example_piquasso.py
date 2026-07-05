@@ -40,7 +40,9 @@ def le_ansatz_piquasso(lp: np.ndarray, pauli_string: str) -> pq.Program:
     ansatz = n_local(num_qubits, "ry", "cx", reps=1, entanglement="linear")
 
     ansatz_assigned = ansatz.assign_parameters(lp)
-    ansatz_transpiled = transpile(ansatz_assigned, basis_gates=["u3", "cx"], optimization_level=3)
+    ansatz_transpiled = transpile(
+        ansatz_assigned, basis_gates=["rz", "ry", "cx"], optimization_level=3
+    )
 
     ansatz_rot = rotate_qubits(pauli_string, ansatz_transpiled.copy())
     program = dual_rail_encode_from_qiskit(ansatz_rot)
