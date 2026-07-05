@@ -36,7 +36,9 @@ def executor(params, pauli_string):
 
     # Assign parameters to the ansatz
     ansatz_assigned = ansatz.assign_parameters(params)
-    ansatz_transpiled = transpile(ansatz_assigned, basis_gates=["rz", "ry", "cx"], optimization_level=3)
+    ansatz_transpiled = transpile(
+        ansatz_assigned, basis_gates=["rz", "ry", "cx"], optimization_level=3
+    )
 
     # Apply rotation for Pauli measurement
     ansatz_rot = rotate_qubits(pauli_string, ansatz_transpiled.copy())
