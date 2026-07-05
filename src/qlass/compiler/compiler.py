@@ -1,7 +1,7 @@
 from typing import Any
 
 import perceval as pcvl
-from perceval.components.unitary_components import BS, PS
+from perceval.components.unitary_components import BS, PERM, PS, Barrier
 from perceval.converters import QiskitConverter
 from perceval.utils import NoiseModel
 from qiskit import QuantumCircuit
@@ -14,7 +14,7 @@ def compile(
     backend_name: str = "Naive",
     use_postselection: bool = True,
     input_state: pcvl.StateVector | pcvl.BasicState | None = None,
-    noise_model: NoiseModel = None,
+    noise_model: NoiseModel | None = None,
 ) -> pcvl.Processor:
     """
     Convert a Qiskit quantum circuit to a Perceval processor.
@@ -76,11 +76,25 @@ class ResourceAwareCompiler:
         # Get the underlying circuit
         circuit = processor.linear_circuit()
 
-        # 1. Count components by iterating through the circuit
-        num_ps = sum(1 for _, component in circuit if isinstance(component, PS))
-        num_bs = sum(1 for _, component in circuit if isinstance(component, BS))
+        # 1. Count components by iterating through the circuit. Everything
+        # physical contributes to loss: phase shifters, beam splitters, mode
+        # permutations (waveguide crossings), and generic unitaries. Barriers
+        # are visualization-only and excluded.
+        num_ps = 0
+        num_bs = 0
+        num_perm = 0
+        num_other = 0
+        for _, component in circuit:
+            if isinstance(component, PS):
+                num_ps += 1
+            elif isinstance(component, BS):
+                num_bs += 1
+            elif isinstance(component, PERM):
+                num_perm += 1
+            elif not isinstance(component, Barrier):
+                num_other += 1
 
-        num_components = num_ps + num_bs  # Simplified count
+        num_components = num_ps + num_bs + num_perm + num_other
         num_modes = processor.m  # Total number of modes in the circuit
 
         # 2. Estimate Photon Loss
@@ -112,6 +126,8 @@ class ResourceAwareCompiler:
             "component_count": {
                 "PhaseShifter": num_ps,
                 "BeamSplitter": num_bs,
+                "Permutation": num_perm,
+                "Other": num_other,
                 "Total": num_components,
             },
             "loss_estimation_db": {
@@ -138,9 +154,9 @@ class ResourceAwareCompiler:
         num_cnots = circuit.count_ops().get("cx", 0)
 
         self._analyze(processor, num_cnots)
-        # self.generate_report() # Automatically print the report after compilation
 
-        # Attach the report to the processor object for programmatic access
+        # Attach the report to the processor object for programmatic access;
+        # it is also available as self.analysis_report.
         processor.analysis_report = self.analysis_report
         return processor
 
@@ -153,7 +169,10 @@ def generate_report(analysis_report: dict[str, Any]) -> None:
     print(f"  Circuit modes: {report['num_modes']}")
     print(
         f"  Component Count: {report['component_count']['Total']} "
-        f"(PS: {report['component_count']['PhaseShifter']}, BS: {report['component_count']['BeamSplitter']})"
+        f"(PS: {report['component_count']['PhaseShifter']}, "
+        f"BS: {report['component_count']['BeamSplitter']}, "
+        f"PERM: {report['component_count'].get('Permutation', 0)}, "
+        f"Other: {report['component_count'].get('Other', 0)})"
     )
     print("\n[Performance Estimation]")
     loss_db = report["loss_estimation_db"]["total_circuit_loss"]

@@ -133,10 +133,15 @@ def _lanczos_impl(A: np.ndarray, v_init: np.ndarray, m: int) -> tuple[np.ndarray
     return T, V
 
 
-# Check if JIT should be disabled via environment variable
+# Setting the environment variable QLASS_DISABLE_JIT=1 *before importing qlass*
+# skips numba JIT compilation of the Lanczos kernel. This is mainly useful for
+# accurate coverage measurement (CI sets it) and for debugging; it is read once
+# at import time, so changing it afterwards has no effect.
 DISABLE_JIT = os.environ.get("QLASS_DISABLE_JIT", "0") == "1"
 
-# Create JIT-compiled version if enabled
+# `lanczos` is the (optionally JIT-compiled) low-level kernel returning the
+# tridiagonal matrix T and the Lanczos basis V; most users want
+# eig_decomp_lanczos instead.
 lanczos: Callable[[np.ndarray, np.ndarray, int], tuple[np.ndarray, np.ndarray]]
 lanczos = njit(_lanczos_impl) if not DISABLE_JIT else _lanczos_impl
 

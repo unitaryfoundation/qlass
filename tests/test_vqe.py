@@ -650,6 +650,26 @@ def test_Bitstring_initial_states_multiple_layers():
     assert proc.m == 4  # 2 qubits -> 4 dual-rail modes
 
 
+def test_CSF_initial_states_prepares_hartree_fock_state():
+    """Regression test for issue #236.
+
+    With zero parameters the circuit reduces to the X-gate HF preparation plus
+    the CX entangling chain. For num_electrons=(1, 1) the HF bitstring is
+    [0, 1, 0, 1] (qubits 1 and 3 occupied); the linear cx chain then flips
+    q2 (control q1=1) and flips q3 back (control q2=1), giving |0110> with
+    dual-rail encoding |1,0,0,1,0,1,1,0>. The previous implementation prepared
+    the state twice (X gates plus a non-vacuum photonic input), which cancelled
+    to the all-zeros logical state |1,0,1,0,1,0,1,0>.
+    """
+    from qlass.vqe.ansatz import CSF_initial_states
+
+    proc = CSF_initial_states(1, (1, 1), np.zeros(8), "IIII")
+    samples = Sampler(proc).samples(50)["results"]
+    assert len(samples) > 0
+    expected = pcvl.BasicState([1, 0, 0, 1, 0, 1, 1, 0])
+    assert all(s == expected for s in samples), f"got {samples[0]}, expected {expected}"
+
+
 def test_CSF_initial_states():
     from qlass.vqe.ansatz import CSF_initial_states
 
@@ -682,7 +702,8 @@ def test_CSF_initial_states_excitation():
     from qlass.vqe.ansatz import CSF_initial_states
 
     with pytest.raises(
-        ValueError, match="Singlet excitation requested but missing required parameters k and l."
+        ValueError,
+        match="Singlet excitation requested but missing required parameters k_index and l_index.",
     ):
         CSF_initial_states(
             num_spatial_orbitals=1,
@@ -728,7 +749,7 @@ def test_parametershift_grad():
     def simple_function(theta):
         return np.sin(theta[0]) + np.cos(theta[1])
 
-    ham = Hchain_hamiltonian_WFT(2, 0.741, tampering=True)
+    ham = Hchain_hamiltonian_WFT(2, 0.741, tapering=True)
     # Initial parameters
     theta = np.array([np.pi / 4, np.pi / 3])
 
@@ -781,7 +802,7 @@ def test_parametershift_grad_pipline_vqe():
     vqe_energy = vqe.run(max_iterations=1, verbose=False, cost="VQE", jacobian="parameter_shift")
     assert isinstance(vqe_energy, float)
     with pytest.raises(
-        ValueError, match="Wrong keyward for Jacobian. It should be None or parameter_shift"
+        ValueError, match="Wrong keyword for Jacobian. It should be None or parameter_shift"
     ):
         vqe_energy = vqe.run(max_iterations=1, verbose=False, cost="VQE", jacobian="paramtershift")
 
@@ -807,7 +828,7 @@ def test_parametershift_grad_pipline_evqe():
     vqe_energy = vqe.run(max_iterations=1, verbose=False, cost="e-VQE", jacobian="parameter_shift")
     assert isinstance(vqe_energy, float)
     with pytest.raises(
-        ValueError, match="Wrong keyward for Jacobian. It should be None or parameter_shift"
+        ValueError, match="Wrong keyword for Jacobian. It should be None or parameter_shift"
     ):
         vqe_energy = vqe.run(
             max_iterations=1, verbose=False, cost="e-VQE", jacobian="paramtershift"
@@ -895,7 +916,7 @@ def test_kerr_ansatz_unitarity():
     from qlass.vqe.ansatz import kerr_ansatz
 
     params = np.array([0.3, 0.5, 0.7, 0.1, np.pi / 4, np.pi / 3])
-    for num_kerr in [0, 1, 2, 3, 4]:
+    for num_kerr in [1, 2, 3, 4]:
         U = kerr_ansatz(params, num_kerr=num_kerr, n_max=4)
         dim = 5**2  # (n_max+1)^2 = 25
         assert U.shape == (dim, dim)
@@ -918,10 +939,10 @@ def test_kerr_ansatz_invalid_num_kerr():
     from qlass.vqe.ansatz import kerr_ansatz
 
     params = np.zeros(6)
-    with pytest.raises(ValueError, match="num_kerr must be between 0 and 4"):
-        kerr_ansatz(params, num_kerr=-1)
-    with pytest.raises(ValueError, match="num_kerr must be between 0 and 4"):
-        kerr_ansatz(params, num_kerr=5)
+    # num_kerr=0 is rejected too: the docstring has always required 1-4
+    for invalid in (-1, 0, 5):
+        with pytest.raises(ValueError, match="num_kerr must be between 1 and 4"):
+            kerr_ansatz(params, num_kerr=invalid)
 
 
 def test_kerr_ansatz_invalid_param_count():

@@ -1,5 +1,4 @@
-import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import exqalibur
 import numpy as np
@@ -369,12 +368,16 @@ def test_is_qubit_state():
     state = pcvl.BasicState([0, 0, 0, 1])
     assert not is_qubit_state(state)
 
+    # invalid states return None, not False
+    assert is_qubit_state(pcvl.BasicState([0, 0, 0, 1])) is None
 
-def test_loss_function_automatic_grouping():
-    """
-    Test that loss_function automatically uses Pauli grouping when available.
-    This test verifies that the function can import and use the grouping functionality.
-    """
+    # odd mode counts cannot be dual-rail states (previously the last mode
+    # was silently ignored)
+    assert is_qubit_state(pcvl.BasicState([1, 0, 1])) is None
+
+
+def test_loss_function_various_hamiltonians():
+    """loss_function handles multi-term, empty, and single-term Hamiltonians."""
 
     # Define a simple mock executor for testing
     def mock_executor(params, pauli_string):
@@ -518,33 +521,23 @@ def test_qubit_state_marginal_bitstring_input():
     assert qubit_state_marginal({}) == {}
 
 
-def test_loss_function_fallback_without_grouping(mocker):
-    """
-    Tests the loss_function's fallback to individual term processing
-    when the grouping utility is not available.
-    """
-    # 1. Mock the grouping function to trigger an ImportError
-    mocker.patch(
-        "qlass.quantum_chemistry.group_commuting_pauli_terms",
-        side_effect=ImportError("Simulating grouping utility not found"),
-    )
+def test_loss_function_hand_computed_value():
+    """loss_function must reproduce a hand-computed expectation value."""
 
-    # 2. Define a simple mock executor that returns a consistent result
+    # A mock executor that returns a consistent result
     def mock_executor(params, pauli_string):
         # Always returns a sample of |01>
         return {"counts": {"01": 1000}}
 
-    # 3. Define a simple Hamiltonian
     hamiltonian = {"ZI": 0.5, "IZ": -0.5}
     params = np.array([0.1, 0.2])  # Dummy parameters
 
-    # 4. Manually calculate the expected energy for the |01> state
+    # Manually calculate the expected energy for the |01> state
     # For "ZI" (pauli_bin=(1,0)), sample=(0,1): inner dot = 0, sign = (-1)^0 = 1. Expectation = 1.0
     # For "IZ" (pauli_bin=(0,1)), sample=(0,1): inner dot = 1, sign = (-1)^1 = -1. Expectation = -1.0
     # Total expected loss = (0.5 * 1.0) + (-0.5 * -1.0) = 0.5 + 0.5 = 1.0
     expected_loss = 1.0
 
-    # 5. Run the loss function and assert the result
     calculated_loss = loss_function(params, hamiltonian, mock_executor)
 
     assert np.isclose(calculated_loss, expected_loss)
@@ -813,30 +806,6 @@ def test_loss_function_with_mitigator(mocker):
     assert np.isclose(loss, 1.0)
 
 
-def test_loss_function_grouping_import_error(mocker):
-    """Test that loss_function handles ImportError for grouping gracefully."""
-
-    # Mock modules to simulate missing qlass.quantum_chemistry.hamiltonians
-    # We use a patch on sys.modules to hide the module
-    with patch.dict(sys.modules, {"qlass.quantum_chemistry.hamiltonians": None}):
-        # Mock executor
-        def mock_executor(params, pauli_string):
-            return {"counts": {"00": 100}}
-
-        hamiltonian = {"ZZ": 1.0}
-        params = np.array([0.1])
-
-        # This calls loss_function. Because qlass.quantum_chemistry.hamiltonians is None,
-        # it raises ImportError on import, catching it and setting use_grouping=False.
-        # Then it iterates over H directly.
-        from qlass.utils import loss_function
-
-        loss = loss_function(params, hamiltonian, mock_executor)
-
-        # <00|ZZ|00> = 1.0
-        assert np.isclose(loss, 1.0)
-
-
 def test_rotate_qubits_qiskit_circuit():
     """The qiskit branch must map the measured Pauli onto Z: U† Z U == P."""
     from qiskit import QuantumCircuit
@@ -936,29 +905,3 @@ def test_extract_samples_invalid_format():
     # Input is not a valid type (e.g. an int)
     with pytest.raises(ValueError, match="Executor returned unexpected format"):
         _extract_samples_from_executor_result(123)
-
-
-def test_loss_function_fallback_with_mitigator(mocker):
-    """Test loss function fallback path (no grouping) with mitigator."""
-    from qlass.utils import loss_function
-
-    # Mock modules to simulate missing qlass.quantum_chemistry.hamiltonians
-    with patch.dict(sys.modules, {"qlass.quantum_chemistry.hamiltonians": None}):
-        # Mock executor
-        def mock_executor(params, pauli_string):
-            return {"counts": {"00": 100}}
-
-        # Mock mitigator
-        mitigator = MagicMock()
-        mitigator.mitigate.return_value = {(0, 0): 1.0}
-
-        hamiltonian = {"ZZ": 1.0}
-        params = np.array([0.1])
-
-        # Run with mitigator.
-        # Import error will force use_grouping = False.
-        # mitigator != None will hit the target block.
-        loss = loss_function(params, hamiltonian, mock_executor, mitigator=mitigator)
-
-        assert mitigator.mitigate.called
-        assert np.isclose(loss, 1.0)

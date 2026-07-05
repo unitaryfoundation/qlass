@@ -206,7 +206,7 @@ class VQE:
                     pass
                 else:
                     raise ValueError(
-                        "Wrong keyward for Jacobian. It should be None or parameter_shift"
+                        "Wrong keyword for Jacobian. It should be None or parameter_shift"
                     )
                 self.optimization_result = minimize(
                     self._recording_objective(loss_function, self.energy_history),
@@ -219,7 +219,13 @@ class VQE:
 
         elif cost == "e-VQE":
             if self.executor_type == "sampling":
-                arguments = (self.hamiltonian, self.executor, self.energy_collector, weight_option)
+                arguments = (
+                    self.hamiltonian,
+                    self.executor,
+                    self.energy_collector,
+                    weight_option,
+                    self.mitigator,
+                )
                 if jacobian == "parameter_shift":
 
                     def jac_fun(p: np.ndarray, *args: Any) -> Any:
@@ -230,13 +236,14 @@ class VQE:
                             self.executor,
                             DataCollector(),
                             weight_option,
+                            self.mitigator,
                         )
                         return self.parametershift_grad(e_vqe_loss_function, p, *grad_args)
                 elif jacobian is None:
                     pass
                 else:
                     raise ValueError(
-                        "Wrong keyward for Jacobian. It should be None or parameter_shift"
+                        "Wrong keyword for Jacobian. It should be None or parameter_shift"
                     )
                 self.optimization_result = minimize(
                     self._recording_objective(e_vqe_loss_function, self.loss_history),
@@ -399,11 +406,15 @@ class VQE:
         Returns
         -------
         grad : numpy.ndarray
-            Array of the same shape as `intialparam` containing the gradient
+            Array of the same shape as `param` containing the gradient
             of `vqefunction` with respect to each parameter.
 
         Notes
         -----
+        The parameter-shift rule is exact only when every parameter enters the
+        circuit as the angle of a Pauli rotation (e.g. ``ry``/``rz`` gates); for
+        other parametrizations the returned values are not the true gradient.
+
         This implementation uses the standard parameter-shift rule:
 
         .. math::

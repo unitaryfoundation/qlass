@@ -159,3 +159,29 @@ def test_out_of_bounds_photons():
     assert model.get_error_prob(0, 2, 0) == 0.0
     # ideal > max
     assert model.get_error_prob(0, 0, 2) == 0.0
+
+
+def test_mitigate_rejects_mode_count_mismatch():
+    """Regression test for issue #219: states with the wrong number of modes
+    used to be silently zero-padded, hiding calibration/encoding bugs."""
+    model = PhotonicErrorModel(num_modes=3, max_photons_per_mode=1)
+    mitigator = M3Mitigator(model)
+
+    with pytest.raises(ValueError, match="calibrated for 3"):
+        mitigator.mitigate({(1, 0): 100})
+
+
+def test_mitigate_warns_on_state_outside_error_model():
+    """Regression test for issue #219: a measured state the error model cannot
+    produce (photon count above the calibrated maximum) used to be silently
+    'mitigated'. It now warns about the zero assignment-matrix column and the
+    unreliable near-zero result instead of staying quiet."""
+    model = PhotonicErrorModel(num_modes=2, max_photons_per_mode=1)
+    mitigator = M3Mitigator(model)
+
+    with pytest.warns(RuntimeWarning) as record:
+        mitigator.mitigate({(2, 0): 100})
+
+    messages = " | ".join(str(w.message) for w in record)
+    assert "sums to" in messages, "expected the zero-column warning"
+    assert "unreliable" in messages, "expected the near-zero-result warning"
