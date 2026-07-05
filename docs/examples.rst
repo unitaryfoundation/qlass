@@ -159,7 +159,7 @@ Standard VQE using sampling-based executor with `Piquasso <https://piquasso.read
 
         ansatz_assigned = ansatz.assign_parameters(lp)
         ansatz_transpiled = transpile(
-            ansatz_assigned, basis_gates=["u3", "cx"], optimization_level=3,
+            ansatz_assigned, basis_gates=["rz", "ry", "cx"], optimization_level=3,
         )
 
         ansatz_rot = rotate_qubits(pauli_string, ansatz_transpiled.copy())
@@ -257,7 +257,7 @@ Using photonic unitaries with dual-rail encoding and post-selection:
    from qlass.vqe import VQE
    from qlass.quantum_chemistry import LiH_hamiltonian_tapered, brute_force_minimize
    from qlass.utils import linear_circuit_to_unitary
-   from perceval.converters import QiskitConverter
+   from perceval_interop import QiskitConverter
    from qiskit.circuit.library import n_local
    
    qiskit_converter = QiskitConverter(backend_name="Naive", noise_model=None)

@@ -1,3 +1,4 @@
+import os
 from collections.abc import Callable
 from typing import Any, cast
 
@@ -97,6 +98,20 @@ def draw_circuit(
             output_format=perceval_format,
             **display_options,
         )
+        # Perceval 1.2 bug: the HTML branch of pdisplay_to_file calls save_svg
+        # on a wrapper that doesn't implement it and swallows the error into
+        # its logger, silently writing nothing. Save the underlying drawsvg
+        # Drawing ourselves when that happens.
+        if not os.path.exists(str(save_path)):
+            from perceval.rendering.pdisplay import _pdisplay
+
+            rendered = _pdisplay(
+                circuit_or_processor, output_format=perceval_format, **display_options
+            )
+            drawing = getattr(rendered, "value", None)
+            if drawing is None or not hasattr(drawing, "save_svg"):
+                raise RuntimeError(f"Could not save the circuit rendering to {save_path}")
+            drawing.save_svg(str(save_path))
         return
 
     pcvl.pdisplay(circuit_or_processor, output_format=perceval_format, **display_options)

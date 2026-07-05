@@ -4,7 +4,7 @@ Example demonstrating the use of the VQE class.
 
 import warnings
 
-from perceval.converters import QiskitConverter
+from perceval_interop import QiskitConverter
 from qiskit.circuit.library import n_local
 
 from qlass.quantum_chemistry import LiH_hamiltonian_tapered, brute_force_minimize
