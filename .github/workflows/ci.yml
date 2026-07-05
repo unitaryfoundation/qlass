@@ -10,6 +10,11 @@ on:
 permissions:
   contents: read
 
+# Cancel superseded runs on force-pushes to the same ref
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
       runs-on: ubuntu-latest
@@ -22,11 +27,11 @@ jobs:
 
       - name: Run ruff linter
         run: |
-          uv run --group lint -p 3.12 ruff check .
+          uv run --locked --group lint -p 3.12 ruff check .
 
       - name: Run ruff formatter check
         run: |
-          uv run --group lint -p 3.12 ruff format --check .
+          uv run --locked --group lint -p 3.12 ruff format --check .
 
   type-check:
     runs-on: ubuntu-latest
@@ -39,10 +44,15 @@ jobs:
 
     - name: Run type checking
       run: |
-        uv run --group type-check -p 3.12 mypy src/qlass
+        uv run --locked --group type-check -p 3.12 mypy src/qlass
 
   test-and-coverage:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Test every Python version the package claims to support
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
     - name: Check out repository
       uses: actions/checkout@v6
@@ -52,13 +62,15 @@ jobs:
 
     - name: Run tests and collect coverage
       run: |
-        uv run --group test -p 3.12 pytest --cov --cov-report=xml
+        uv run --locked --group test -p ${{ matrix.python-version }} pytest --cov --cov-report=xml
       env:
         # This disables Numba's JIT for accurate coverage reporting
         QLASS_DISABLE_JIT: 1
 
     - name: Upload coverage to Codecov
-      if: github.event_name == 'pull_request'
+      # Upload once per run (from the 3.12 job), on pushes to main as well as
+      # PRs, so the coverage baseline stays current
+      if: matrix.python-version == '3.12'
       uses: codecov/codecov-action@v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
