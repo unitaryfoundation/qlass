@@ -69,13 +69,11 @@ def sparsepauliop_dictionary(H: QubitOperator) -> dict[str, float]:
             # Initialize a list representing the Pauli operators on all qubits, default to 'I'.
             pauli_array = ["I"] * num_qubits
 
-            # Populate the array with the specific Pauli operators (X, Y, Z) at their respective qubit indices.
+            # Populate the array with the specific Pauli operators (X, Y, Z) at
+            # their respective qubit indices. Indices are always in bounds since
+            # num_qubits is derived from the maximum index above.
             for qubit_idx, pauli_op_char in pauli_string_openfermion:
-                if qubit_idx < num_qubits:  # Ensure index is within bounds
-                    pauli_array[qubit_idx] = pauli_op_char
-                else:
-                    # For now, we assume num_qubits is correctly pre-calculated.
-                    pass
+                pauli_array[qubit_idx] = pauli_op_char
 
             pauli_key = "".join(pauli_array)
 
@@ -194,7 +192,8 @@ def LiH_hamiltonian(
     )
 
     # Run PySCF calculation
-    molecule = run_pyscf(molecule, run_scf=True, run_fci=True)
+    # SCF only: the exponential-cost FCI result was requested but never used
+    molecule = run_pyscf(molecule, run_scf=True)
 
     # Apply active space transformation
     # Calculate core orbitals to freeze
@@ -280,7 +279,8 @@ def LiH_hamiltonian_tapered(R: float) -> dict[str, float]:
     )
 
     # Run PySCF calculation
-    molecule = run_pyscf(molecule, run_scf=True, run_fci=True)
+    # SCF only: the exponential-cost FCI result was requested but never used
+    molecule = run_pyscf(molecule, run_scf=True)
     total_n_elec = molecule.n_electrons
 
     # Apply active space reduction equivalent to tapering
@@ -390,41 +390,41 @@ def Hchain_KS_hamiltonian(
 
 def transformation_Hmatrix_Hqubit(Hmatrix: np.ndarray, nqubits: int) -> QubitOperator:
     """
-        Transform a Hamiltonian matrix into an OpenFermion ``QubitOperator`` representation.
+    Transform a Hamiltonian matrix into an OpenFermion ``QubitOperator`` representation.
 
-        This function converts a Hermitian matrix, expressed in the computational basis,
-        into an equivalent Hamiltonian written as a sum of tensor products of Pauli
-        operators (I, X, Y, Z). The result is an OpenFermion ``QubitOperator`` that can
-        be used in quantum simulation frameworks.
+    This function converts a Hermitian matrix, expressed in the computational basis,
+    into an equivalent Hamiltonian written as a sum of tensor products of Pauli
+    operators (I, X, Y, Z). The result is an OpenFermion ``QubitOperator`` that can
+    be used in quantum simulation frameworks.
 
-        Parameters
-        ----------
-        Hmatrix : np.ndarray
-            A complex Hermitian matrix of shape ``(2**nqubits, 2**nqubits)`` representing
-            the Hamiltonian in the computational basis.
-        nqubits : int
-            Number of qubits in the system. Determines the dimension of ``Hmatrix``.
+    Parameters
+    ----------
+    Hmatrix : np.ndarray
+        A complex Hermitian matrix of shape ``(2**nqubits, 2**nqubits)`` representing
+        the Hamiltonian in the computational basis.
+    nqubits : int
+        Number of qubits in the system. Determines the dimension of ``Hmatrix``.
 
-        Returns
-        -------
-        H_qubit : openfermion.QubitOperator
-            The Hamiltonian expressed as a sum of Pauli operators with complex coefficients.
+    Returns
+    -------
+    H_qubit : openfermion.QubitOperator
+        The Hamiltonian expressed as a sum of Pauli operators with complex coefficients.
 
-        Notes
-        -----
-        - Each matrix element ``Hmatrix[i, j]`` is decomposed into a sum of tensor products
-          of single-qubit projectors expressed in the Pauli basis.
-        - The transformation uses the following single-qubit projector identities:
+    Notes
+    -----
+    - Each matrix element ``Hmatrix[i, j]`` is decomposed into a sum of tensor products
+      of single-qubit projectors expressed in the Pauli basis.
+    - The transformation uses the following single-qubit projector identities:
 
-            .. math::
-            |0⟩⟨0| = (I + Z) / 2, \\
-            |1⟩⟨1| = (I - Z) / 2, \\
-            |0⟩⟨1| = (X + iY) / 2, \\
-            |1⟩⟨0| = (X - iY) / 2
-        - Terms with negligible coefficients (magnitude < 1e-12) are ignored to improve
-          numerical stability.
+        .. math::
+        |0⟩⟨0| = (I + Z) / 2, \\
+        |1⟩⟨1| = (I - Z) / 2, \\
+        |0⟩⟨1| = (X + iY) / 2, \\
+        |1⟩⟨0| = (X - iY) / 2
+    - Terms with negligible coefficients (magnitude < 1e-12) are ignored to improve
+      numerical stability.
 
-        """
+    """
     H_qubit = QubitOperator()
 
     # Basis projectors |i><j| expressed in Pauli basis
@@ -477,63 +477,55 @@ def Hchain_hamiltonian_WFT(
     charge: int = 0,
     spin: int = 0,
     num_electrons: int = 2,
-    num_orbitals: int = 2,
-    tampering: bool = False,
+    tapering: bool = False,
 ) -> dict[str, float]:
     """
     Construct the qubit Hamiltonian for a linear hydrogen chain (Hₙ) using
-        wavefunction-based methods.
+    wavefunction-based methods.
 
-        This function builds the molecular geometry, performs a PySCF electronic
-        structure calculation through OpenFermion, extracts an active-space molecular
-        Hamiltonian, and maps it to a qubit Hamiltonian.
+    This function builds the molecular geometry, performs a PySCF electronic
+    structure calculation through OpenFermion, and maps the full molecular
+    Hamiltonian to a qubit Hamiltonian.
 
-        Nuclear repulsion energy is included manually. The resulting Hamiltonian is
-        returned as a dictionary mapping Pauli strings to coefficients.
+    Nuclear repulsion energy is included (note: ``LiH_hamiltonian`` excludes
+    it). The resulting Hamiltonian is returned as a dictionary mapping Pauli
+    strings to coefficients.
 
-        Parameters
-        ----------
-        n_hydrogens : int, optional
-            Number of hydrogen atoms in the linear chain. Must be even, as atoms
-            are paired symmetrically about the origin. Default is ``2``.
-        R : float, optional
-            Bond length between adjacent hydrogens in ångström. Default is ``0.8``.
-        charge : int, optional
-            Total molecular charge. Default is ``0``.
-        spin : int, optional
-            Spin multiplicity parameter such that multiplicity = ``2S + 1``.
-            For example, ``spin=0`` corresponds to a singlet. Default is ``0``.
-        num_electrons : int, optional
-            Number of electrons.
-            Default is ``2``.
-        num_orbitals : int, optional
-            Number of spatial molecular orbitals.
-            Default is ``2``.
-        tampering: bool, optional
-            if True, symmetry-conserving Bravyi–Kitaev transformed Hamiltonian
-            if False, Full Hamiltonian transformed using JW
+    Parameters
+    ----------
+    n_hydrogens : int, optional
+        Number of hydrogen atoms in the linear chain. Must be even, as atoms
+        are paired symmetrically about the origin. Default is ``2``.
+    R : float, optional
+        Bond length between adjacent hydrogens in ångström. Default is ``0.8``.
+    charge : int, optional
+        Total molecular charge. Default is ``0``.
+    spin : int, optional
+        Spin multiplicity parameter such that multiplicity = ``2S + 1``.
+        For example, ``spin=0`` corresponds to a singlet. Default is ``0``.
+    num_electrons : int, optional
+        Number of electrons; used by the symmetry-conserving Bravyi–Kitaev
+        transformation when ``tapering=True``. Default is ``2``.
+    tapering : bool, optional
+        If True, the Hamiltonian is mapped to qubits using the
+        symmetry-conserving Bravyi–Kitaev transformation (two qubits fewer);
+        if False, the full Hamiltonian is mapped using Jordan–Wigner.
 
-        Returns
-        -------
-        Dict[str, float]
-            A dictionary representing the qubit Hamiltonian, where keys are
-            Pauli strings (e.g., ``"XIZY"``) and values are real coefficients.
+    Returns
+    -------
+    Dict[str, float]
+        A dictionary representing the qubit Hamiltonian, where keys are
+        Pauli strings (e.g., ``"XIZY"``) and values are real coefficients.
 
-        Notes
-        -----
-        - Geometry is generated as a symmetric linear chain along the z-axis.
-        - PySCF is used to compute SCF and FCI energies through OpenFermion.
-        - Active-space selection freezes no core orbitals.
-        - If symmetry is True, the Hamiltonian is mapped to qubits using the symmetry-conserving
-          Bravyi–Kitaev transformation else Full Hamiltonian using Jordan–Wigner mapping.
+    Notes
+    -----
+    - Geometry is generated as a symmetric linear chain along the z-axis.
     """
 
     geometry = []
     for d in range(n_hydrogens // 2):
         geometry.append(("H", (0.0, 0.0, -(R / 2.0 + d * R))))
         geometry.append(("H", (0.0, 0.0, +(R / 2.0 + d * R))))
-
-    # molecule = gto.M(atom=geometry, basis='sto-3g')
 
     # Create molecular data object
     molecule = MolecularData(
@@ -543,19 +535,14 @@ def Hchain_hamiltonian_WFT(
         charge=charge,
     )
 
-    # Run PySCF calculation
-    molecule = run_pyscf(molecule, run_scf=True, run_fci=True)
+    # Run PySCF calculation (SCF only: the FCI result is never used here)
+    molecule = run_pyscf(molecule, run_scf=True)
     fermionic_op = get_fermion_operator(molecule.get_molecular_hamiltonian())
-    if tampering:
-        from openfermion.transforms import symmetry_conserving_bravyi_kitaev
-
-        # H_qubit_full = jordan_wigner(fermionic_op)
+    if tapering:
         H_qubit = symmetry_conserving_bravyi_kitaev(
             fermionic_op, active_orbitals=num_electrons * 2, active_fermions=num_electrons
         )
-    if not tampering:
-        from openfermion.transforms import jordan_wigner
-
+    else:
         H_qubit = jordan_wigner(fermionic_op)
     # Convert to dictionary format
     return sparsepauliop_dictionary(H_qubit)

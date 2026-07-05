@@ -77,7 +77,7 @@ Standard VQE using a sampling-based executor with a Hartree-Fock (CSF) initial s
    warnings.filterwarnings('ignore')
 
    # Create molecular Hamiltonian for an H2 chain
-   ham = Hchain_hamiltonian_WFT(2, 0.741, tampering=False)
+   ham = Hchain_hamiltonian_WFT(2, 0.741, tapering=False)
 
    # Define executor using the Hartree-Fock initial state
    def executor(params, pauli_string):
@@ -86,11 +86,11 @@ Standard VQE using a sampling-based executor with a Hartree-Fock (CSF) initial s
        samples = sampler.samples(10_000)
        return samples
 
-   # Initialize VQE solver
+   # Initialize VQE solver (the 4-qubit n_local ansatz has 8 parameters)
    vqe = VQE(
        hamiltonian=ham,
        executor=executor,
-       num_params=4,
+       num_params=8,
    )
 
    # Run optimization

@@ -1,7 +1,12 @@
 import warnings
+from typing import Any
 
 import numpy as np
 from scipy.sparse.linalg import LinearOperator, gmres
+
+# States measured (or ideal) may be plain tuples or exqalibur.FockState objects;
+# both support indexing and len(), which is all the mitigator needs.
+StateKey = Any
 
 
 class PhotonicErrorModel:
@@ -65,23 +70,19 @@ class M3Mitigator:
         """
         self.model = error_model
 
-    def _calculate_A_element(self, row_state: tuple[int, ...], col_state: tuple[int, ...]) -> float:
+    def _calculate_A_element(self, row_state: StateKey, col_state: StateKey) -> float:
         """
         Calculates a single element A_row,col of the full assignment matrix.
         A_row,col = P(measure=row_state | ideal=col_state).
         """
         prob = 1.0
         for i in range(self.model.num_modes):
-            # Safe access in case state length differs from num_modes slightly or logic differs
-            # But typically len(row_state) == num_modes
-            r = row_state[i] if i < len(row_state) else 0
-            c = col_state[i] if i < len(col_state) else 0
-            prob *= self.model.get_error_prob(i, r, c)
+            prob *= self.model.get_error_prob(i, row_state[i], col_state[i])
         return prob
 
     def _calculate_column_normalizations(
-        self, subspace_states: list[tuple[int, ...]]
-    ) -> dict[tuple[int, ...], float]:
+        self, subspace_states: list[StateKey]
+    ) -> dict[StateKey, float]:
         """
         Pre-calculates the sum over the rows in the subspace for each column state.
         This is needed to renormalize A_tilde.
@@ -91,22 +92,33 @@ class M3Mitigator:
             norm = 0.0
             for row_state in subspace_states:
                 norm += self._calculate_A_element(row_state, col_state)
-            norms[col_state] = norm if norm > 1e-9 else 1.0  # Avoid division by zero
+            if norm <= 1e-9:
+                warnings.warn(
+                    f"Assignment-matrix column for state {tuple(col_state)} sums to "
+                    "(near) zero within the observed subspace; skipping its "
+                    "renormalization. The error model may not cover this state.",
+                    RuntimeWarning,
+                    stacklevel=3,
+                )
+                norm = 1.0
+            norms[col_state] = norm
         return norms
 
     def mitigate(
-        self, noisy_counts: dict[tuple[int, ...], int], tol: float = 1e-5
-    ) -> dict[tuple[int, ...], float]:
+        self, noisy_counts: dict[StateKey, int], tol: float = 1e-5
+    ) -> dict[StateKey, float]:
         """
         Performs the mitigation using a preconditioned GMRES iterative solver.
 
         Args:
-            noisy_counts (dict): A dictionary mapping measured Fock state tuples to counts.
-                                 e.g., {(1, 0, 1): 750, (1, 0, 0): 150}
+            noisy_counts (dict): A dictionary mapping measured states to counts,
+                                 e.g., {(1, 0, 1): 750, (1, 0, 0): 150}. Keys may
+                                 be tuples of ints or exqalibur.FockState objects.
             tol (float): Tolerance for the GMRES solver.
 
         Returns:
-            dict: A dictionary mapping Fock state tuples to their mitigated probabilities.
+            dict: A dictionary mapping the same state keys to their mitigated
+                  probabilities.
         """
         # The subspace is the set of unique Fock states observed in the measurement.
         # We use a sorted list to ensure a consistent ordering.
@@ -114,37 +126,38 @@ class M3Mitigator:
         subspace_states = sorted(noisy_counts.keys(), key=lambda x: tuple(x))
         subspace_dim = len(subspace_states)
 
+        # Every measured state must describe exactly num_modes modes; silently
+        # padding mismatches would hide calibration/encoding bugs.
+        for state in subspace_states:
+            if len(state) != self.model.num_modes:
+                raise ValueError(
+                    f"Measured state {tuple(state)} has {len(state)} modes, but the "
+                    f"error model is calibrated for {self.model.num_modes}."
+                )
+
         # Pre-calculate the column normalizations for the reduced matrix A_tilde
         column_normalizations = self._calculate_column_normalizations(subspace_states)
 
-        def matvec(x: np.ndarray) -> np.ndarray:
-            """
-            The core matrix-free method: computes A_tilde * x.
-            Defined as a closure to capture local `subspace_states` and `column_normalizations`.
-            """
-            y = np.zeros_like(x)
-            # x is a vector where x_j corresponds to the j-th state in subspace_states
-            # y_i = sum_j (A_tilde_ij * x_j)
-            for i, row_state in enumerate(subspace_states):
-                for j, col_state in enumerate(subspace_states):
-                    # Calculate the renormalized matrix element on the fly
-                    a_ij = self._calculate_A_element(row_state, col_state)
-                    a_tilde_ij = a_ij / column_normalizations[col_state]
-                    y[i] += a_tilde_ij * x[j]
-            return y
+        # Build the renormalized subspace matrix A_tilde once; it is dense and
+        # small (one row/column per distinct observed state), and recomputing
+        # its elements inside every GMRES iteration is strictly slower.
+        A_tilde = np.zeros((subspace_dim, subspace_dim))
+        for i, row_state in enumerate(subspace_states):
+            for j, col_state in enumerate(subspace_states):
+                A_tilde[i, j] = (
+                    self._calculate_A_element(row_state, col_state)
+                    / column_normalizations[col_state]
+                )
 
         # 1. Define the LinearOperator for SciPy's solver
-        A_tilde_op = LinearOperator((subspace_dim, subspace_dim), matvec=matvec)
+        A_tilde_op = LinearOperator((subspace_dim, subspace_dim), matvec=lambda x: A_tilde @ x)
 
         # 2. Get the noisy probability vector within the subspace
         total_shots = sum(noisy_counts.values())
         p_noisy = np.array([noisy_counts[state] / total_shots for state in subspace_states])
 
         # 3. Create a Jacobi (diagonal) preconditioner for faster convergence
-        diag_A_tilde = np.zeros(subspace_dim)
-        for i, state in enumerate(subspace_states):
-            a_ii = self._calculate_A_element(state, state)
-            diag_A_tilde[i] = a_ii / column_normalizations[state]
+        diag_A_tilde = np.diag(A_tilde).copy()
 
         # The preconditioner M should approximate the inverse of A_tilde.
         # A simple choice is the inverse of its diagonal.
@@ -165,14 +178,19 @@ class M3Mitigator:
                 stacklevel=2,
             )
 
-        # Normalize the result to ensure it's a valid probability distribution
-        # Some values might be slightly negative due to numerics, clip them to 0??
-        # Usually M3 can produce negative quasi-probs, which is expected for mitigation sometimes.
-        # But for VQE we typically want to sum them up. We'll leave them as is or normalize.
-        # Normalizing to sum to 1 is safe.
+        # Normalize the result to ensure it's a valid probability distribution.
+        # M3 can legitimately produce negative quasi-probabilities; we keep them
+        # and only rescale so the distribution sums to 1.
         p_sum = np.sum(p_ideal_subspace)
         if abs(p_sum) > 1e-9:
             p_ideal_subspace /= p_sum
+        else:
+            warnings.warn(
+                "Mitigated quasi-probabilities sum to (near) zero; returning the "
+                "unnormalized solver output. The mitigation result is unreliable.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
 
         # 5. Map the mitigated probability vector back to the Fock state representation
         mitigated_distribution = dict(zip(subspace_states, p_ideal_subspace, strict=True))

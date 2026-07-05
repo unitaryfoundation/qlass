@@ -11,6 +11,10 @@ from perceval.rendering import DebugSkin, PhysSkin, SymbSkin
 H_matrix = (1 / np.sqrt(2)) * pcvl.Matrix([[1.0, 1.0], [1.0, -1.0]])
 # Y-basis change: satisfies M† Z M = Y, so measuring Z after M measures Y before it.
 M_matrix = (1 / np.sqrt(2)) * pcvl.Matrix([[1.0, -1.0j], [1.0, 1.0j]])
+
+# Loss value returned when post-selection has zero success probability: finite
+# so optimizers can steer away instead of crashing.
+POST_SELECTION_FAILURE_PENALTY = 1e6
 # Built directly rather than via Circuit.decomposition: an MZI template without an
 # input phase shifter can only match the target up to input-side phases, which is
 # enough to corrupt the measurement basis.
@@ -98,16 +102,20 @@ def draw_circuit(
     pcvl.pdisplay(circuit_or_processor, output_format=perceval_format, **display_options)
 
 
-def is_qubit_state(state: exqalibur.FockState) -> tuple[int, ...] | bool:
+def is_qubit_state(state: exqalibur.FockState) -> tuple[int, ...] | None:
     """
-    Check if a given Fock state is a valid qubit state.
+    Check if a given Fock state is a valid dual-rail qubit state.
 
     Args:
         state (exqalibur.FockState): The Fock state to check
 
     Returns:
-        Union[Tuple[int, ...], bool]: The corresponding qubit state if valid, False otherwise
+        Optional[Tuple[int, ...]]: The corresponding qubit state if valid, None otherwise
     """
+    # A dual-rail qubit state needs an even number of modes
+    if state.m % 2 != 0:
+        return None
+
     q_state = []
     for i in range(state.m // 2):
         q = state[2 * i : 2 * i + 2]
@@ -116,7 +124,7 @@ def is_qubit_state(state: exqalibur.FockState) -> tuple[int, ...] | bool:
         elif q[0] == 1 and q[1] == 0:
             q_state.append(0)
         else:
-            return False
+            return None
 
     return tuple(q_state)
 
@@ -156,7 +164,7 @@ def qubit_state_marginal(
         # Input is Fock states, convert to qubit states
         for state in prob_dist:
             q_state = is_qubit_state(state)
-            if q_state is not False:
+            if q_state is not None:
                 total_prob_mass += float(prob_dist[state])
                 if q_state in q_state_frequency:
                     q_state_frequency[q_state] += float(prob_dist[state])
@@ -233,7 +241,9 @@ def compute_energy(pauli_bin: tuple[int, ...], res: dict[tuple[int, ...], float]
         sign = (-1) ** inner
         res_copy[key] *= sign
 
-    energy = float(np.sum([v for v in res_copy.values() if np.isfinite(v)]))
+    # No isfinite filtering: a NaN/inf probability indicates an upstream bug
+    # and should propagate loudly rather than be silently dropped.
+    energy = float(np.sum(list(res_copy.values())))
     return energy
 
 
@@ -252,16 +262,20 @@ def pauli_string_bin(pauli_string: str) -> tuple[int, ...]:
 
 def rotate_qubits(
     pauli_string: str, vqe_circuit: pcvl.Circuit | qiskit.QuantumCircuit
-) -> pcvl.Circuit:
+) -> pcvl.Circuit | qiskit.QuantumCircuit:
     """
     Apply the correct rotations on corresponding qubits for expectation value computation.
 
+    Note: the circuit is modified in place and also returned; pass a copy if
+    the original must stay unchanged.
+
     Args:
         pauli_string (str): A string representation of Pauli operators
-        vqe_circuit (pcvl.Circuit): The VQE circuit to modify
+        vqe_circuit (Union[pcvl.Circuit, qiskit.QuantumCircuit]): The VQE circuit to modify
 
     Returns:
-        pcvl.Circuit: The modified VQE circuit with applied rotations
+        Union[pcvl.Circuit, qiskit.QuantumCircuit]: The modified VQE circuit with
+        applied rotations (same type as the input)
     """
     if isinstance(vqe_circuit, qiskit.QuantumCircuit):
         for i, pauli in enumerate(pauli_string):
@@ -353,19 +367,41 @@ def _occupation(state: exqalibur.FockState | tuple[int, ...], mode: int) -> int:
     return int(state[mode])
 
 
+def _normalize_state_key(
+    state: exqalibur.FockState | tuple[int, ...] | list[int] | str,
+) -> exqalibur.FockState | tuple[int, ...]:
+    """Normalize a single measured state to the canonical key format."""
+    if isinstance(state, str):
+        return tuple(int(bit) for bit in state)
+    if isinstance(state, (list, tuple)) and all(isinstance(x, (int, np.integer)) for x in state):
+        return tuple(state)
+    return cast(exqalibur.FockState, state)
+
+
 def _samples_to_probabilities(
     samples: Any, mitigator: Any | None = None
 ) -> dict[exqalibur.FockState | tuple[int, ...], float]:
-    sample_list = _extract_samples_from_executor_result(samples)
-    normalized_samples = normalize_samples(sample_list)
+    # Fast path for counts dicts: aggregate directly instead of expanding the
+    # counts into one list entry per shot only to re-count them.
+    if isinstance(samples, dict) and "counts" in samples:
+        counts: dict[exqalibur.FockState | tuple[int, ...], int] = {}
+        for state, count in samples["counts"].items():
+            key = _normalize_state_key(state)
+            counts[key] = counts.get(key, 0) + int(count)
+    else:
+        sample_list = _extract_samples_from_executor_result(samples)
+        normalized_samples = normalize_samples(sample_list)
+        counts = {}
+        for sample in normalized_samples:
+            counts[sample] = counts.get(sample, 0) + 1
 
-    if mitigator is None:
-        return get_probabilities(normalized_samples)
+    if mitigator is not None:
+        return cast(dict[exqalibur.FockState | tuple[int, ...], float], mitigator.mitigate(counts))
 
-    counts: dict[exqalibur.FockState | tuple[int, ...], int] = {}
-    for sample in normalized_samples:
-        counts[sample] = counts.get(sample, 0) + 1
-    return cast(dict[exqalibur.FockState | tuple[int, ...], float], mitigator.mitigate(counts))
+    total = sum(counts.values())
+    if total == 0:
+        return {}
+    return {state: count / total for state, count in counts.items()}
 
 
 def _is_number_term(term: tuple[tuple[int, int], ...]) -> bool:
@@ -531,12 +567,11 @@ def loss_function(
     mitigator: Any | None = None,
 ) -> float:
     """
-    Compute the loss function for the VQE algorithm with automatic Pauli grouping.
+    Compute the loss function for the VQE algorithm.
 
-    This function automatically groups commuting Pauli terms to reduce the number
-    of measurements required. The grouping is applied transparently without
-    changing the function interface, providing automatic optimization for VQE
-    algorithms.
+    Each Pauli term is measured with its own executor call. (Grouping commuting
+    terms is available via ``qlass.quantum_chemistry.group_commuting_pauli_terms``
+    but is not applied here, since terms are measured individually either way.)
 
     The function works with executors that return either:
     1. Fock states (from linear optical circuits) - exqalibur.FockState objects
@@ -557,73 +592,18 @@ def loss_function(
     Returns:
         float: The computed loss value
     """
-    # Import here to avoid circular imports
-    try:
-        from qlass.quantum_chemistry.hamiltonians import group_commuting_pauli_terms
-
-        use_grouping = True
-    except ImportError:
-        # Fallback to individual processing if grouping not available
-        use_grouping = False
-
     loss = 0.0
 
-    if use_grouping:
-        # Use automatic grouping for optimized measurements
-        grouped_hamiltonians = group_commuting_pauli_terms(H)
+    for pauli_string, coefficient in H.items():
+        samples = executor(lp, pauli_string)
+        prob_dist = _samples_to_probabilities(samples, mitigator)
 
-        for group in grouped_hamiltonians:
-            # Each group contains mutually commuting terms
-            # In the future, this could be optimized to measure entire groups simultaneously
-            # For now, we process each term individually but with the grouping organization
-            for pauli_string, coefficient in group.items():
-                samples = executor(lp, pauli_string)
-                sample_list = _extract_samples_from_executor_result(samples)
-                normalized_samples = normalize_samples(sample_list)
+        pauli_bin = pauli_string_bin(pauli_string)
+        qubit_state_marg = qubit_state_marginal(prob_dist)
+        expectation = compute_energy(pauli_bin, qubit_state_marg)
+        loss += coefficient * expectation
 
-                # --- MITIGATION BLOCK ---
-                if mitigator is not None:
-                    # Convert samples to counts
-                    counts: dict[exqalibur.FockState | tuple[int, ...], int] = {}
-                    for s in normalized_samples:
-                        counts[s] = counts.get(s, 0) + 1
-
-                    # Mitigate to get probability distribution directly
-                    prob_dist = mitigator.mitigate(counts)
-                else:
-                    prob_dist = get_probabilities(normalized_samples)
-                # ------------------------
-
-                pauli_bin = pauli_string_bin(pauli_string)
-                qubit_state_marg = qubit_state_marginal(prob_dist)
-                expectation = compute_energy(pauli_bin, qubit_state_marg)
-                loss += coefficient * expectation
-    else:
-        # Fallback to original implementation without grouping
-        for pauli_string, coefficient in H.items():
-            samples = executor(lp, pauli_string)
-            sample_list = _extract_samples_from_executor_result(samples)
-            normalized_samples = normalize_samples(sample_list)
-
-            # --- MITIGATION BLOCK ---
-            if mitigator is not None:
-                # Convert samples to counts
-                counts = {}
-                for s in normalized_samples:
-                    counts[s] = counts.get(s, 0) + 1
-
-                # Mitigate
-                prob_dist = mitigator.mitigate(counts)
-            else:
-                prob_dist = get_probabilities(normalized_samples)
-            # ------------------------
-
-            pauli_bin = pauli_string_bin(pauli_string)
-            qubit_state_marg = qubit_state_marginal(prob_dist)
-            expectation = compute_energy(pauli_bin, qubit_state_marg)
-            loss += coefficient * expectation
-
-    return loss.real
+    return loss
 
 
 def _extract_samples_from_executor_result(samples: Any) -> list[Any]:
@@ -788,7 +768,9 @@ def permanent(matrix: np.ndarray) -> complex:
     return result
 
 
-def logical_state_to_modes(logical_state: int, m: int) -> list[int]:
+def logical_state_to_modes(
+    logical_state: int, m: int, mode_map: list[int] | None = None
+) -> list[int]:
     """
     Convert a logical qubit state to the set of occupied photon modes.
 
@@ -798,6 +780,9 @@ def logical_state_to_modes(logical_state: int, m: int) -> list[int]:
         Integer representing the logical state (0 to 2^m - 1)
     m : int
         Number of qubits
+    mode_map : Optional[List[int]]
+        Physical mode index for each of the 2m dual-rail rails. If None, qubit
+        k uses physical modes 2k and 2k+1 directly.
 
     Returns:
     --------
@@ -807,12 +792,12 @@ def logical_state_to_modes(logical_state: int, m: int) -> list[int]:
     # Convert integer to bit list
     bits = [(logical_state >> (m - 1 - k)) & 1 for k in range(m)]
 
-    # For qubit k (0-indexed), the modes are 2k and 2k+1
-    # |0⟩ₖ → mode 2k, |1⟩ₖ → mode 2k+1
+    # For qubit k (0-indexed), the rails are 2k and 2k+1
+    # |0⟩ₖ → rail 2k, |1⟩ₖ → rail 2k+1
     modes = []
     for k in range(m):
-        mode = 2 * k + bits[k]
-        modes.append(mode)
+        rail = 2 * k + bits[k]
+        modes.append(rail if mode_map is None else mode_map[rail])
 
     return modes
 
@@ -935,22 +920,6 @@ def loss_function_photonic_unitary(
             f"({len(ancillary_modes)})."
         )
 
-    # Helper function to map logical states to the correct physical modes
-    def _get_physical_modes(
-        logical_state: int, num_qubits: int, logical_mode_map: list[int]
-    ) -> list[int]:
-        """Maps a logical state to physical modes given a specific mode layout."""
-        # Convert integer to bit list for m qubits
-        bits = [(logical_state >> (num_qubits - 1 - k)) & 1 for k in range(num_qubits)]
-        modes = []
-        for k in range(num_qubits):
-            # Qubit k uses modes logical_mode_map[2*k] and logical_mode_map[2*k+1]
-            # |0⟩_k -> logical_mode_map[2*k]
-            # |1⟩_k -> logical_mode_map[2*k+1]
-            mode_index = 2 * k + bits[k]
-            modes.append(logical_mode_map[mode_index])
-        return modes
-
     # Step 2: Compute the unnormalized post-selected state vector U'|ψ_in>
     psi_out_unnormalized = np.zeros(dim_logical, dtype=complex)
 
@@ -961,12 +930,12 @@ def loss_function_photonic_unitary(
 
         # Get the physical input modes for logical state |r>
         # These modes are drawn *only* from the logical_modes_list
-        R_modes = _get_physical_modes(r_idx, m, logical_modes_list)
+        R_modes = logical_state_to_modes(r_idx, m, logical_modes_list)
 
         # Calculate the contribution vector v_r = U'|r>
         for s_idx in range(dim_logical):
             # Get the physical output modes for logical state |s>
-            S_modes = _get_physical_modes(s_idx, m, logical_modes_list)
+            S_modes = logical_state_to_modes(s_idx, m, logical_modes_list)
 
             # The transition amplitude <s|U'|r> is the permanent of the
             # submatrix U(S, R). This calculation implicitly post-selects
@@ -981,7 +950,9 @@ def loss_function_photonic_unitary(
     success_prob = np.vdot(psi_out_unnormalized, psi_out_unnormalized).real
 
     if success_prob < 1e-15:
-        return 1e6  # Return penalty
+        # Finite penalty (rather than an exception) so optimizers can steer
+        # away from parameter regions where post-selection never succeeds.
+        return POST_SELECTION_FAILURE_PENALTY
 
     # Step 4: Compute the energy expectation <v|H|v> / <v|v>
     numerator_energy = 0.0
@@ -1001,24 +972,23 @@ def e_vqe_loss_function(
     lp: np.ndarray,
     H: dict[str, float],
     executor: Any,
-    energy_collector: Any,
+    energy_collector: "DataCollector",
     weight_option: str = "weighted",
+    mitigator: Any | None = None,
 ) -> float:
     """
-    Compute the loss function for the ensemble Variational Quantum Eigensolver (VQE)
-    with automatic Pauli grouping for measurement optimization.
+    Compute the loss function for the ensemble Variational Quantum Eigensolver (VQE).
 
-    This function automatically groups commuting Pauli terms to reduce the number
-    of measurements required. The grouping is applied transparently without
-    changing the function interface, providing automatic optimization for ensemble VQE
-    algorithms.
+    Each Pauli term is measured with its own executor call, which returns one
+    sampling result per ensemble state.
 
-    The function works with executors that return either:
+    The function works with executors that return, per ensemble state, either:
     1. Fock states (from linear optical circuits) - exqalibur.FockState objects
     2. Bitstring tuples (from regular qubit-based circuits)
     3. Bitstring strings (from Qiskit Sampler)
 
-    The executor should return samples in one of these formats:
+    The executor should return a list with one entry per ensemble state, each in
+    one of these formats:
     - Dict with 'results' key: {'results': [samples]}
     - Direct list of samples: [samples]
     - Qiskit-style format with bitstrings or counts
@@ -1030,12 +1000,12 @@ def e_vqe_loss_function(
         the expectation value of the Hamiltonian.
     H : dict of {str: float}
         Hamiltonian represented as a dictionary mapping Pauli strings
-        (e.g., ``'X0 Z1'``) to their coefficients.
+        (e.g., ``'XZ'``, ``'IZ'``) to their coefficients.
     executor : callable
         Function or callable object that executes the quantum circuit and returns
         measurement samples. Must accept arguments ``(lp, pauli_string)`` and return
-        samples in one of the accepted formats.
-    energy_collector : object
+        a list of sampling results, one per ensemble state.
+    energy_collector : DataCollector
         Object responsible for tracking or logging the energy convergence history.
         Must implement a method ``energies_convergence(energies, n_ensembles, total_loss)``.
     weight_option : {'weighted', 'equi', 'ground_state_only'}
@@ -1043,6 +1013,9 @@ def e_vqe_loss_function(
         - ``'weighted'`` (default): Linearly decreasing weights with index, i.e., w_i < w_j for i > j.
         - ``'equi'`` : Equal weights for all occupied orbitals, w_i = w_j.
         - ``'ground_state_only'`` : Only the ground state contributes, w_0 = 1, others 0.
+    mitigator : object, optional
+        Mitigator object (e.g., M3Mitigator) applied to each ensemble state's
+        measured counts, as in ``loss_function``.
 
     Returns
     -------
@@ -1050,44 +1023,25 @@ def e_vqe_loss_function(
         The computed ensemble VQE loss value, equal to the weighted sum of ensemble
         energies.
     """
-    # Import here to avoid circular imports
-
-    from qlass.quantum_chemistry.hamiltonians import group_commuting_pauli_terms
-
     loss = 0.0
     lst_energies: list[float] | None = None
 
-    # Use automatic grouping for optimized measurements
-    grouped_hamiltonians = group_commuting_pauli_terms(H)
+    for pauli_string, coefficient in H.items():
+        samples = executor(lp, pauli_string)
 
-    for group in grouped_hamiltonians:
-        # Each group contains mutually commuting terms
-        # In the future, this could be optimized to measure entire groups simultaneously
-        # For now, we process each term individually but with the grouping organization
-        for pauli_string, coefficient in group.items():
-            samples = executor(lp, pauli_string)
+        prob_dist = [_samples_to_probabilities(s, mitigator) for s in samples]
+        pauli_bin = pauli_string_bin(pauli_string)
 
-            # Handle different executor return formats
-            sample_lists = [_extract_samples_from_executor_result(s) for s in samples]
+        qubit_state_marg = [qubit_state_marginal(pd) for pd in prob_dist]
+        expectation = [compute_energy(pauli_bin, qsm) for qsm in qubit_state_marg]
+        energies = [coefficient * expect for expect in expectation]
+        # Initialize accumulator on first iteration
+        if lst_energies is None:
+            lst_energies = [0.0] * len(energies)
 
-            # Normalize samples to consistent format
-            normalized_samples = [normalize_samples(sample_list) for sample_list in sample_lists]
-
-            prob_dist = [
-                get_probabilities(normalized_sample) for normalized_sample in normalized_samples
-            ]
-            pauli_bin = pauli_string_bin(pauli_string)
-
-            qubit_state_marg = [qubit_state_marginal(pd) for pd in prob_dist]
-            expectation = [compute_energy(pauli_bin, qsm) for qsm in qubit_state_marg]
-            energies = [coefficient * expect for expect in expectation]
-            # Initialize accumulator on first iteration
-            if lst_energies is None:
-                lst_energies = [0.0] * len(energies)
-
-            # Accumulate energies dynamically
-            for i, energy in enumerate(energies):
-                lst_energies[i] += energy
+        # Accumulate energies dynamically
+        for i, energy in enumerate(energies):
+            lst_energies[i] += energy
 
     if lst_energies is None:
         raise ValueError("No energies computed")
@@ -1120,8 +1074,8 @@ def ensemble_weights(weights_choice: str, n_occ: int) -> list[float]:
 
     Returns
     -------
-    weights : np.ndarray
-        Array of length ``n_occ`` containing the ensemble weights corresponding
+    weights : list of float
+        List of length ``n_occ`` containing the ensemble weights corresponding
         to the chosen weighting scheme.
 
     Notes
@@ -1132,11 +1086,11 @@ def ensemble_weights(weights_choice: str, n_occ: int) -> list[float]:
     Examples
     --------
     >>> ensemble_weights("equi", 4)
-    array([0.25, 0.25, 0.25, 0.25])
+    [0.25, 0.25, 0.25, 0.25]
     >>> ensemble_weights("weighted", 4)
-    array([0.375, 0.25 , 0.125, 0.   ])
+    [0.4375, 0.3125, 0.1875, 0.0625]
     >>> ensemble_weights("ground_state_only", 4)
-    array([1., 0., 0., 0.])
+    [1.0, 0.0, 0.0, 0.0]
     """
     if weights_choice == "equi":
         weights = [1.0 / n_occ for i in range(n_occ)]  # should be n_occ of them

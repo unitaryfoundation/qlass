@@ -11,7 +11,7 @@ from qlass.vqe.ansatz import CSF_initial_states
 
 warnings.filterwarnings("ignore")
 
-ham = Hchain_hamiltonian_WFT(2, 0.741, tampering=False)
+ham = Hchain_hamiltonian_WFT(2, 0.741, tapering=False)
 print("Printing Hamiltonian", ham)
 
 

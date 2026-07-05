@@ -381,13 +381,13 @@ def test_transformation_Hmatrix_Hqubit():
 def test_Hchain_hamiltonian_WFT():
     from qlass.quantum_chemistry.hamiltonians import Hchain_hamiltonian_WFT
 
-    ham = Hchain_hamiltonian_WFT(2, 0.741, tampering=True)
+    ham = Hchain_hamiltonian_WFT(2, 0.741, tapering=True)
     # Basic checks
     assert isinstance(ham, dict)
     assert all(isinstance(k, str) for k in ham)
     assert all(np.isreal(v) or np.iscomplex(v) for v in ham.values())
 
-    ham1 = Hchain_hamiltonian_WFT(2, 0.741, tampering=False)
+    ham1 = Hchain_hamiltonian_WFT(2, 0.741, tapering=False)
     assert isinstance(ham1, dict)
     assert all(isinstance(k, str) for k in ham1)
     assert all(np.isreal(v) or np.iscomplex(v) for v in ham1.values())

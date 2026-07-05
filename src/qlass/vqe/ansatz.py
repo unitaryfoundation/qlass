@@ -76,7 +76,6 @@ def custom_unitary_ansatz(
     processor = compile(
         qc_rotated, input_state=pcvl.LogicalState([0] * num_qubits), noise_model=noise_model
     )
-    processor.with_input(pcvl.LogicalState([0] * num_qubits))
 
     return processor
 
@@ -130,20 +129,25 @@ def CSF_initial_states(
     Parameters
     ----------
     num_spatial_orbitals : int
-        Number of spatial orbitals in the system.
-    num_electrons : list of int
-        Number of alpha and beta electrons, given as [num_alpha, num_beta].
+        Number of spatial orbitals in the system. Currently unused: the qubit
+        count is derived as ``2 * sum(num_electrons)``, i.e. the number of spin
+        orbitals is assumed to be twice the number of electrons.
+    num_electrons : tuple of int
+        Number of alpha and beta electrons, given as (num_alpha, num_beta).
     initial_parameters : np.ndarray
-        Initial values for the parameterized ansatz.
+        Initial values for the parameterized ansatz. Must have length
+        ``2 * num_qubits`` (the ``n_local`` circuit with one repetition).
     pauli_string : str
         Pauli string used to rotate the qubits after the ansatz.
     singlet_excitation : bool, optional
-        If True, apply a singlet excitation to the Hartree-Fock state using the specified
-        orbitals `i` and `j`. Default is False.
+        If True, apply a singlet excitation to the Hartree-Fock state using
+        `k_index` and `l_index`. Default is False.
     k_index : int or None, optional
-        Index of the occupied orbital for singlet excitation. Required if `singlet_excitation=True`.
+        One-based index of the occupied orbital for singlet excitation.
+        Required if `singlet_excitation=True`.
     l_index : int or None, optional
-        Index of the unoccupied orbital for singlet excitation. Required if `singlet_excitation=True`.
+        One-based index of the unoccupied orbital for singlet excitation.
+        Required if `singlet_excitation=True`.
     noise_model : NoiseModel or None, optional
         Optional noise model for simulating the quantum processor. Default is None.
 
@@ -158,7 +162,7 @@ def CSF_initial_states(
     Raises
     ------
     ValueError
-        If `singlet_excitation=True` but either `k` or `l` is not provided.
+        If `singlet_excitation=True` but either `k_index` or `l_index` is not provided.
 
     Notes
     -----
@@ -198,19 +202,23 @@ def CSF_initial_states(
 
     hfc.compose(ansatz, inplace=True)
     ansatz_assigned = hfc.assign_parameters(initial_parameters)
-    photonic_circuit = pcvl.LogicalState(bitstring)
     ansatz_transpiled = transpile(ansatz_assigned, basis_gates=["u3", "cx"], optimization_level=3)
     ansatz_rot = rotate_qubits(pauli_string, ansatz_transpiled.copy())
-    processor_HF = compile(ansatz_rot, input_state=photonic_circuit, noise_model=noise_model)
+    # The X gates above already prepare the Hartree-Fock state, so the photonic
+    # input is the dual-rail |0...0> (issue #236: feeding the HF bitstring here
+    # as well made the two preparations cancel).
+    input_state = pcvl.LogicalState([0] * num_qubits)
+    processor_HF = compile(ansatz_rot, input_state=input_state, noise_model=noise_model)
 
     # singlet state
     processor_sc = None
     if singlet_excitation:
         if k_index is None or l_index is None:
             raise ValueError(
-                "Singlet excitation requested but missing required parameters k and l."
+                "Singlet excitation requested but missing required parameters k_index and l_index."
             )
         sbs = bitstring.copy()[::-1]
+        # k_index and l_index are 1-based orbital indices
         sbs[l_index - 1] = 1
         sbs[k_index - 1] = 0
         sbs = sbs[::-1]
@@ -221,12 +229,11 @@ def CSF_initial_states(
                 sc.x(i)
         sc.compose(ansatz, inplace=True)
         sc_assigned_ansatz = sc.assign_parameters(initial_parameters)
-        ph_sc = pcvl.LogicalState(sbs)
         sc_ansatz_transpiled = transpile(
             sc_assigned_ansatz, basis_gates=["u3", "cx"], optimization_level=3
         )
         sc_ansatz_rot = rotate_qubits(pauli_string, sc_ansatz_transpiled.copy())
-        processor_sc = compile(sc_ansatz_rot, input_state=ph_sc, noise_model=noise_model)
+        processor_sc = compile(sc_ansatz_rot, input_state=input_state, noise_model=noise_model)
 
     if singlet_excitation:
         return [processor_HF, processor_sc]
@@ -459,8 +466,8 @@ def kerr_ansatz(params: np.ndarray, num_kerr: int = 4, n_max: int = 4) -> np.nda
         ValueError: If ``num_kerr`` is not in {1, 2, 3, 4} or ``params``
                     does not have exactly 6 elements.
     """
-    if num_kerr < 0 or num_kerr > 4:
-        raise ValueError(f"num_kerr must be between 0 and 4, got {num_kerr}")
+    if num_kerr < 1 or num_kerr > 4:
+        raise ValueError(f"num_kerr must be between 1 and 4, got {num_kerr}")
     if len(params) != 6:
         raise ValueError(f"Expected 6 parameters, got {len(params)}")
 

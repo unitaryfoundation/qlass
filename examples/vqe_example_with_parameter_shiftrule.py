@@ -11,7 +11,7 @@ from qlass.vqe.ansatz import Bitstring_initial_states
 
 warnings.filterwarnings("ignore")
 
-ham = Hchain_hamiltonian_WFT(2, 0.741, tampering=True)
+ham = Hchain_hamiltonian_WFT(2, 0.741, tapering=True)
 print("Printing Hamiltonian", ham)
 
 
