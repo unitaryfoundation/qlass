@@ -159,7 +159,7 @@ Standard VQE using sampling-based executor with `Piquasso <https://piquasso.read
 
         ansatz_assigned = ansatz.assign_parameters(lp)
         ansatz_transpiled = transpile(
-            ansatz_assigned, basis_gates=["rz", "ry", "cx"], optimization_level=3,
+            ansatz_assigned, basis_gates=["u3", "cx"], optimization_level=3,
         )
 
         ansatz_rot = rotate_qubits(pauli_string, ansatz_transpiled.copy())
