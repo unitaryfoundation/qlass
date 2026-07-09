@@ -20,7 +20,7 @@ jobs:
       runs-on: ubuntu-latest
       steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v7
@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Check out repository
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Install the latest version of uv
       uses: astral-sh/setup-uv@v7
@@ -55,7 +55,7 @@ jobs:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
     - name: Check out repository
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Install the latest version of uv
       uses: astral-sh/setup-uv@v7
@@ -71,7 +71,7 @@ jobs:
       # Upload once per run (from the 3.12 job), on pushes to main as well as
       # PRs, so the coverage baseline stays current
       if: matrix.python-version == '3.12'
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v7
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: ./coverage.xml
